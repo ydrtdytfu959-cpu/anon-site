@@ -8,7 +8,7 @@
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex,nofollow">
   <meta name="description" content="AnoX — اكتشف المنتجات، وقارن تكلفة وصولها إلى الجزائر. تجربة مستقلة ببيانات توضيحية، دون مدفوعات فعلية.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-8blxRUZhDE93YUaeS3lhtzzmFCJG5s5JtMWuprPaOyo='; script-src-attr 'none'; style-src 'unsafe-inline'; img-src data: blob:; font-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-26f2dknrtjxGMzAx/xY5eoqbbgqqXjKA3FDlZ4TrxEQ='; script-src-attr 'none'; style-src 'unsafe-inline'; img-src data: blob:; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>AnoX — اختيارات أبعد. تكلفة أوضح.</title>
 
   <!--
@@ -1084,6 +1084,16 @@
       }
     }
     const CheckoutGateway=Object.freeze({connected:false,async submit(){throw Error('LIVE_CHECKOUT_NOT_CONNECTED');},verifyServerQuote(){return false;}});
+        const SANDBOX_CHECKOUT_URL="https://zmumi2wruk.execute-api.us-east-2.amazonaws.com/checkout";
+    const SandboxCheckoutGateway=Object.freeze({
+      async submit(){
+        const response=await fetch(SANDBOX_CHECKOUT_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:"{}",credentials:"omit",cache:"no-store",referrerPolicy:"no-referrer"});
+        const data=await response.json().catch(()=>null),url=typeof data?.checkoutUrl==="string"?data.checkoutUrl:"";
+        let parsed;try{parsed=new URL(url);}catch{parsed=null;}
+        if(!response.ok||data?.ok!==true||!parsed||parsed.protocol!=="https:"||parsed.hostname!=="checkout.stripe.com")throw Error("SANDBOX_CHECKOUT_FAILED");
+        return parsed.href;
+      }
+    });
     const CommercePolicy=Object.freeze({
       line(product,variant,quantity,mode='preview',repository=Catalog){
         if(!product||!variant||!whole(quantity,1,20)||quantity>variant.stock)return {allowed:false,reason:'invalid_variant_or_stock'};
@@ -2478,7 +2488,7 @@
       }else if(ui.checkoutStep===2)content=deliveryForm();
       else{
         const data=state.checkoutData;
-        content='<div><section class="surface review-address"><h2>'+esc(tx("بيانات التوصيل","Delivery details"))+'</h2><p>'+esc(data.fullName)+'</p><p>'+esc([data.address,data.city,regionLabel(data.wilaya)].filter(Boolean).join("، "))+'</p><p dir="auto">'+esc(data.phone)+" · "+esc(data.email)+'</p>'+button(tx("تعديل البيانات","Edit details"),'data-checkout-step="2"',"text-btn")+'</section><section class="surface">'+cartLinesMarkup()+'</section><div class="notice warning" style="margin-top:22px">'+icon("info")+'<span>'+esc(tx("الخطوة التالية تحفظ سجلًا توضيحيًا في هذا المتصفح فقط. لا يتم شراء منتجات أو حجزها، ولا تُعالج دفعة.","The next step saves an illustrative record in this browser only. No products are purchased or reserved and no payment is processed."))+'</span></div><div class="form-actions">'+button(tx("رجوع","Back"),'data-checkout-step="2"',"btn secondary")+button(tx("حفظ الطلب المحلي","Save local order"),"data-place-order","btn primary")+'</div></div>';
+        content='<div><section class="surface review-address"><h2>'+esc(tx("بيانات التوصيل","Delivery details"))+'</h2><p>'+esc(data.fullName)+'</p><p>'+esc([data.address,data.city,regionLabel(data.wilaya)].filter(Boolean).join("، "))+'</p><p dir="auto">'+esc(data.phone)+" · "+esc(data.email)+'</p>'+button(tx("تعديل البيانات","Edit details"),'data-checkout-step="2"',"text-btn")+'</section><section class="surface">'+cartLinesMarkup()+'</section><div class="notice warning" style="margin-top:22px">'+icon("info")+'<span>'+esc(tx("الخطوة التالية تحفظ سجلًا توضيحيًا في هذا المتصفح فقط. لا يتم شراء منتجات أو حجزها، ولا تُعالج دفعة.","The next step saves an illustrative record in this browser only. No products are purchased or reserved and no payment is processed."))+'</span></div><div class="form-actions">'+button(tx("رجوع","Back"),'data-checkout-step="2"',"btn secondary")+button(tx("حفظ الطلب المحلي","Save local order"),"data-place-order","btn secondary")+button(tx("اختبار Stripe Sandbox · $1","Test Stripe Sandbox · $1"),"data-sandbox-checkout","btn primary")+'</div></div>';
       }
       $("main").innerHTML=pageShell(tx("كل التفاصيل قبل القرار","Every detail before you decide"),tx("راجع سلتك وعنوانك وتقدير التكلفة. الدفع الفعلي غير متصل.","Review your cart, address and cost estimate. Live payment is not connected."),
         checkoutSteps()+'<div class="split"><div>'+content+'</div><aside>'+summaryMarkup(cartQuote())+'</aside></div>',"CHECKOUT / LOCAL PREVIEW");
@@ -2500,7 +2510,18 @@
       renderCheckout();
       if(!focusInvalidField($("main"),ui.deliveryErrors))$("main").focus({preventScroll:true});
     }
-    async function placeOrder(target){
+        async function startSandboxCheckout(target){
+      if(target.disabled)return;
+      target.disabled=true;target.setAttribute("aria-busy","true");
+      try{
+        const url=await SandboxCheckoutGateway.submit();
+        location.assign(url);
+      }catch{
+        toast(tx("تعذر فتح Stripe Sandbox. حاول مرة أخرى.","Stripe Sandbox could not be opened. Try again."),"error");
+      }finally{
+        if(target.isConnected){target.disabled=false;target.removeAttribute("aria-busy");}
+      }
+    }    async function placeOrder(target){
       if(target.disabled||ui.orderBusy||!state.cart.length)return;
       const issues=cartIssues();if(issues.length){toast(issues[0],"error");ui.checkoutStep=1;renderCheckout();return;}
       ui.deliveryErrors=deliveryErrors(state.checkoutData);
@@ -2973,7 +2994,7 @@
         else ui.checkoutStep=step;
         Storage.save();renderCheckout();restoreForms();$("main").focus({preventScroll:true});return;
       }
-      if(target.matches("[data-place-order]")){placeOrder(target);return;}
+            if(target.matches("[data-sandbox-checkout]")){void startSandboxCheckout(target);return;}      if(target.matches("[data-place-order]"))      {placeOrder(target);return;}
       if(target.matches("[data-advance-order]")){
         const order=state.orders.find(value=>value.id===data.advanceOrder);
         if(order){order.stage=Math.min(6,order.stage+1);Storage.save();renderTrack();}return;
@@ -3253,7 +3274,7 @@
       await test('Mobile: long cost values may wrap without clipping critical controls',()=>{const css=document.querySelector('style').textContent;assert(css.includes('.line-price{text-align:end;min-width:0;flex-wrap:wrap}'));assert(css.includes('.summary-row bdi{white-space:normal;overflow-wrap:anywhere;'));assert(css.includes('align-items:center;flex-wrap:wrap;min-width:0;margin-bottom:22px}'));});
       await test('Costs: DZD headline precedes the detailed USD breakdown',()=>{const markup=summaryMarkup(cost,{settings:DEFAULT_SETTINGS,locked:true});assert(markup.indexOf('class="landed-total"')<markup.indexOf('class="summary-row"'));assert(markup.includes('cost-boundaries'));});
       await test('Design: readable tokens, touch targets, RTL and reduced motion retained',()=>{const css=document.querySelector('style').textContent;assert(css.includes('--text-base:1rem;--text-label:.875rem'));assert(css.includes('.catalog-pagination .btn{min-width:44px}'));assert(css.includes('prefers-reduced-motion:reduce'));assert(css.includes('env(safe-area-inset-bottom)'));assert(css.includes('html[dir="rtl"] h1'));assert(css.includes('letter-spacing:0;line-height:1.45'));});
-      await test('Security: exact inline script hash and offline CSP',async()=>{const policy=document.querySelector('meta[http-equiv="Content-Security-Policy"]').content,scripts=[...document.querySelectorAll('script')];assert(scripts.length===1&&!scripts[0].hasAttribute('src'));const directive=policy.split(';').map(value=>value.trim()).find(value=>value.startsWith('script-src '));assert(directive&&!directive.includes('unsafe-inline')&&!directive.includes('unsafe-eval'));assert(policy.includes("connect-src 'none'")&&policy.includes("default-src 'none'"));assert(window.crypto?.subtle,'SHA-256 verification requires Web Crypto');const digest=await window.crypto.subtle.digest('SHA-256',new TextEncoder().encode(scripts[0].textContent)),hash=btoa(String.fromCharCode(...new Uint8Array(digest)));assert(directive.includes("'sha256-"+hash+"'"),'Inline script hash mismatch');});
+      await test('Security: exact inline script hash and offline CSP',async()=>{const policy=document.querySelector('meta[http-equiv="Content-Security-Policy"]').content,scripts=[...document.querySelectorAll('script')];assert(scripts.length===1&&!scripts[0].hasAttribute('src'));const directive=policy.split(';').map(value=>value.trim()).find(value=>value.startsWith('script-src '));assert(directive&&!directive.includes('unsafe-inline')&&!directive.includes('unsafe-eval'));assert(policy.includes("connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com")&&policy.includes("default-src 'none'"));assert(window.crypto?.subtle,'SHA-256 verification requires Web Crypto');const digest=await window.crypto.subtle.digest('SHA-256',new TextEncoder().encode(scripts[0].textContent)),hash=btoa(String.fromCharCode(...new Uint8Array(digest)));assert(directive.includes("'sha256-"+hash+"'"),'Inline script hash mismatch');});
       return results;
     }
     async function renderDeveloperTests(){if(!DEVELOPER_MODE)return;pageTitle('AnoX · Developer checks');$('main').innerHTML=pageShell('Developer checks','Isolated in-memory checks. No customer records are created or saved.','<p role="status">Running…</p>');const results=await runSelfTests();if(currentRoute().name!=='debug')return;$('main').innerHTML=pageShell('Developer checks',results.filter(r=>r.pass).length+'/'+results.length+' PASS','<div class="surface"><div class="actions">'+button('Run again','data-run-tests','btn secondary')+'</div><div class="comparison-scroll" tabindex="0" role="region" aria-label="Automated test results"><table class="comparison-table"><caption>Isolated application self-tests</caption><thead><tr><th scope="col">Result</th><th scope="col">Check</th></tr></thead><tbody>'+results.map(r=>'<tr><td>'+ (r.pass?'PASS':'FAIL')+'</td><th scope="row">'+esc(r.name)+(r.pass?'':' · '+esc(r.error))+'</th></tr>').join('')+'</tbody></table></div></div>');$('main').setAttribute('aria-busy','false');}
