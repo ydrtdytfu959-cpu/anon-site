@@ -1085,8 +1085,63 @@
     }
     const CheckoutGateway=Object.freeze({connected:false,async submit(){throw Error('LIVE_CHECKOUT_NOT_CONNECTED');},verifyServerQuote(){return false;}});
         const SANDBOX_CHECKOUT_URL="https://zmumi2wruk.execute-api.us-east-2.amazonaws.com/checkout";
-       });
-    const CommercePolicy=Object.freeze({
+
+const SandboxCheckoutGateway=Object.freeze({
+  async submit(request=fetch,source={cart:state.cart,delivery:state.checkoutData}){
+    const payload={
+      cart:cleanCart(source.cart).map(({productId,color,size,qty})=>({
+        productId,
+        color,
+        size,
+        qty
+      })),
+      delivery:cleanDelivery(source.delivery)
+    };
+
+    if(!payload.cart.length)throw Error("SANDBOX_CHECKOUT_FAILED");
+
+    const response=await request(SANDBOX_CHECKOUT_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(payload),
+      credentials:"omit",
+      cache:"no-store",
+      referrerPolicy:"no-referrer"
+    });
+
+    const data=await response.json().catch(()=>null);
+    const url=typeof data?.checkoutUrl==="string"?data.checkoutUrl:"";
+    const orderId=text(data?.orderId,120).trim();
+    const pricing=isObject(data?.pricing)?data.pricing:null;
+
+    let parsed;
+    try{
+      parsed=new URL(url);
+    }catch{
+      parsed=null;
+    }
+
+    if(
+      !response.ok ||
+      data?.ok!==true ||
+      !parsed ||
+      parsed.protocol!=="https:" ||
+      parsed.hostname!=="checkout.stripe.com" ||
+      !orderId ||
+      !pricing ||
+      !whole(pricing.totalCents,50,99999999) ||
+      pricing.currency!=="usd"
+    ){
+      throw Error("SANDBOX_CHECKOUT_FAILED");
+    }
+
+    return {
+      url:parsed.href,
+      orderId,
+      pricing
+    };
+  }
+});    const CommercePolicy=Object.freeze({
       line(product,variant,quantity,mode='preview',repository=Catalog){
         if(!product||!variant||!whole(quantity,1,20)||quantity>variant.stock)return {allowed:false,reason:'invalid_variant_or_stock'};
         const provider=repository.registry.descriptor(product.source.providerId),status=repository.providerStatus(product.source.providerId);
@@ -2468,41 +2523,155 @@
     function checkoutSteps(){
       return '<ol class="checkout-steps">'+[tx("السلة","Cart"),tx("التوصيل","Delivery"),tx("المراجعة","Review")].map((label,index)=>'<li '+(ui.checkoutStep===index+1?'aria-current="step"':"")+'>'+esc(label)+'</li>').join("")+'</ol>';
     }
-    function renderCheckout(){
-      pageTitle(tx("إتمام الطلب","Checkout"));
-      if(!state.cart.length){
-        $("main").innerHTML=pageShell(tx("ابدأ بسلتك","Start with your cart"),"",emptyMarkup(tx("لا توجد منتجات للمراجعة","There are no items to review"),tx("أضف منتجًا واختر المقاس واللون قبل متابعة الطلب.","Add a product and select its size and color before continuing.")));
-        return;
-      }
-      let content="";
-      if(ui.checkoutStep===1){
-        content='<section class="surface">'+cartLinesMarkup()+'<div class="actions actions-spaced">'+button(tx("متابعة إلى التوصيل","Continue to delivery"),'data-checkout-step="2"',"btn primary")+'</div></section>';
-      }else if(ui.checkoutStep===2)content=deliveryForm();
-      else{
-        const data=state.checkoutData;
-        content='<div><section class="surface review-address"><h2>'+esc(tx("بيانات التوصيل","Delivery details"))+'</h2><p>'+esc(data.fullName)+'</p><p>'+esc([data.address,data.city,regionLabel(data.wilaya)].filter(Boolean).join("، "))+'</p><p dir="auto">'+esc(data.phone)+" · "+esc(data.email)+'</p>'+button(tx("تعديل البيانات","Edit details"),'data-checkout-step="2"',"text-btn")+'</section><section class="surface">'+cartLinesMarkup()+'</section><div class="notice warning" style="margin-top:22px">'+icon("info")+'<span>'+esc(tx("الخطوة التالية تحفظ سجلًا توضيحيًا في هذا المتصفح فقط. لا يتم شراء منتجات أو حجزها، ولا تُعالج دفعة.","The next step saves an illustrative record in this browser only. No products are purchased or reserved and no payment is processed."))+'</span></div><div class="form-actions">'+button(tx("رجوع","Back"),'data-checkout-step="2"',"btn secondary")+button(tx("حفظ الطلب المحلي","Save local order"),"data-place-order","btn secondary")+button(tx("اختبار Stripe Sandbox · $1","Test Stripe Sandbox · $1"),"data-sandbox-checkout","btn primary")+'</div></div>';
-      }
-      $("main").innerHTML=pageShell(tx("كل التفاصيل قبل القرار","Every detail before you decide"),tx("راجع سلتك وعنوانك وتقدير التكلفة. الدفع الفعلي غير متصل.","Review your cart, address and cost estimate. Live payment is not connected."),
-        checkoutSteps()+'<div class="split"><div>'+content+'</div><aside>'+summaryMarkup(cartQuote())+'</aside></div>',"CHECKOUT / LOCAL PREVIEW");
-    }
-    /* Validation reads the current error map, never a stale render-local variable. */
-    function focusInvalidField(root,errors,announce=toast){
-      const bad=root.querySelector('[aria-invalid="true"]');
-      if(!bad)return false;
-      bad.focus();
-      const message=isObject(errors)&&Object.hasOwn(errors,bad.name)?text(errors[bad.name],500):"";
-      announce(message||tx("راجع هذا الحقل ثم حاول مجددًا.","Review this field and try again."),"error");
-      return true;
-    }
-    function validateDelivery(form){
-      state.checkoutData=cleanDelivery(Object.fromEntries(new FormData(form).entries()));
-      ui.deliveryErrors=deliveryErrors(state.checkoutData);
-      Storage.save();
-      if(!Object.keys(ui.deliveryErrors).length)ui.checkoutStep=3;
-      renderCheckout();
-      if(!focusInvalidField($("main"),ui.deliveryErrors))$("main").focus({preventScroll:true});
-    }
-        async function startSandboxCheckout(target){
+   function renderCheckout(){
+  pageTitle(tx("إتمام الطلب","Checkout"));
+
+  if(!state.cart.length){
+    $("main").innerHTML=pageShell(
+      tx("ابدأ بسلتك","Start with your cart"),
+      "",
+      emptyMarkup(
+        tx("لا توجد منتجات للمراجعة","There are no items to review"),
+        tx(
+          "أضف منتجًا واختر المقاس واللون قبل متابعة الطلب.",
+          "Add a product and select its size and color before continuing."
+        )
+      )
+    );
+    return;
+  }
+
+  let content="";
+
+  if(ui.checkoutStep===1){
+    content=
+      '<section class="surface">'+
+        cartLinesMarkup()+
+        '<div class="actions actions-spaced">'+
+          button(
+            tx("متابعة إلى التوصيل","Continue to delivery"),
+            'data-checkout-step="2"',
+            "btn primary"
+          )+
+        '</div>'+
+      '</section>';
+
+  }else if(ui.checkoutStep===2){
+
+    content=deliveryForm();
+
+  }else{
+    const data=state.checkoutData;
+
+    content=
+      '<section class="surface">'+
+        '<div class="review-address">'+
+          '<h2>'+esc(tx("بيانات التوصيل","Delivery details"))+'</h2>'+
+          '<p>'+esc(data.fullName)+'</p>'+
+          '<p>'+esc(
+            [data.address,data.city,regionLabel(data.wilaya)]
+              .filter(Boolean)
+              .join("، ")
+          )+'</p>'+
+          '<p dir="auto">'+esc(data.phone)+'</p>'+
+          '<p dir="auto">'+esc(data.email)+'</p>'+
+          button(
+            tx("تعديل بيانات التوصيل","Edit delivery details"),
+            'data-checkout-step="2"',
+            "text-btn"
+          )+
+        '</div>'+
+
+        '<div class="notice warning">'+
+          icon("info")+
+          '<span>'+
+            esc(
+              tx(
+                "سيتم فتح Stripe Sandbox للاختبار فقط. لا تستخدم بطاقة حقيقية.",
+                "Stripe Sandbox will open for testing only. Do not use a real card."
+              )
+            )+
+          '</span>'+
+        '</div>'+
+
+        '<div class="actions actions-spaced">'+
+          button(
+            tx("رجوع","Back"),
+            'data-checkout-step="2"',
+            "btn secondary"
+          )+
+          button(
+            tx(
+              "المتابعة إلى Stripe Sandbox",
+              "Continue to Stripe Sandbox"
+            ),
+            "data-sandbox-checkout",
+            "btn primary"
+          )+
+        '</div>'+
+      '</section>';
+  }
+
+  $("main").innerHTML=pageShell(
+    tx("كل التفاصيل قبل القرار","Every detail before you decide"),
+    tx(
+      "راجع سلتك وعنوانك وتقدير التكلفة. الدفع الحقيقي غير مفعّل.",
+      "Review your cart, address and cost estimate. Live payment is not enabled."
+    ),
+    checkoutSteps()+
+      '<div class="split">'+
+        '<div>'+content+'</div>'+
+        '<aside>'+summaryMarkup(cartQuote())+'</aside>'+
+      '</div>',
+    "CHECKOUT / SANDBOX"
+  );
+}
+
+/* Validation reads the current error map, never a stale render-local variable. */
+function focusInvalidField(root,errors,announce=toast){
+  const bad=root.querySelector('[aria-invalid="true"]');
+  if(!bad)return false;
+
+  bad.focus();
+
+  const message=
+    isObject(errors)&&Object.hasOwn(errors,bad.name)
+      ? text(errors[bad.name],500)
+      : "";
+
+  announce(
+    message||
+      tx(
+        "راجع هذا الحقل ثم حاول مجددًا.",
+        "Review this field and try again."
+      ),
+    "error"
+  );
+
+  return true;
+}
+
+function validateDelivery(form){
+  state.checkoutData=cleanDelivery(
+    Object.fromEntries(new FormData(form).entries())
+  );
+
+  ui.deliveryErrors=deliveryErrors(state.checkoutData);
+
+  Storage.save();
+
+  if(!Object.keys(ui.deliveryErrors).length){
+    ui.checkoutStep=3;
+  }
+
+  renderCheckout();
+
+  if(!focusInvalidField($("main"),ui.deliveryErrors)){
+    $("main").focus({preventScroll:true});
+  }
+}
+
+async function startSandboxCheckout(target){
   if(target.disabled)return;
 
   target.disabled=true;
@@ -2511,6 +2680,7 @@
   try{
     const checkout=await SandboxCheckoutGateway.submit();
     location.assign(checkout.url);
+
   }catch{
     toast(
       tx(
@@ -2519,13 +2689,15 @@
       ),
       "error"
     );
+
   }finally{
     if(target.isConnected){
       target.disabled=false;
       target.removeAttribute("aria-busy");
     }
   }
-}    }    async function placeOrder(target){
+}      
+async function placeOrder(target){
       if(target.disabled||ui.orderBusy||!state.cart.length)return;
       const issues=cartIssues();if(issues.length){toast(issues[0],"error");ui.checkoutStep=1;renderCheckout();return;}
       ui.deliveryErrors=deliveryErrors(state.checkoutData);
