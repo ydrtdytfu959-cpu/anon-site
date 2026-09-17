@@ -8,7 +8,7 @@
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex,nofollow">
   <meta name="description" content="AnoX — اكتشف المنتجات، وقارن تكلفة وصولها إلى الجزائر. تجربة مستقلة ببيانات توضيحية، دون مدفوعات فعلية.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-26f2dknrtjxGMzAx/xY5eoqbbgqqXjKA3FDlZ4TrxEQ='; script-src-attr 'none'; style-src 'unsafe-inline'; img-src data: blob:; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-oA+1b7g4EF+RCFSLB9ZXJcEI3vgkCk2gvb56ffnk0Pw='; script-src-attr 'none'; style-src 'unsafe-inline'; img-src data: blob:; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>AnoX — اختيارات أبعد. تكلفة أوضح.</title>
 
   <!--
@@ -1085,15 +1085,7 @@
     }
     const CheckoutGateway=Object.freeze({connected:false,async submit(){throw Error('LIVE_CHECKOUT_NOT_CONNECTED');},verifyServerQuote(){return false;}});
         const SANDBOX_CHECKOUT_URL="https://zmumi2wruk.execute-api.us-east-2.amazonaws.com/checkout";
-    const SandboxCheckoutGateway=Object.freeze({
-      async submit(){
-        const response=await fetch(SANDBOX_CHECKOUT_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:"{}",credentials:"omit",cache:"no-store",referrerPolicy:"no-referrer"});
-        const data=await response.json().catch(()=>null),url=typeof data?.checkoutUrl==="string"?data.checkoutUrl:"";
-        let parsed;try{parsed=new URL(url);}catch{parsed=null;}
-        if(!response.ok||data?.ok!==true||!parsed||parsed.protocol!=="https:"||parsed.hostname!=="checkout.stripe.com")throw Error("SANDBOX_CHECKOUT_FAILED");
-        return parsed.href;
-      }
-    });
+       });
     const CommercePolicy=Object.freeze({
       line(product,variant,quantity,mode='preview',repository=Catalog){
         if(!product||!variant||!whole(quantity,1,20)||quantity>variant.stock)return {allowed:false,reason:'invalid_variant_or_stock'};
@@ -2511,17 +2503,29 @@
       if(!focusInvalidField($("main"),ui.deliveryErrors))$("main").focus({preventScroll:true});
     }
         async function startSandboxCheckout(target){
-      if(target.disabled)return;
-      target.disabled=true;target.setAttribute("aria-busy","true");
-      try{
-        const url=await SandboxCheckoutGateway.submit();
-        location.assign(url);
-      }catch{
-        toast(tx("تعذر فتح Stripe Sandbox. حاول مرة أخرى.","Stripe Sandbox could not be opened. Try again."),"error");
-      }finally{
-        if(target.isConnected){target.disabled=false;target.removeAttribute("aria-busy");}
-      }
-    }    async function placeOrder(target){
+  if(target.disabled)return;
+
+  target.disabled=true;
+  target.setAttribute("aria-busy","true");
+
+  try{
+    const checkout=await SandboxCheckoutGateway.submit();
+    location.assign(checkout.url);
+  }catch{
+    toast(
+      tx(
+        "تعذر فتح Stripe Sandbox. حاول مرة أخرى.",
+        "Stripe Sandbox could not be opened. Try again."
+      ),
+      "error"
+    );
+  }finally{
+    if(target.isConnected){
+      target.disabled=false;
+      target.removeAttribute("aria-busy");
+    }
+  }
+}    }    async function placeOrder(target){
       if(target.disabled||ui.orderBusy||!state.cart.length)return;
       const issues=cartIssues();if(issues.length){toast(issues[0],"error");ui.checkoutStep=1;renderCheckout();return;}
       ui.deliveryErrors=deliveryErrors(state.checkoutData);
