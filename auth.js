@@ -339,6 +339,113 @@
     }
   }
 
+  const nativeFetch = window.fetch.bind(window);
+
+  function createCheckoutAwareFetch({
+    nativeFetch,
+    apiBase,
+    hasSession,
+    validSession,
+    ResponseCtor,
+    HeadersCtor
+  }) {
+    const publicCheckoutUrl =
+      `${apiBase}/checkout`;
+
+    const authenticatedCheckoutUrl =
+      `${apiBase}/checkout-auth`;
+
+    return async function checkoutAwareFetch(
+      input,
+      options = {}
+    ) {
+      const url =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+          ? input.href
+          : input?.url || "";
+
+      const method =
+        String(
+          options?.method ||
+          (
+            typeof Request !== "undefined" &&
+            input instanceof Request
+              ? input.method
+              : "GET"
+          )
+        ).toUpperCase();
+
+      if (
+        url !== publicCheckoutUrl ||
+        method !== "POST"
+      ) {
+        return nativeFetch(
+          input,
+          options
+        );
+      }
+
+      if (!hasSession()) {
+        return nativeFetch(
+          input,
+          options
+        );
+      }
+
+      const session =
+        await validSession();
+
+      if (!session?.idToken) {
+        return new ResponseCtor(
+          JSON.stringify({
+            ok: false,
+            error: "UNAUTHORIZED"
+          }),
+          {
+            status: 401,
+            headers: {
+              "Content-Type":
+                "application/json",
+              "Cache-Control":
+                "no-store"
+            }
+          }
+        );
+      }
+
+      const headers =
+        new HeadersCtor(
+          options.headers || {}
+        );
+
+      headers.set(
+        "Authorization",
+        `Bearer ${session.idToken}`
+      );
+
+      return nativeFetch(
+        authenticatedCheckoutUrl,
+        {
+          ...options,
+          headers
+        }
+      );
+    };
+  }
+
+  window.fetch =
+    createCheckoutAwareFetch({
+      nativeFetch,
+      apiBase: CONFIG.apiBase,
+      hasSession: () =>
+        Boolean(auth.session),
+      validSession,
+      ResponseCtor: window.Response,
+      HeadersCtor: window.Headers
+    });
+  
   async function api(
     path,
     options = {},
