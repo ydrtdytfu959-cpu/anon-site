@@ -120,7 +120,7 @@
     const stock = stockFor(raw);
     const updatedAt = normalizedDate(firstValue(raw.updatedAt, raw.lastUpdated, raw.modifiedAt, raw.updated, raw.createdAt, fetchedAt)) || fetchedAt;
     const merchantUrl = safeHttpsUrl(firstValue(raw.productUrl, raw.url, raw.link, raw.merchantUrl));
-    const media = imageCandidates(raw).map(url => ({ url, alt: name, width: 800, height: 800 }));
+    const media = imageCandidates(raw).map(url => ({ url, alt: name, width: 420, height: 390 }));
     const variants = variantsFor(raw, stock);
     const effectiveStock = variants.reduce((total, variant) => total + variant.stock, 0);
     return {
