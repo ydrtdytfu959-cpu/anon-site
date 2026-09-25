@@ -10,7 +10,7 @@
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="index,follow">
   <meta name="description" content="AnoX — اكتشف المنتجات، وقارن التفاصيل وتكلفة وصولها التقديرية إلى الجزائر.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-+xAgKTjRjhTSWuNp/8mBoUGnVZD4ngXSj1ztvdJLjtI=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src data: blob: https://static.nike.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-sxxgC43s4K87MIdFTI9TWe+FOTphgZLipjXrI7VGPnU=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src data: blob: https://static.nike.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>AnoX — اختيارات أبعد. تكلفة أوضح.</title>
   <!-- Google Analytics 4 -->
   <script src="/analytics.js"></script>
@@ -2334,9 +2334,8 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       }
     }
 
-    /* AnoX transport boundary. There is intentionally no connected transport.
-       The future server owns domain decisions and invokes these read-only tools.
-       Browser code must never receive a provider key or invoke a model directly. */
+    /* AnoX transport boundary. The browser talks only to the AnoX server endpoint.
+       The server owns model access and catalog/tool decisions; provider secrets never reach the browser. */
     const AnoXAssistant=Object.freeze({
       contract:deepFreeze({
         version:1,
@@ -2349,11 +2348,25 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
           getShoppingPreferences:{input:[],output:"consented shopping preferences"}
         },
         policy:{scope:["shopping","fashion","style","beauty","gifts","fit","colors","budgets","occasions","product comparison"],unrelated:"out_of_scope",productTruth:"Use only supplied catalog facts. Never invent product, price, stock, variant, discount, retailer or delivery claims.",followups:"Ask only for missing details necessary to a shopping decision."},
-        response:{status:["reply","out_of_scope","disconnected"],text:"plain text only",products:"array of {productId, reason}; no assistant-supplied catalog fields"}
+        response:{status:["reply","out_of_scope","disconnected"],text:"plain text only",products:"server-verified catalog products with assistant reasons"}
       }),
       async send(messages,context){
-        // Future transport replacement point. Do not log, persist or transmit these arguments here.
-        return {status:"disconnected"};
+        const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),23000);
+        try{
+          const response=await fetch("https://zmumi2wruk.execute-api.us-east-2.amazonaws.com/assistant",{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({
+              locale:context?.locale==="ar"?"ar":"en",
+              messages:(Array.isArray(messages)?messages:[]).slice(-12).map(item=>({role:item.role,text:text(item.text,2000)}))
+            }),
+            credentials:"omit",cache:"no-store",referrerPolicy:"no-referrer",signal:controller.signal
+          });
+          const data=await response.json().catch(()=>({}));
+          if(!response.ok||!["reply","out_of_scope"].includes(data.status)||typeof data.text!=="string")return {status:"disconnected"};
+          return {status:data.status,text:text(data.text,6000),products:Array.isArray(data.products)?data.products.slice(0,6):[]};
+        }catch{return {status:"disconnected"};}
+        finally{clearTimeout(timer);}
       }
     });
     const anoxConversation={draft:"",turns:[],status:"",busy:false,request:0,scrollTop:0};
@@ -2361,14 +2374,19 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       return '<button type="button" class="v2-header-action anox-conversation-trigger" data-open="assistant" aria-label="AnoX" aria-haspopup="dialog" aria-controls="dialog" aria-expanded="'+(ui.dialog==="assistant")+'"><span class="v2-action-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5a8 8 0 0 1-8 8H4l1.8-4A8 8 0 1 1 20 11.5Z"/><path d="M8.5 10.5h7M8.5 14h4"/></svg></span><span class="anox-trigger-label">AnoX</span></button>';
     }
     function anoxChatProductCard(result){
-      if(!isObject(result)||typeof result.productId!=="string"||result.productId.length>165)return "";
-      const product=Catalog.get(result.productId);
-      // Preview, unknown, unverified and assistant-invented records never become recommendations.
-      if(!product||product.demo!==false||product.source?.mode!=="live"||!product.source.verifiedAt||!Number.isSafeInteger(product.priceCents)||product.priceCents<0)return "";
-      const media=product.media?.find(item=>item.trusted===true&&(typeof item.data==="string"||typeof item.url==="string"));
-      const name=localized(product.name),reason=text(result.reason,300).trim();
-      const image=media?'<img src="'+esc(media.data||media.url)+'" width="'+media.width+'" height="'+media.height+'" alt="'+esc(name)+'" loading="lazy" decoding="async" data-media-fallback="'+esc(product.id)+'">':'<span>'+esc(tx("الصورة غير متاحة","Image unavailable"))+'</span>';
-      return '<article class="anox-chat-product"><div class="anox-chat-product-media">'+image+'</div><div><small>'+esc(product.brand)+'</small><h4>'+esc(name)+'</h4><strong><bdi>'+formatUSD(product.priceCents)+'</bdi></strong>'+(reason?'<p>'+esc(reason)+'</p>':'')+'<a href="#product/'+esc(encodeURIComponent(product.slug))+'" data-nav>'+esc(tx("عرض المنتج","View product"))+'</a></div></article>';
+      if(!isObject(result)||typeof result.productId!=="string"||result.productId.length>180)return "";
+      const reason=text(result.reason,300).trim(),product=Catalog.get(result.productId);
+      if(product&&product.demo===false&&product.source?.mode==="live"&&product.source.verifiedAt&&Number.isSafeInteger(product.priceCents)&&product.priceCents>=0){
+        const media=product.media?.find(item=>item.trusted===true&&(typeof item.data==="string"||typeof item.url==="string"));
+        const name=localized(product.name);
+        const image=media?'<img src="'+esc(media.data||media.url)+'" width="'+media.width+'" height="'+media.height+'" alt="'+esc(name)+'" loading="lazy" decoding="async" data-media-fallback="'+esc(product.id)+'">':'<span>'+esc(tx("الصورة غير متاحة","Image unavailable"))+'</span>';
+        return '<article class="anox-chat-product"><div class="anox-chat-product-media">'+image+'</div><div><small>'+esc(product.brand)+'</small><h4>'+esc(name)+'</h4><strong><bdi>'+formatUSD(product.priceCents)+'</bdi></strong>'+(reason?'<p>'+esc(reason)+'</p>':'')+'<a href="#product/'+esc(encodeURIComponent(product.slug))+'" data-nav>'+esc(tx("عرض المنتج","View product"))+'</a></div></article>';
+      }
+      const title=text(result.title,300).trim(),brand=text(result.brand,120).trim(),price=Number(result.price),currency=text(result.currency,8).toUpperCase();
+      if(!title||!brand||!Number.isFinite(price)||price<0||currency!=="USD")return "";
+      let imageUrl="";try{const u=new URL(text(result.imageUrl,1200));if(u.protocol==="https:"&&u.hostname.toLowerCase()==="static.nike.com")imageUrl=u.href;}catch{}
+      const image=imageUrl?'<img src="'+esc(imageUrl)+'" width="420" height="390" alt="'+esc(title)+'" loading="lazy" decoding="async">':'<span>'+esc(tx("الصورة غير متاحة","Image unavailable"))+'</span>';
+      return '<article class="anox-chat-product"><div class="anox-chat-product-media">'+image+'</div><div><small>'+esc(brand)+'</small><h4>'+esc(title)+'</h4><strong><bdi>'+formatUSD(Math.round(price*100))+'</bdi></strong>'+(reason?'<p>'+esc(reason)+'</p>':'')+'<a href="#search?q='+esc(encodeURIComponent(title))+'">'+esc(tx("عرض المنتج","View product"))+'</a></div></article>';
     }
     function anoxConversationMessages(){
       return anoxConversation.turns.map(turn=>'<article class="anox-conversation-turn" data-role="'+turn.role+'" aria-label="'+esc(turn.role==="user"?tx("أنت","You"):"AnoX")+'"><p>'+esc(turn.text)+'</p>'+(turn.products?.length?'<div class="anox-chat-products">'+turn.products.map(anoxChatProductCard).join("")+'</div>':'')+'</article>').join("");
@@ -2381,13 +2399,13 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
         tx("أبحث عن حذاء أسود مريح بأقل من 90 دولارًا.","Find comfortable black shoes under $90.")
       ];
       const welcome='<div class="anox-conversation-welcome"><h3>'+esc(tx("ماذا تريد أن تجد؟","What can I help you find?"))+'</h3><p class="anox-conversation-intro">'+esc(tx("للتسوّق وتنسيق الإطلالات واختيار المنتجات المناسبة لك.","For shopping, styling and choosing what works for you."))+'</p><div class="anox-conversation-suggestions">'+examples.map(value=>'<button type="button" class="anox-conversation-suggestion" data-anox-suggestion="'+esc(value)+'"><span>'+esc(value)+'</span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg></button>').join("")+'</div></div>';
-      return '<div class="anox-conversation"><div id="anox-conversation-log" class="anox-conversation-log" role="log" aria-label="'+esc(tx("المحادثة","Conversation"))+'" aria-live="polite" aria-relevant="additions text" tabindex="0">'+(anoxConversation.turns.length?anoxConversationMessages():welcome)+'</div><div class="anox-conversation-footer"><p id="anox-conversation-status" class="anox-conversation-status" role="status" aria-live="polite"></p><form id="anox-conversation-form" data-anox-assistant novalidate><div class="anox-conversation-composer"><label class="sr-only" for="anox-message">'+esc(tx("رسالتك إلى AnoX","Your message to AnoX"))+'</label><textarea id="anox-message" name="message" rows="1" maxlength="2000" required autocomplete="off" dir="auto" aria-describedby="anox-conversation-status anox-conversation-privacy" placeholder="'+esc(tx("عمّ تبحث؟","What are you looking for?"))+'">'+esc(anoxConversation.draft)+'</textarea><button type="submit" data-anox-send class="anox-conversation-send" aria-label="'+esc(tx("إرسال الرسالة","Send message"))+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></button></div></form><p class="anox-conversation-privacy" id="anox-conversation-privacy">'+esc(tx("المحادثة غير متاحة حاليًا. لا تُرسل رسالتك إلى أي جهة.","Conversation is currently unavailable. Your message is not sent anywhere."))+'</p></div></div>';
+      return '<div class="anox-conversation"><div id="anox-conversation-log" class="anox-conversation-log" role="log" aria-label="'+esc(tx("المحادثة","Conversation"))+'" aria-live="polite" aria-relevant="additions text" tabindex="0">'+(anoxConversation.turns.length?anoxConversationMessages():welcome)+'</div><div class="anox-conversation-footer"><p id="anox-conversation-status" class="anox-conversation-status" role="status" aria-live="polite"></p><form id="anox-conversation-form" data-anox-assistant novalidate><div class="anox-conversation-composer"><label class="sr-only" for="anox-message">'+esc(tx("رسالتك إلى AnoX","Your message to AnoX"))+'</label><textarea id="anox-message" name="message" rows="1" maxlength="2000" required autocomplete="off" dir="auto" aria-describedby="anox-conversation-status anox-conversation-privacy" placeholder="'+esc(tx("عمّ تبحث؟","What are you looking for?"))+'">'+esc(anoxConversation.draft)+'</textarea><button type="submit" data-anox-send class="anox-conversation-send" aria-label="'+esc(tx("إرسال الرسالة","Send message"))+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg></button></div></form><p class="anox-conversation-privacy" id="anox-conversation-privacy">'+esc(tx("تُعالج رسالتك بأمان لتقديم مساعدة التسوق. لا تُحفظ المحادثة في التخزين المحلي.","Your message is processed securely to provide shopping assistance. This chat is not saved in local storage."))+'</p></div></div>';
     }
     function anoxConversationStatus(){
       const messages={
         empty:tx("اكتب رسالة أولًا.","Write a message first."),
         long:tx("اكتب رسالة لا تتجاوز 2000 حرف.","Keep your message within 2,000 characters."),
-        unavailable:tx("لم تُرسل رسالتك. المحادثة غير متاحة حاليًا.","Your message hasn’t been sent. Conversation is currently unavailable."),
+        unavailable:tx("تعذر الوصول إلى AnoX الآن. حاول مرة أخرى بعد قليل.","AnoX is unavailable right now. Please try again shortly."),
         scope:tx("تركّز AnoX على التسوّق والمقارنة وتنسيق الإطلالات. أخبرنا عمّا تبحث عنه.","AnoX focuses on shopping, comparing products and styling. Tell us what you’re shopping for.")
       };
       return messages[anoxConversation.status]||"";
@@ -2433,16 +2451,16 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
         const messages=[...anoxConversation.turns.map(turn=>({role:turn.role,text:turn.text})),{role:"user",text:message}];
         const result=await AnoXAssistant.send(messages,{locale:state.lang,marketId:state.marketId,currency:"USD",scope:"shopping-and-style"});
         if(request!==anoxConversation.request)return;
-        if(result?.status==="reply"&&typeof result.text==="string"&&result.text.trim()&&result.text.length<=6000){
+        if(["reply","out_of_scope"].includes(result?.status)&&typeof result.text==="string"&&result.text.trim()&&result.text.length<=6000){
           const products=Array.isArray(result.products)?result.products.slice(0,6):[];
           if(products.some(product=>!anoxChatProductCard(product))){anoxConversation.status="unavailable";return;}
-          anoxConversation.turns.push({role:"user",text:message},{role:"assistant",text:result.text,products:products.map(product=>({productId:product.productId,reason:text(product.reason,300)}))});
+          anoxConversation.turns.push({role:"user",text:message},{role:"assistant",text:result.text,products:products.map(product=>({productId:text(product.productId,180),reason:text(product.reason,300),title:text(product.title,300),brand:text(product.brand,120),price:Number(product.price),currency:text(product.currency,8),availability:text(product.availability,80),imageUrl:text(product.imageUrl,1200),productUrl:text(product.productUrl,1200),lastUpdated:text(product.lastUpdated,80)}))});
           anoxConversation.turns=anoxConversation.turns.slice(-24);anoxConversation.draft="";
           if(ui.dialog==="assistant"){
             $("anox-message").value="";$("anox-conversation-log").innerHTML=anoxConversationMessages();
             $("anox-conversation-log").scrollTop=$("anox-conversation-log").scrollHeight;
           }
-        }else anoxConversation.status=result?.status==="out_of_scope"?"scope":"unavailable";
+        }else anoxConversation.status="unavailable";
       }catch{if(request===anoxConversation.request)anoxConversation.status="unavailable";}
       finally{if(request===anoxConversation.request){anoxConversation.busy=false;anoxUpdateComposer();}}
     }
