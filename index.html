@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ar" dir="rtl" data-theme="light">
+<html data-anox-bundle="1" lang="ar" dir="rtl" data-theme="light">
 <head>
   <meta name="fo-verify" content="b9b4614c-d6eb-442b-8e1d-fd5983a6c1ad" />
   <meta charset="utf-8">
@@ -10,15 +10,21 @@
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="index,follow">
   <meta name="description" content="AnoX — اكتشف المنتجات، وقارن التفاصيل وتكلفة وصولها التقديرية إلى الجزائر.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-sxxgC43s4K87MIdFTI9TWe+FOTphgZLipjXrI7VGPnU=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src data: blob: https://static.nike.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-OaUqMrDWlo3nTdq9uzz/ZInUvdHoqIBaVMRndBIXkW8=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <link rel="canonical" href="https://anox.app/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="AnoX">
+  <meta property="og:title" content="AnoX — U.S. products for Algeria">
+  <meta property="og:description" content="AnoX LLC — discover U.S. products and discuss purchasing and fulfillment to Algeria.">
+  <meta property="og:url" content="https://anox.app/">
   <title>AnoX — اختيارات أبعد. تكلفة أوضح.</title>
   <!-- Google Analytics 4 -->
-  <script src="/analytics.js"></script>
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-S22XPB9XKQ"></script>
 
-  <!-- AnoX Storefront V2. Modular presentation build. Local illustrative catalog; no live purchasing.
-Source, build instructions, measured browser evidence and production boundaries are supplied in storefront-v2/.
-The verified domain foundation is preserved; only approved presentation functions are replaced. -->
+
+  <!-- AnoX storefront: a static SPA with separate catalog, authentication, analytics and policy modules.
+The public catalog uses the configured AWS adapter; technical connectivity does not establish retailer authorization.
+Developer fixtures remain isolated from public browsing. Client state is not an authority for orders or payments.
+Build and verification details are maintained in scripts/ and docs/production/. -->
 
   <style>
 @layer compatibility {
@@ -1162,6 +1168,8 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
 .v2-live-catalog-state span{color:var(--muted);font-size:.875rem}
 .v2-live-load-more{display:flex;justify-content:center;align-items:center;gap:12px;flex-wrap:wrap;margin:24px 0 4px}
 
+.anox-policy{max-width:780px;padding-block:8px 64px;line-height:1.8}.anox-policy-section{padding-block:24px;border-bottom:1px solid var(--line)}.anox-policy-section:last-child{border-bottom:0}.anox-policy-section h2{font-size:1.3rem;font-weight:600;margin-block:0 12px}.anox-policy-section p{margin-block:0 16px}.anox-policy .actions{gap:18px;flex-wrap:wrap;margin-block:20px}.anox-policy a{overflow-wrap:anywhere}.anox-policy .actions .v2-inline-link{min-height:44px;display:inline-flex;align-items:center}.anox-media-unavailable{display:flex;align-items:center;justify-content:center;min-height:200px;color:var(--muted);font-size:.85rem;padding:24px}.anox-auth-link{min-height:44px}.anox-auth form+button{margin-top:18px}
+
 </style>
 </head>
 <body>
@@ -1201,12 +1209,592 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
   </section>
 
   <div id="toasts" class="toasts" aria-live="polite" aria-atomic="false"></div>
-
-  <script src="/catalog-live.js?v=2"></script>
   <script>
+(function(root,factory){const api=factory(root);if(typeof module==='object'&&module.exports)module.exports=api;else root.AnoXAnalytics=api;})(typeof window==='object'?window:null,function(root){
+  'use strict';
+  const routes=new Set(['home','shop','search','product','new','brands','wishlist','cart','checkout','account','signin','signup','about','contact','privacy','terms','affiliate','shipping','returns','partners','request','business','help','how','track']);
+  const events=new Set(['page_view','product_view','product_search','product_source_view','outbound_retailer_click','add_to_cart','product_request_started','product_request_completed','partner_page_view']);
+  function routeName(value){const route=String(value||'').replace(/^#/,'').split(/[/?]/)[0];return routes.has(route)?route:'other';}
+  function sanitizeEvent(name,data={}){if(!events.has(name))return null;const clean={route:routeName(data.route)};if(data.provider==='nike-live')clean.provider='nike-live';if(Number.isSafeInteger(data.count)&&data.count>=0)clean.result_count=data.count===0?'0':data.count<=10?'1_10':'11_plus';return clean;}
+  // An opaque-origin sandbox keeps Google scripts away from passwords, session tokens,
+  // private form content and parent URLs. Only categorical metrics cross this boundary.
+  function frameInit(){
+    'use strict';
+    const allowed=new Set(['page_view','product_view','product_search','product_source_view','outbound_retailer_click','add_to_cart','product_request_started','product_request_completed','partner_page_view']);
+    const routes=new Set(['home','shop','search','product','new','brands','wishlist','cart','checkout','account','signin','signup','about','contact','privacy','terms','affiliate','shipping','returns','partners','request','business','help','how','track','other']);
+    // The opaque frame has no cookie jar. GA's opt-out reader requires a nonthrowing getter.
+    // Expose empty, nonpersistent storage without granting same-origin or parent access.
+    Object.defineProperty(document,'cookie',{get:()=>'',set:()=>{},configurable:false});
+    window.dataLayer=[];function gtag(){dataLayer.push(arguments);}
+    const client=Array.from(crypto.getRandomValues(new Uint32Array(2))).join('.');
+    // The optional frame measures only after site opt-in and never requests cookie storage.
+    gtag('consent','default',{analytics_storage:'denied',ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied'});
+    gtag('set','ads_data_redaction',true);gtag('set','url_passthrough',false);
+    gtag('js',new Date());gtag('config','G-S22XPB9XKQ',{send_page_view:false,allow_google_signals:false,allow_ad_personalization_signals:false,client_id:client,page_location:'https://anox.app/',page_title:'AnoX',ignore_referrer:true});
+    addEventListener('message',event=>{
+      if(event.source!==parent||!event.data||event.data.type!=='anox-metric'||!allowed.has(event.data.name))return;
+      const input=event.data.data||{},route=routes.has(input.route)?input.route:'other';
+      const clean={page_location:'https://anox.app/#'+route,page_title:'AnoX · '+route,page_referrer:'',route};
+      if(input.provider==='nike-live')clean.provider='nike-live';
+      if(['0','1_10','11_plus'].includes(input.result_count))clean.result_count=input.result_count;
+      gtag('event',event.data.name,clean);
+    });
+    parent.postMessage({type:'anox-metrics-ready'},'*');
+  }
+  const frameScript='('+frameInit.toString()+')();';
+  const isMetricsFrame=!!root&&root.parent!==root&&new URLSearchParams(root.location.search).get('anox_metrics')==='1';
+  if(isMetricsFrame){
+    const begin=()=>{root.document.body.replaceChildren();
+      // A zero-height hidden document can falsely trigger GA's automatic scroll event.
+      root.document.body.style.minHeight='1000px';root.document.documentElement.style.overflow='hidden';
+      frameInit();const script=root.document.createElement('script');script.async=true;script.src='https://www.googletagmanager.com/gtag/js?id=G-S22XPB9XKQ';root.document.head.append(script);};
+    if(root.document.readyState==='loading')root.document.addEventListener('DOMContentLoaded',begin,{once:true});else begin();
+    return Object.freeze({isMetricsFrame:true});
+  }
+  const key='anox:analytics-consent:v1';let consent='unset',frame=null,ready=false,queue=[];
+  function globalOptOut(){return root?.navigator?.globalPrivacyControl===true||root?.['ga-disable-G-S22XPB9XKQ']===true||root?.document?.documentElement?.hasAttribute('data-google-analytics-opt-out')===true;}
+  function getConsent(){return globalOptOut()?'denied':consent;}
+  function stop(){frame?.remove();frame=null;ready=false;queue=[];}
+  function start(){
+    if(!root||root.location.protocol!=='https:'||root.location.hostname!=='anox.app'||getConsent()!=='granted'||frame)return;
+    frame=root.document.createElement('iframe');frame.title='Optional site analytics';frame.tabIndex=-1;frame.inert=true;frame.setAttribute('aria-hidden','true');frame.style.cssText='position:fixed;inset:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none';frame.setAttribute('sandbox','allow-scripts');frame.setAttribute('referrerpolicy','no-referrer');
+    // A real HTTPS document is required by GA. Reuse this artifact in an inert metrics branch.
+    // The sandbox remains opaque; no customer route, query or credentials enter its URL.
+    const url=new URL(root.location.pathname,root.location.origin);url.search='anox_metrics=1';
+    frame.src=url.href;
+    root.document.body.append(frame);
+  }
+  function setConsent(value){if(!['granted','denied'].includes(value))return;consent=globalOptOut()?'denied':value;try{root?.localStorage.setItem(key,consent);}catch{}if(consent==='granted')start();else stop();root?.dispatchEvent(new Event('anox-consent-change'));}
+  function track(name,data){const clean=sanitizeEvent(name,data);if(!clean||getConsent()!=='granted')return false;start();if(ready)frame.contentWindow.postMessage({type:'anox-metric',name,data:clean},'*');else if(queue.length<20)queue.push({name,data:clean});return true;}
+  if(root){
+    try{const saved=root.localStorage.getItem(key);if(['granted','denied'].includes(saved))consent=saved;}catch{}
+    root.addEventListener('message',event=>{if(!frame||event.source!==frame.contentWindow||event.data?.type!=='anox-metrics-ready')return;ready=true;for(const metric of queue)frame.contentWindow.postMessage({type:'anox-metric',...metric},'*');queue=[];});
+    root.addEventListener('storage',event=>{if(event.key!==key&&event.key!==null)return;consent=event.newValue==='granted'?'granted':'denied';if(getConsent()==='granted')start();else stop();root.dispatchEvent(new Event('anox-consent-change'));});
+    if(root.document.readyState==='loading')root.document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+  }
+  return Object.freeze({routeName,sanitizeEvent,frameScript,track,getConsent,setConsent});
+});
+
+;
+(function exposeCatalogLive(root, factory) {
+  const api = factory();
+  if (typeof module === "object" && module.exports) module.exports = api;
+  else root.AnoXLiveCatalog = api;
+})(typeof globalThis === "object" ? globalThis : this, function createCatalogLive() {
+  "use strict";
+
+  const API_BASE = "https://zmumi2wruk.execute-api.us-east-2.amazonaws.com/catalog";
+  const IMAGE_HOSTS = Object.freeze(["static.nike.com"]);
+  const provider = Object.freeze({id:"nike-live", merchant:"Nike", mode:"live", transport:"api", sourceType:"affiliate-feed", authorization:Object.freeze({status:"unverified",evidence:null}), approvedLive:false, imageHosts:IMAGE_HOSTS, merchantHosts:Object.freeze(["nike.com","www.nike.com"]), staleAfterMs:86400000});
+  const MAX_BYTES=2*1024*1024;
+  let retryAt=0;
+  const DEFAULT_LIMIT = 24;
+
+  const stringValue = value => typeof value === "string" ? value.trim() : "";
+  const firstValue = (...values) => values.find(value => value !== undefined && value !== null && value !== "");
+
+  function numberValue(value) {
+    if(typeof value==="number")return Number.isFinite(value)?value:NaN;
+    if(typeof value!=="string"||!/^\d+(?:\.\d+)?$/.test(value.trim()))return NaN;
+    return Number(value);
+  }
+  // The existing endpoint contract uses USD major units. Never guess cents by magnitude.
+  function cents(value) {
+    const amount=numberValue(value), minor=Math.round(amount*100);
+    return amount>=0 && amount<=1e6 && Number.isSafeInteger(minor) && Math.abs(amount*100-minor)<1e-6 ? minor : null;
+  }
+
+  function localized(value, fallback = "Nike product") {
+    if (value && typeof value === "object") {
+      const ar = stringValue(firstValue(value.ar, value.arabic, value.nameAr));
+      const en = stringValue(firstValue(value.en, value.english, value.nameEn));
+      return { ar: ar || en || fallback, en: en || ar || fallback };
+    }
+    const text = stringValue(value) || fallback;
+    return { ar: text, en: text };
+  }
+
+  function normalizedDate(value) {
+    if(typeof value!=="string"||!value.trim())return null;
+    const date = new Date(value);
+    return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+  }
+
+  function safeHttpsUrl(value) {
+    try {
+      const url = new URL(stringValue(value));
+      return url.protocol === "https:" && !url.username && !url.password && !url.port ? url.href : "";
+    } catch {
+      return "";
+    }
+  }
+
+  function trustedImageUrl(value) {
+    const url = safeHttpsUrl(value);
+    if (!url) return "";
+    try {
+      return IMAGE_HOSTS.includes(new URL(url).hostname.toLowerCase()) ? url : "";
+    } catch {
+      return "";
+    }
+  }
+
+  function imageCandidates(raw) {
+    const values = [raw.image, raw.imageUrl, raw.thumbnail, raw.thumbnailUrl, raw.primaryImage];
+    const images = Array.isArray(raw.images) ? raw.images : [];
+    for (const image of images.slice(0,8)) values.push(typeof image === "string" ? image : image?.url || image?.src || image?.imageUrl);
+    return [...new Set(values.map(trustedImageUrl).filter(Boolean))].slice(0,8);
+  }
+
+  function safeKey(value, fallback) {
+    const key = stringValue(value).replace(/[^a-zA-Z0-9_-]/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
+    return key || fallback;
+  }
+
+  function categoryFor(raw) {
+    const value = stringValue(firstValue(raw.category, raw.categoryName, raw.productType)).toLowerCase();
+    if (value.includes("shoe") || value.includes("run") || value.includes("foot")) return "Shoes";
+    if (value.includes("sport") || value.includes("training")) return "Sports";
+    if (value.includes("access")) return "Accessories";
+    return "Fashion";
+  }
+
+  function kindFor(raw) {
+    const value = safeKey(firstValue(raw.kind, raw.productType, raw.category), "product").toLowerCase();
+    return /^[a-z][a-z0-9-]{0,29}$/.test(value) ? value : "product";
+  }
+
+  function stockFor(raw) {
+    const value=numberValue(firstValue(raw.stock,raw.quantity,raw.availableQuantity));
+    return Number.isSafeInteger(value)&&value>=0&&value<=100000?value:0;
+  }
+  function availabilityFor(raw) {
+    const value=stringValue(firstValue(raw.availability,raw.availabilityStatus,raw.stockStatus)).toLowerCase().replace(/[_-]/g," ");
+    if(["in stock","available","limited availability"].includes(value))return "in_stock";
+    if(["out of stock","unavailable","sold out"].includes(value))return "out_of_stock";
+    return "unknown";
+  }
+  function variantsFor(raw) {
+    if(!Array.isArray(raw.variants))return [];
+    const seen=new Set();
+    return raw.variants.slice(0,120).flatMap(v=>{
+      if(!v||typeof v!=="object")return [];
+      const color=stringValue(v.color),size=stringValue(v.size),key=JSON.stringify([color,size]);
+      if(!color||!size||color.length>80||size.length>80||seen.has(key))return [];
+      seen.add(key);return [{color,size,stock:stockFor(v)}];
+    });
+  }
+
+  function normalizeNikeProduct(raw, index = 0, fetchedAt = new Date().toISOString()) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+    const rawBrand = stringValue(firstValue(raw.brand, raw.brandName));
+    if(stringValue(raw.currency).toUpperCase()!=="USD")return null;
+    if(raw.salePrice!=null&&raw.saleCurrency&&stringValue(raw.saleCurrency).toUpperCase()!=="USD")return null;
+    if (rawBrand.toLowerCase() !== "nike") return null;
+    const name = localized(firstValue(raw.name, raw.title, raw.productName), "");
+    if(!name.en||name.en.length>200||name.ar.length>200)return null;
+    const id = stringValue(firstValue(raw.id, raw.productId, raw.sku));
+    if(!/^[a-zA-Z0-9_-]{1,80}$/.test(id))return null;
+    const slug = id; // stable identity allows direct-load hydration without guessing a title
+    const originalPriceCents = cents(firstValue(raw.compareAtPrice, raw.originalPrice, raw.listPrice, raw.regularPrice, raw.price));
+    const salePriceCents = cents(firstValue(raw.salePrice, raw.discountPrice, raw.currentPrice, raw.finalPrice));
+    const priceCents = salePriceCents !== null && (originalPriceCents === null || salePriceCents < originalPriceCents) ? salePriceCents : originalPriceCents;
+    if (priceCents === null) return null;
+    const stock = stockFor(raw);
+    const updatedAt = normalizedDate(firstValue(raw.updatedAt, raw.lastUpdated, raw.modifiedAt));
+    if(updatedAt&&Date.parse(updatedAt)>Date.now()+60000)return null;
+    const merchantUrl = safeHttpsUrl(firstValue(raw.productUrl, raw.url, raw.link, raw.merchantUrl));
+    if(!merchantUrl||!provider.merchantHosts.includes(new URL(merchantUrl).hostname.toLowerCase()))return null;
+    const media = imageCandidates(raw).map(url => ({ url, alt: name, width: 420, height: 390 }));
+    const knownVariants=variantsFor(raw);
+    const variants = knownVariants.length?knownVariants:[{color:"Unspecified",size:"Unspecified",stock:0}];
+    const effectiveStock = variants.reduce((total, variant) => total + variant.stock, 0);
+    return {
+      id,
+      slug,
+      name,
+      brand: "Nike",
+      category: categoryFor(raw),
+      kind: kindFor(raw),
+      currency:"USD",
+      priceCents,
+      compareAtPriceCents: originalPriceCents !== null && originalPriceCents > priceCents ? originalPriceCents : null,
+      weightGrams: Number.isSafeInteger(raw.weightGrams)&&raw.weightGrams>0&&raw.weightGrams<=1000000?raw.weightGrams:0,
+      variantDetailsKnown:knownVariants.length>0,
+      stock: effectiveStock,
+      variants,
+      media,
+      description: localized(firstValue(raw.description, raw.details, name), name.en),
+      updatedAt,
+      availability: availabilityFor(raw),
+      source: {
+        merchantUrl,
+        verifiedAt: updatedAt||fetchedAt, // compatibility provenance field, not an authorization claim
+        fetchedAt, authorization:"unverified", sourceType:"affiliate-feed",
+        availabilityVerifiedAt: null,
+        availability: updatedAt?"reported":"unknown"
+      },
+      purchasable: false
+    };
+  }
+
+  function rawItems(payload) {
+    if(Array.isArray(payload))return payload;
+    if(!payload||typeof payload!=="object")throw Error("catalog_payload");
+    for(const key of ["items","products","results","data"])if(Array.isArray(payload[key]))return payload[key];
+    throw Error("catalog_payload");
+  }
+  function optionsValid({q="",limit=DEFAULT_LIMIT,offset=0}={}) {
+    if(typeof q!=="string"||q.length>500||!Number.isSafeInteger(limit)||limit<1||limit>100||!Number.isSafeInteger(offset)||offset<0||offset>100000)throw Error("catalog_options");
+    return {q:q.trim(),limit,offset};
+  }
+  function buildCatalogUrl(options={}) {
+    const {q,limit,offset}=optionsValid(options);
+    const params=[`limit=${limit}`,`offset=${offset}`];if(q)params.unshift(`q=${encodeURIComponent(q)}`);
+    return `${API_BASE}/products?${params.join("&")}`;
+  }
+  function parseCatalogPage(payload, options={}) {
+    const {q,limit,offset}=optionsValid(options),raw=rawItems(payload);
+    if(raw.length>100||raw.length>limit)throw Error("catalog_record_limit");
+    const fetchedAt=new Date().toISOString(),items=raw.map((x,i)=>normalizeNikeProduct(x,offset+i,fetchedAt)).filter(Boolean);
+    const totalValue=numberValue(firstValue(payload.totalCount,payload.total,payload.count));
+    const total=Number.isSafeInteger(totalValue)&&totalValue>=0&&totalValue<=10000000?Math.max(offset+raw.length,totalValue):offset+raw.length;
+    let nextOffset=payload.nextOffset===null?null:payload.nextOffset===undefined?(raw.length&&offset+raw.length<total?offset+raw.length:null):numberValue(payload.nextOffset);
+    if(nextOffset!==null&&(!Number.isSafeInteger(nextOffset)||nextOffset<=offset||nextOffset>100000||!raw.length))throw Error("catalog_pagination");
+    return {q,limit,offset,items,total,nextOffset,invalidCount:raw.length-items.length,fetchedAt};
+  }
+  async function readJson(url,signal) {
+    if(signal?.aborted)throw Error("catalog_aborted");
+    if(Date.now()<retryAt)throw Error("catalog_rate_limited");
+    const controller=new AbortController(),abort=()=>controller.abort(),timer=setTimeout(abort,8000);
+    signal?.addEventListener("abort",abort,{once:true});
+    try{
+      const response=await fetch(url,{credentials:"omit",cache:"no-store",referrerPolicy:"no-referrer",redirect:"error",signal:controller.signal});
+      if(response.status===429){const header=response.headers.get("retry-after"),seconds=Number(header);retryAt=Date.now()+Math.min(300000,Math.max(1000,Number.isFinite(seconds)?seconds*1000:(Date.parse(header)-Date.now())||30000));throw Error("catalog_rate_limited");}
+      if(!response.ok)throw Error(`catalog_http_${response.status}`);
+      if(!/application\/(?:[a-z0-9.-]+\+)?json/i.test(response.headers.get("content-type")||"")||Number(response.headers.get("content-length"))>MAX_BYTES)throw Error("catalog_payload_limit");
+      const reader=response.body?.getReader();if(!reader)throw Error("catalog_payload");
+      let size=0,body="";const decoder=new TextDecoder();
+      for(;;){const {value,done}=await reader.read();if(done)break;size+=value.byteLength;if(size>MAX_BYTES){await reader.cancel();throw Error("catalog_payload_limit");}body+=decoder.decode(value,{stream:true});}
+      body+=decoder.decode();return JSON.parse(body);
+    } finally {clearTimeout(timer);signal?.removeEventListener("abort",abort);controller.abort();}
+  }
+
+  async function fetchPage(options={}) {return parseCatalogPage(await readJson(buildCatalogUrl(options),options.signal),options);}
+  async function getProduct(productId,options={}) {
+    if(typeof productId!=="string"||!/^[a-zA-Z0-9_-]{1,80}$/.test(productId))throw Error("catalog_identity");
+    const payload=await readJson(`${API_BASE}/products/${encodeURIComponent(productId)}`,options.signal);
+    const record=payload?.product||payload?.data||payload;
+    const product=normalizeNikeProduct(record);if(!product||product.id!==productId)throw Error("catalog_identity");return product;
+  }
+
+  return Object.freeze({ provider, API_BASE, IMAGE_HOSTS, buildCatalogUrl, getProduct, normalizeNikeProduct, parseCatalogPage, fetchPage });
+});
+
+;
+(function(root,factory){const lib=factory();if(typeof module==='object'&&module.exports)module.exports=lib;else{if(root.AnoXAnalytics?.isMetricsFrame)return;let storage;try{storage=root.sessionStorage;}catch{}root.AnoXAuth=lib.createClient({storage,fetch:root.fetch.bind(root),onChange:()=>root.dispatchEvent(new Event('anox-auth-change'))});root.addEventListener('storage',e=>{if(e.key==='anox:logout:v1'||e.key===null)root.AnoXAuth.signOut(false);});root.AnoXAuth.onLogout(()=>{try{root.localStorage.setItem('anox:logout:v1',String(Date.now()));}catch{}});}})(typeof window==='object'?window:null,function(){
+  'use strict';
+  const config=Object.freeze({region:'us-east-2',clientId:'63738r9gpr126qpgp1a5cubchi',cognitoEndpoint:'https://cognito-idp.us-east-2.amazonaws.com/',apiBase:'https://zmumi2wruk.execute-api.us-east-2.amazonaws.com',sessionKey:'anox:auth:v1'});
+  const text=(v,n=160)=>typeof v==='string'?v.slice(0,n):'';
+  const fail=code=>Object.assign(Error(code),{code});
+  function sessionShape(s){return s&&['idToken','accessToken','refreshToken'].every(k=>typeof s[k]==='string'&&s[k].length>0&&s[k].length<=20000)&&Number.isFinite(s.expiresAt)&&s.expiresAt>0?{idToken:s.idToken,accessToken:s.accessToken,refreshToken:s.refreshToken,expiresAt:s.expiresAt}:null;}
+  function createClient({storage,fetch:transport=globalThis.fetch,onChange=()=>{}}={}){
+    const state={session:null,user:null,orders:[],busy:false,error:'',loadStatus:'idle'};
+    let generation=0,refreshing=null,loadPromise=null,logoutNotice=()=>{};
+    try{state.session=sessionShape(JSON.parse(storage?.getItem(config.sessionKey)||'null'));}catch{}
+    function write(value){state.session=value;try{if(value)storage?.setItem(config.sessionKey,JSON.stringify(value));else storage?.removeItem(config.sessionKey);}catch{}}
+    const change=()=>{try{onChange();}catch{}};
+    function clear(){generation++;refreshing=null;loadPromise=null;write(null);state.user=null;state.orders=[];state.busy=false;state.error='';state.loadStatus='idle';change();}
+    async function json(url,options={}){
+      const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
+      try{
+        const r=await transport(url,{...options,credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',redirect:'error',signal:controller.signal});
+        const reader=r.body?.getReader();let bytes=0,body='';if(!reader)throw fail('INVALID_RESPONSE');const decoder=new TextDecoder();
+        for(;;){const {done,value}=await reader.read();if(done)break;bytes+=value.byteLength;if(bytes>2*1024*1024){await reader.cancel();throw fail('INVALID_RESPONSE');}body+=decoder.decode(value,{stream:true});}body+=decoder.decode();
+        let data;try{data=JSON.parse(body);}catch{throw fail('INVALID_RESPONSE');}
+        if(!data||typeof data!=='object'||Array.isArray(data))throw fail('INVALID_RESPONSE');
+        if(!r.ok){const code=text(data.__type||data.code||data.error,100).split('#').pop();throw Object.assign(fail(/^[A-Za-z0-9_]+$/.test(code)?code:'HTTP_'+r.status),{status:r.status});}
+        return data;
+      }finally{clearTimeout(timer);controller.abort();}
+    }
+    async function cognito(action,body){const allowed=['InitiateAuth','SignUp','ConfirmSignUp','ResendConfirmationCode','ForgotPassword','ConfirmForgotPassword','RevokeToken'];if(!allowed.includes(action))throw fail('INVALID_ACTION');return json(config.cognitoEndpoint,{method:'POST',headers:{'Content-Type':'application/x-amz-json-1.1','X-Amz-Target':'AWSCognitoIdentityProviderService.'+action},body:JSON.stringify(body)});}
+    function from(result,prior=''){const a=result?.AuthenticationResult,ttl=Number(a?.ExpiresIn);const value=sessionShape({idToken:a?.IdToken,accessToken:a?.AccessToken,refreshToken:a?.RefreshToken||prior,expiresAt:Date.now()+Math.min(86400,Number.isFinite(ttl)&&ttl>0?ttl:3600)*1000-30000});if(!value)throw fail('INVALID_RESPONSE');return value;}
+    function refresh(){
+      if(refreshing)return refreshing;
+      const session=state.session,epoch=generation;if(!session?.refreshToken)return Promise.reject(fail('UNAUTHORIZED'));
+      const pending=(async()=>{const result=await cognito('InitiateAuth',{AuthFlow:'REFRESH_TOKEN_AUTH',ClientId:config.clientId,AuthParameters:{REFRESH_TOKEN:session.refreshToken}});if(epoch!==generation||state.session!==session)throw fail('STALE_SESSION');const next=from(result,session.refreshToken);write(next);return next;})();
+      refreshing=pending;const done=()=>{if(refreshing===pending)refreshing=null;};pending.then(done,done);return pending;
+    }
+    async function validSession(){if(!state.session)return null;if(state.session.expiresAt>Date.now()+15000)return state.session;const epoch=generation;try{return await refresh();}catch(e){if(epoch===generation&&['NotAuthorizedException','UNAUTHORIZED'].includes(e.code))clear();throw e;}}
+    async function signIn(email,password){clear();const epoch=generation;const result=await cognito('InitiateAuth',{AuthFlow:'USER_PASSWORD_AUTH',ClientId:config.clientId,AuthParameters:{USERNAME:email.trim().toLowerCase(),PASSWORD:password}});if(epoch!==generation)throw fail('STALE_SESSION');if(result.ChallengeName)throw fail('UNSUPPORTED_AUTH_CHALLENGE');write(from(result));change();}
+    const signUp=(email,password)=>cognito('SignUp',{ClientId:config.clientId,Username:email.trim().toLowerCase(),Password:password,UserAttributes:[{Name:'email',Value:email.trim().toLowerCase()}]});
+    const confirm=(email,code)=>cognito('ConfirmSignUp',{ClientId:config.clientId,Username:email.trim().toLowerCase(),ConfirmationCode:String(code).trim()});
+    const resend=email=>cognito('ResendConfirmationCode',{ClientId:config.clientId,Username:email.trim().toLowerCase()});
+    const forgot=email=>cognito('ForgotPassword',{ClientId:config.clientId,Username:email.trim().toLowerCase()});
+    const reset=(email,code,password)=>cognito('ConfirmForgotPassword',{ClientId:config.clientId,Username:email.trim().toLowerCase(),ConfirmationCode:String(code).trim(),Password:password});
+    async function api(path,options={},retry=true){
+      const method=options.method||'GET';if(!['/me','/orders'].includes(path)||!(method==='GET'||path==='/me'&&method==='PUT'))throw fail('INVALID_PATH');
+      const epoch=generation,session=await validSession();if(epoch!==generation||!session)throw fail('UNAUTHORIZED');
+      const headers={'Authorization':'Bearer '+session.idToken};let body;
+      if(method==='PUT'){let data;try{data=JSON.parse(options.body);}catch{throw fail('INVALID_BODY');}if(!data||Object.keys(data).some(k=>k!=='displayName')||typeof data.displayName!=='string'||data.displayName.length>160)throw fail('INVALID_BODY');headers['Content-Type']='application/json';body=JSON.stringify(data);}
+      try{const data=await json(config.apiBase+path,{method,headers,body});if(epoch!==generation)throw fail('STALE_SESSION');return data;}
+      catch(e){if(epoch===generation&&retry&&e.status===401){await refresh();return api(path,options,false);}throw e;}
+    }
+    function normalizeOrders(items){return (Array.isArray(items)?items:[]).slice(0,100).filter(x=>x&&typeof x==='object'&&!Array.isArray(x)).map(x=>({orderId:text(x.orderId||x.id,160),createdAt:text(x.createdAt,50),status:text(x.status,80),paymentStatus:text(x.paymentStatus,80),amountTotal:Number.isSafeInteger(x.amountTotal)&&x.amountTotal>=0&&x.amountTotal<=1e12?x.amountTotal:null,currency:typeof x.currency==='string'&&['USD','DZD'].includes(x.currency.toUpperCase())?x.currency.toUpperCase():null}));}
+    async function loadAccount(force=false){
+      if(!state.session)return;if(loadPromise)return loadPromise;if(!force&&['ready','error'].includes(state.loadStatus))return;
+      const epoch=generation;state.busy=true;state.loadStatus='loading';state.error='';
+      const pending=(async()=>{try{const [me,orders]=await Promise.all([api('/me'),api('/orders')]);if(epoch!==generation)return;state.user=me.user&&typeof me.user==='object'?{displayName:text(me.user.displayName),email:text(me.user.email)}:{};state.orders=normalizeOrders(orders.orders);state.loadStatus='ready';}catch(e){if(epoch===generation){state.error=e.code||'UNAVAILABLE';state.loadStatus='error';}}finally{if(epoch===generation){state.busy=false;change();}}})();
+      loadPromise=pending;await pending;if(loadPromise===pending)loadPromise=null;
+    }
+    function signOut(revoke=true){const token=state.session?.refreshToken;clear();if(revoke){logoutNotice();if(token)void cognito('RevokeToken',{Token:token,ClientId:config.clientId}).catch(()=>{});}}
+    return Object.freeze({config,state,cancelPending(){if(!state.session)generation++;},refresh,validSession,signIn,signUp,confirm,resend,forgot,reset,api,loadAccount,signOut,onLogout(fn){logoutNotice=fn;}});
+  }
+  return Object.freeze({config,createClient});
+});
+
+;
+(function (root, factory) {
+  'use strict';
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.AnoXPublicPages = factory();
+}(typeof window !== 'undefined' ? window : globalThis, function () {
+  'use strict';
+
+  function mail(label, subject) {
+    return { label: label, href: 'mailto:anox@anox.app?subject=' + encodeURIComponent(subject) };
+  }
+
+  var content = {
+    en: {
+      about: {
+        title: 'About AnoX',
+        intro: 'AnoX LLC helps customers in Algeria discover U.S. products and request help purchasing them and arranging cross-border fulfillment.',
+        sections: [
+          { heading: 'Who operates AnoX', paragraphs: ['AnoX is operated by AnoX LLC, a company based in New Jersey, United States. Our website is anox.app and our contact email is anox@anox.app.'] },
+          { heading: 'Our role', paragraphs: ['Our service is purchasing on your behalf and arranging fulfillment to Algeria. AnoX is not the manufacturer or the retailer identified in a product listing. A listing does not mean that its brand or retailer sponsors, endorses, or has approved AnoX.', 'Product availability, the source of purchase, and the costs and conditions of fulfillment must be checked for each request. Browsing, saving a product, or sending an inquiry does not place a paid order.'], links: [{ label: 'How purchase requests work', href: '#terms' }, { label: 'Shipping information', href: '#shipping' }] },
+          { heading: 'Start with a product inquiry', paragraphs: ['Send the product link, model, size or other options, and quantity you are considering. Any purchase needs a written quote and agreed conditions before payment.'], links: [mail('Ask about a product', 'AnoX product inquiry')] }
+        ]
+      },
+      contact: {
+        title: 'Contact AnoX',
+        intro: 'Reach AnoX LLC at anox@anox.app for product inquiries, service questions, privacy requests, or proposed collaborations.',
+        sections: [
+          { heading: 'Product and purchase inquiries', paragraphs: ['Include a product link, the required size or model, and quantity. An inquiry is a request for information, not a confirmed purchase. Please leave out passwords, verification codes, payment-card details, and identity documents.'], links: [mail('Send a product inquiry', 'AnoX product inquiry')] },
+          { heading: 'Support for an existing arrangement', paragraphs: ['Explain the issue and include the reference from your correspondence, if you have one. For a shipment or return question, include relevant product or shipment details without sending unnecessary personal information.'], links: [mail('Contact support', 'AnoX support request')] },
+          { heading: 'Privacy and personal data', paragraphs: ['Describe whether you want information about your data, a correction, or deletion. We may need proportionate information to verify your identity before acting on an account-related request.'], links: [mail('Send a privacy request', 'AnoX privacy request'), { label: 'Read the privacy notice', href: '#privacy' }] },
+          { heading: 'Business and content inquiries', paragraphs: ['Retailers, brands, logistics providers, and content owners can contact us about potential cooperation or an issue with a listing. Please identify the company or material concerned and your authority to represent it.'], links: [mail('Discuss a collaboration', 'AnoX partnership inquiry'), mail('Report a listing or content issue', 'AnoX content inquiry')] },
+          { heading: 'Sending your message', paragraphs: ['The email links open your email application. You choose when to send the message. AnoX LLC is based in New Jersey, United States; this website does not publish a walk-in office or customer returns address.'] }
+        ]
+      },
+      privacy: {
+        title: 'Privacy notice',
+        intro: 'This notice explains how AnoX LLC handles information when you use anox.app. Contact anox@anox.app with privacy questions or requests.',
+        sections: [
+          { heading: 'Information you provide', paragraphs: ['If you email us, we receive your email address, message, attachments, and any other information you choose to include. We use that information to respond, assess a purchase request, and support an arrangement you discuss with us. Please do not send payment-card details, passwords, verification codes, or unnecessary identity documents.', 'If you create an account, Amazon Web Services (AWS) Cognito handles account authentication, and AnoX account services handle account information such as your email address and display name. The public signup flow does not collect a delivery address. Any delivery details needed for a future purchase should be requested separately for that arrangement.'] },
+          { heading: 'Information kept in your browser', paragraphs: ['Language and display preferences, saved products, wishlist and cart selections, and your analytics choice may be saved on your device. These help the website remember your choices. Sign-in session information is held in browser storage for the tab.', 'Older versions of the website may have left local draft requests, delivery details, or illustrative order records in browser storage. These records do not confirm a purchase. Removing site data through your browser removes locally stored information; it does not delete account data, emails, or information already sent to our service providers.'] },
+          { heading: 'The shopping assistant', paragraphs: ['When you send a message to the assistant, the website sends your selected language and up to 12 recent conversation messages to an AnoX service running on AWS to generate a reply. The conversation is kept in memory in the open page, rather than saved as a browser chat history.', 'Messages leave your device when you use this service. Server-side logging and retention periods have not yet been confirmed. Avoid entering sensitive personal details. An assistant reply is guidance and does not approve a purchase, quote, shipment, or refund.'] },
+          { heading: 'Optional analytics and your choice', paragraphs: ['Google Analytics is optional on this website and starts only after you accept analytics. It helps us understand page visits and selected product interactions. It can process browser and device information, identifiers, and usage events. Our custom events use selected categories and identifiers rather than the contents of messages or account fields.', 'Use the analytics controls on this page to accept or reject analytics, or change an earlier choice. Rejecting stops further optional analytics collection by this website. It does not erase information already received by Google. You can also remove site cookies and storage using your browser controls.'], links: [{ label: 'How Google uses information from sites that use its services', href: 'https://policies.google.com/technologies/partner-sites' }, { label: 'Google Analytics browser opt-out add-on', href: 'https://tools.google.com/dlpage/gaoptout' }] },
+          { heading: 'Hosting, service providers, and external websites', paragraphs: ['GitHub Pages hosts the website, and AWS provides connected catalog, account, and assistant services. These providers process technical requests needed to deliver or protect their services; those requests may include IP addresses and other technical information. Our email provider also processes correspondence. Information may be processed in the United States or other countries used by these providers.', 'If you follow a retailer or other external link, that website handles your activity under its own privacy notice. A qualifying paid referral link may contain an identifier used to attribute a referral. The affiliate disclosure explains when a commission relationship is relevant.'], links: [{ label: 'GitHub privacy statement', href: 'https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement' }, { label: 'AWS privacy notice', href: 'https://aws.amazon.com/privacy/' }, { label: 'Affiliate disclosure', href: '#affiliate' }] },
+          { heading: 'Retention and privacy requests', paragraphs: ['We have not yet published fixed retention periods for account data, correspondence, assistant-service logs, or other server records. A message disappearing from the page or clearing browser storage is not confirmation that server data was deleted.', 'You can email us to ask about your information or request access, correction, or deletion. We may verify your identity before handling an account request. Deletion is handled by request, not by an automated website feature; applicable legal requirements and records needed to address an existing arrangement may affect what can be removed. Your rights depend on the laws that apply to your circumstances.'], links: [mail('Contact AnoX about your data', 'AnoX privacy request')] },
+          { heading: 'Updates to this notice', paragraphs: ['Last updated: 27 September 2026. If our information practices change, we will update this notice and its date. Material changes requiring an additional notice or choice will be handled as required by applicable law.'] }
+        ]
+      },
+      terms: {
+        title: 'Website and purchase inquiries',
+        intro: 'These terms explain the current website and the steps needed before a purchase-on-behalf arrangement with AnoX LLC.',
+        sections: [
+          { heading: 'The service and the website', paragraphs: ['AnoX LLC is based in New Jersey, United States. We help customers in Algeria discover products and request purchasing and cross-border fulfillment assistance. We are not the original retailer or manufacturer of listed products.', 'The website does not currently offer an online payment gateway. A saved cart, inquiry, account, or assistant conversation is not a paid order or a confirmed purchase.'] },
+          { heading: 'Before you agree to a purchase', paragraphs: ['A purchase needs a written, itemized quote and your explicit acceptance of its conditions. Before sending payment, obtain the identified retailer or source, product and options, quantity, source price and currency, AnoX fees, shipping charges, payment method, and the treatment of taxes and customs charges.', 'The written arrangement must also state what is included or excluded, availability and shipment assumptions, cancellation and return conditions, and responsibility for loss, damage, insurance, and any additional charges. Where a cost is an estimate or excluded, that must be clear. If these points have not been agreed, the inquiry is not ready for payment.'] },
+          { heading: 'Product information and prices', paragraphs: ['Catalog information helps you explore products. Prices, availability, images, and specifications can change and must be checked with the identified source before a purchase is accepted. Any displayed estimate is not a final amount due. A product listing does not establish retailer authorization or a brand partnership.'] },
+          { heading: 'Shipping, returns, and questions', paragraphs: ['The shipping and returns pages describe matters to resolve for each arrangement. No universal delivery deadline, return window, refund schedule, insurance coverage, or customs outcome is promised by this website.'], links: [{ label: 'Shipping information', href: '#shipping' }, { label: 'Returns and cancellations', href: '#returns' }, { label: 'Contact AnoX', href: '#contact' }] },
+          { heading: 'Using accounts and website content', paragraphs: ['Provide accurate information and keep your login credentials private. Do not use the site to impersonate another person, submit unlawful requests, or interfere with services. Retailer names and product materials belong to their respective owners; showing them does not transfer rights to you. External websites have their own terms.'] },
+          { heading: 'Your rights and these terms', paragraphs: ['These website terms do not replace the written terms of an individual purchase arrangement and do not remove rights provided by applicable law. Questions or disagreements about an arrangement should be sent to anox@anox.app with the relevant correspondence. Last updated: 27 September 2026.'], links: [mail('Ask about purchase terms', 'AnoX purchase terms inquiry')] }
+        ]
+      },
+      affiliate: {
+        title: 'Affiliate and commercial disclosures',
+        intro: 'A product appearing on AnoX does not by itself mean that AnoX has an affiliate relationship with its retailer or brand.',
+        sections: [
+          { heading: 'When a commission may apply', paragraphs: ['If AnoX uses a qualifying link under an actual affiliate arrangement, we may receive a commission for an eligible purchase or referral. A clear commission notice will appear near that link or recommendation. This general page does not mean that every product or link earns a commission.'] },
+          { heading: 'Relationships must be real', paragraphs: ['We do not claim that a retailer has approved, partnered with, or endorsed AnoX merely because its products can be found here. Named partnerships or program memberships should be relied on only when expressly identified and supported by an approved arrangement.'] },
+          { heading: 'Fees and sponsored content', paragraphs: ['A referral commission is different from a purchasing, handling, or shipping fee charged by AnoX. Any fee payable by you must be stated in the written quote. If a placement is paid or sponsored, that relationship must be identified where the placement appears.'] },
+          { heading: 'Ask about a link', paragraphs: ['If you want to understand the commercial relationship behind a particular recommendation, send us its page or product link.'], links: [mail('Ask about a commercial relationship', 'AnoX affiliate disclosure inquiry'), { label: 'Read the privacy notice', href: '#privacy' }] }
+        ]
+      },
+      shipping: {
+        title: 'Shipping to Algeria',
+        intro: 'AnoX provides purchase-on-behalf and cross-border fulfillment assistance. Shipping arrangements need to be confirmed for the particular product and destination before payment.',
+        sections: [
+          { heading: 'Confirm the full journey', paragraphs: ['The route can involve a retailer shipment in the United States and onward transport to Algeria. Before accepting a quote, confirm the retailer or source, destination, carrier or service, handoffs, and what tracking information will be available. A previous shipment does not guarantee the same route or conditions for another request.'] },
+          { heading: 'Costs and customs', paragraphs: ['The written quote must distinguish the product price, service fees, shipping charges, and any estimates or exclusions. Confirm who is responsible for customs duties, taxes, clearance, local delivery, and any charges not included in the quote. We do not publish a universal customs rate or promise that every product is eligible for import.'] },
+          { heading: 'Timing and tracking', paragraphs: ['No universal delivery time or carrier commitment is published here. Timing depends on the retailer, the agreed transport service, destination requirements, and customs clearance. Any estimate must be identified as an estimate in the written arrangement. A website selection or draft record is not proof of dispatch; shipment confirmation needs actual shipment details.'] },
+          { heading: 'Loss, damage, and insurance', paragraphs: ['Insurance coverage, carrier claim procedures, responsibility at each handoff, and the treatment of loss or damage must be agreed before payment. Do not assume that insurance or replacement is included. If a parcel has a problem, contact us with the correspondence and relevant shipment details so the agreed procedure can be reviewed.'] },
+          { heading: 'Check a product before purchasing', paragraphs: ['Send the product link, quantity, and general destination to discuss feasibility. Do not send payment until a complete quote and the relevant shipping and return conditions have been accepted.'], links: [mail('Ask about shipping', 'AnoX shipping inquiry'), { label: 'Returns and cancellations', href: '#returns' }] }
+        ]
+      },
+      returns: {
+        title: 'Returns, cancellations, and refunds',
+        intro: 'Return options depend on the identified retailer and the written purchase-on-behalf arrangement. This website does not publish one return or refund policy for every product.',
+        sections: [
+          { heading: 'Agree the conditions before payment', paragraphs: ['Before accepting a quote, confirm whether the product can be returned or canceled, any retailer deadline or exclusions, the return destination, and how a refund would be calculated and paid. Also agree which service fees, shipping costs, customs charges, or other costs would be recoverable or payable by you. No universal refund deadline or free-return promise is made here.'] },
+          { heading: 'Before and after the retailer purchase', paragraphs: ['A request to change or cancel needs to be checked against the stage of the arrangement and the retailer’s rules. Once a retailer purchase or shipment has occurred, the available options and costs may differ. Sending a request alone does not confirm that a cancellation or refund has been approved.'] },
+          { heading: 'A damaged, missing, or incorrect item', paragraphs: ['Contact us with the product or shipment reference and a description of the issue. Keep relevant packaging, correspondence, and photographs if available. Do not return an item to an assumed address; request written return instructions. Any applicable retailer, carrier, or statutory requirements must be considered for the actual case.'] },
+          { heading: 'Request a review', paragraphs: ['Email anox@anox.app to discuss your arrangement. The individual written conditions and applicable law determine the available remedy; this page does not remove your legal rights.'], links: [mail('Ask about a return or cancellation', 'AnoX return or cancellation inquiry'), { label: 'Shipping information', href: '#shipping' }] }
+        ]
+      },
+      partners: {
+        title: 'Work with AnoX',
+        intro: 'AnoX LLC welcomes discussions with retailers, brands, catalog providers, and logistics services about serving customers in Algeria.',
+        sections: [
+          { heading: 'What we do', paragraphs: ['We help customers discover U.S. products and request purchase-on-behalf and cross-border fulfillment assistance. AnoX LLC is based in New Jersey, United States, and operates anox.app.'] },
+          { heading: 'Ways to collaborate', paragraphs: ['Potential collaborations include authorized product catalogs, permitted referral arrangements, and fulfillment services. Any relationship requires agreement on its scope, responsibilities, content rights, and applicable commercial terms. This page is an invitation to discuss cooperation, not a list of approved partners.'] },
+          { heading: 'Product content and brand identity', paragraphs: ['A product listing or mention of a retailer does not establish sponsorship, authorization, or endorsement. Catalog, image, and brand use must respect the rights and conditions of the provider. Content owners can contact us to identify a permission issue or request a review of material.'] },
+          { heading: 'Start a conversation', paragraphs: ['Please include your company name, website, your role, the proposed service or program, and relevant catalog or content permissions. We can then discuss whether the proposed scope fits AnoX.'], links: [mail('Discuss a proposed collaboration', 'AnoX partnership inquiry'), mail('Raise a content permissions issue', 'AnoX content permissions inquiry'), { label: 'Affiliate disclosures', href: '#affiliate' }] }
+        ]
+      },
+      help: {
+        title: 'Help with AnoX',
+        intro: 'Find out how to explore products, request a quote, use your account, and contact AnoX.',
+        sections: [
+          { heading: 'How do I request a product?', paragraphs: ['Explore the catalog or send a product link with the size, model, and quantity you need. We need to check the source, availability, costs, and fulfillment conditions before a purchase can be agreed.'], links: [mail('Send a product inquiry', 'AnoX product inquiry'), { label: 'Explore products', href: '#shop' }] },
+          { heading: 'Does saving a cart place an order?', paragraphs: ['No. A cart or saved product is a browser convenience. An inquiry is also not a purchase confirmation. The website has no connected payment gateway; a purchase needs a written quote and explicitly agreed conditions before payment.'], links: [{ label: 'Read the purchase inquiry terms', href: '#terms' }] },
+          { heading: 'Can I rely on the shopping assistant?', paragraphs: ['The assistant can help you explore or explain product information, but replies may be incomplete or mistaken. Confirm the product, price, eligibility, and fulfillment conditions in the written quote. The assistant cannot approve a purchase, delivery date, refund, or retailer relationship. Avoid sharing sensitive personal information in chat.'], links: [{ label: 'How assistant messages are handled', href: '#privacy' }] },
+          { heading: 'Account access and saved information', paragraphs: ['Use the sign-in page for your account. If you need help, contact us without sharing your password or verification code. Product selections and preferences saved in one browser may not appear on another device. Clearing site data removes local selections and preferences, while account or email data requires a separate privacy request.'], links: [{ label: 'Sign in', href: '#signin' }, { label: 'Privacy notice and choices', href: '#privacy' }] },
+          { heading: 'Shipping, returns, and other questions', paragraphs: ['Shipping and return conditions depend on your written arrangement. For a specific question, email anox@anox.app with the relevant product or correspondence reference.'], links: [{ label: 'Shipping information', href: '#shipping' }, { label: 'Returns and cancellations', href: '#returns' }, { label: 'Contact options', href: '#contact' }] }
+        ]
+      }
+    },
+    ar: {
+      about: {
+        title: 'عن AnoX',
+        intro: 'تساعد AnoX LLC العملاء في الجزائر على اكتشاف منتجات من الولايات المتحدة وطلب المساعدة في شرائها وترتيب إيصالها عبر الحدود.',
+        sections: [
+          { heading: 'الجهة المشغّلة', paragraphs: ['تدير الموقع شركة AnoX LLC، ومقرها في ولاية نيوجيرسي بالولايات المتحدة. موقعنا هو anox.app وبريد التواصل هو anox@anox.app.'] },
+          { heading: 'دورنا', paragraphs: ['نقدّم خدمة الشراء بالنيابة عنك وترتيب إيصال المنتجات إلى الجزائر. AnoX ليست الشركة المصنّعة ولا متجر التجزئة المذكور في صفحة المنتج. ظهور منتج لا يعني أن علامته التجارية أو متجره يرعى AnoX أو يؤيدها أو يمنحها تفويضًا.', 'يجب التحقق لكل طلب من توفر المنتج ومصدر شرائه وتكاليف وشروط إيصاله. تصفح الموقع أو حفظ منتج أو إرسال استفسار لا يُنشئ طلب شراء مدفوعًا.'], links: [{ label: 'كيف يعمل طلب الشراء', href: '#terms' }, { label: 'معلومات الشحن', href: '#shipping' }] },
+          { heading: 'ابدأ باستفسار عن منتج', paragraphs: ['أرسل رابط المنتج والطراز والمقاس أو الخيارات المطلوبة والكمية التي تفكّر فيها. يتطلب أي شراء عرض سعر مكتوبًا واتفاقًا على الشروط قبل الدفع.'], links: [mail('استفسر عن منتج', 'استفسار عن منتج — AnoX')] }
+        ]
+      },
+      contact: {
+        title: 'تواصل مع AnoX',
+        intro: 'راسل AnoX LLC على anox@anox.app للاستفسار عن المنتجات والخدمات، أو تقديم طلب متعلق بالخصوصية، أو اقتراح تعاون.',
+        sections: [
+          { heading: 'استفسارات المنتجات والشراء', paragraphs: ['أرفق رابط المنتج والمقاس أو الطراز والكمية المطلوبة. الاستفسار هو طلب معلومات، وليس شراءً مؤكدًا. لا ترسل كلمات المرور أو رموز التحقق أو بيانات البطاقات المصرفية أو وثائق الهوية.'], links: [mail('أرسل استفسارًا عن منتج', 'استفسار عن منتج — AnoX')] },
+          { heading: 'المساعدة بشأن اتفاق قائم', paragraphs: ['اشرح المشكلة وأرفق المرجع الوارد في مراسلاتك إن وجد. إذا كان الاستفسار عن شحنة أو إرجاع، أضف معلومات المنتج أو الشحنة ذات الصلة دون إرسال بيانات شخصية غير ضرورية.'], links: [mail('تواصل لطلب المساعدة', 'طلب مساعدة — AnoX')] },
+          { heading: 'الخصوصية والبيانات الشخصية', paragraphs: ['وضّح إن كنت تطلب معلومات عن بياناتك أو تصحيحها أو حذفها. قد نحتاج إلى معلومات مناسبة للتحقق من هويتك قبل تنفيذ طلب يتعلق بالحساب.'], links: [mail('أرسل طلبًا بشأن الخصوصية', 'طلب بشأن الخصوصية — AnoX'), { label: 'اقرأ إشعار الخصوصية', href: '#privacy' }] },
+          { heading: 'التعاون والمحتوى', paragraphs: ['يمكن للمتاجر والعلامات التجارية ومقدمي الخدمات اللوجستية وأصحاب المحتوى التواصل لاقتراح تعاون أو الإبلاغ عن مشكلة في منتج معروض. يرجى تحديد الشركة أو المحتوى المعني وصفتك التي تخوّلك تمثيله.'], links: [mail('ناقش فرصة تعاون', 'اقتراح تعاون — AnoX'), mail('أبلغ عن مشكلة في منتج أو محتوى', 'استفسار عن محتوى — AnoX')] },
+          { heading: 'إرسال رسالتك', paragraphs: ['تفتح روابط البريد تطبيق البريد الإلكتروني لديك، وتختار أنت وقت إرسال الرسالة. مقر AnoX LLC في نيوجيرسي بالولايات المتحدة؛ لا ينشر هذا الموقع عنوان مكتب لاستقبال العملاء أو عنوانًا لإرجاع المنتجات.'] }
+        ]
+      },
+      privacy: {
+        title: 'إشعار الخصوصية',
+        intro: 'يوضح هذا الإشعار كيفية تعامل AnoX LLC مع المعلومات عند استخدام anox.app. للاستفسارات أو الطلبات المتعلقة بالخصوصية، راسل anox@anox.app.',
+        sections: [
+          { heading: 'المعلومات التي تقدّمها', paragraphs: ['عند مراسلتنا، نتلقى عنوان بريدك ورسالتك ومرفقاتها وأي معلومات تختار تضمينها. نستخدم هذه المعلومات للرد وتقييم طلب الشراء ومتابعة الترتيبات التي تناقشها معنا. يرجى عدم إرسال بيانات البطاقات المصرفية أو كلمات المرور أو رموز التحقق أو وثائق هوية غير ضرورية.', 'إذا أنشأت حسابًا، تتولى خدمة AWS Cognito من Amazon Web Services المصادقة على الحساب، وتعالج خدمات حساب AnoX معلومات مثل بريدك الإلكتروني واسم العرض. لا تجمع خطوات التسجيل العامة عنوان التوصيل. وأي بيانات توصيل قد يحتاجها شراء لاحق ينبغي طلبها على نحو منفصل لذلك الاتفاق.'] },
+          { heading: 'المعلومات المحفوظة في متصفحك', paragraphs: ['قد تُحفظ على جهازك تفضيلات اللغة والعرض والمنتجات المحفوظة والمفضلة والسلة واختيارك بشأن التحليلات. يساعد ذلك الموقع على تذكّر اختياراتك. تُحفظ معلومات جلسة تسجيل الدخول في تخزين المتصفح الخاص بعلامة التبويب.', 'قد تكون إصدارات أقدم من الموقع قد تركت مسودات طلبات أو بيانات توصيل أو سجلات طلبات توضيحية في تخزين المتصفح. هذه السجلات لا تؤكد حصول شراء. إزالة بيانات الموقع من إعدادات المتصفح تحذف المعلومات المحلية، لكنها لا تحذف بيانات الحساب أو الرسائل البريدية أو المعلومات التي سبق إرسالها إلى مقدمي الخدمات.'] },
+          { heading: 'مساعد التسوق', paragraphs: ['عندما ترسل رسالة إلى المساعد، يرسل الموقع اللغة المختارة وما يصل إلى 12 رسالة حديثة من المحادثة إلى خدمة AnoX المستضافة على AWS لتوليد رد. تبقى المحادثة في ذاكرة الصفحة المفتوحة، ولا تُحفظ كسجل محادثة في تخزين المتصفح.', 'تغادر الرسائل جهازك عند استخدام هذه الخدمة. لم تُؤكَّد بعد تفاصيل تسجيل الرسائل على الخادم ومدد الاحتفاظ بها. تجنّب إدخال بيانات شخصية حساسة. إجابات المساعد إرشادية، ولا تمثل موافقة على شراء أو عرض سعر أو شحن أو استرداد مبلغ.'] },
+          { heading: 'التحليلات الاختيارية وقرارك', paragraphs: ['استخدام Google Analytics اختياري على هذا الموقع، ولا يبدأ إلا بعد قبولك التحليلات. يساعدنا على فهم زيارات الصفحات وبعض التفاعلات مع المنتجات، وقد يعالج معلومات المتصفح والجهاز والمعرّفات وأحداث الاستخدام. تستخدم الأحداث التي نرسلها فئات ومعرّفات محددة، ولا تتضمن محتوى الرسائل أو حقول الحساب.', 'استخدم عناصر التحكم في التحليلات على هذه الصفحة للقبول أو الرفض أو تغيير اختيار سابق. يوقف الرفض جمع التحليلات الاختيارية اللاحق عبر هذا الموقع، لكنه لا يمحو المعلومات التي سبق أن تلقتها Google. يمكنك أيضًا إزالة ملفات تعريف الارتباط وبيانات الموقع من إعدادات المتصفح.'], links: [{ label: 'كيف تستخدم Google معلومات المواقع التي تعتمد خدماتها', href: 'https://policies.google.com/technologies/partner-sites' }, { label: 'إضافة المتصفح لتعطيل Google Analytics', href: 'https://tools.google.com/dlpage/gaoptout' }] },
+          { heading: 'الاستضافة ومقدمو الخدمات والمواقع الخارجية', paragraphs: ['تستضيف GitHub Pages الموقع، وتوفر AWS خدمات الكتالوج والحساب والمساعد المتصلة به. يعالج هؤلاء المزودون الطلبات التقنية اللازمة لتقديم خدماتهم أو حمايتها، وقد تتضمن عناوين الإنترنت ومعلومات تقنية أخرى. كما يعالج مزود البريد مراسلاتنا. قد تُعالج المعلومات في الولايات المتحدة أو في دول أخرى يستخدمها هؤلاء المزودون.', 'عند الانتقال إلى متجر أو موقع خارجي، تخضع أنشطتك هناك لإشعار الخصوصية الخاص به. وقد يتضمن رابط إحالة مدفوع مؤهل معرّفًا لنسب الإحالة. يوضح الإفصاح عن العمولات الحالات التي تكون فيها علاقة العمولة ذات صلة.'], links: [{ label: 'بيان خصوصية GitHub', href: 'https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement' }, { label: 'إشعار خصوصية AWS', href: 'https://aws.amazon.com/privacy/' }, { label: 'الإفصاح عن العمولات', href: '#affiliate' }] },
+          { heading: 'الاحتفاظ بالمعلومات وطلبات الخصوصية', paragraphs: ['لم ننشر بعد مددًا ثابتة للاحتفاظ ببيانات الحساب أو المراسلات أو سجلات خدمة المساعد أو غيرها من سجلات الخادم. اختفاء رسالة من الصفحة أو مسح تخزين المتصفح لا يؤكد حذف البيانات على الخادم.', 'يمكنك مراسلتنا للاستفسار عن معلوماتك أو طلب الوصول إليها أو تصحيحها أو حذفها. قد نتحقق من هويتك قبل معالجة طلب متعلق بالحساب. يُعالَج الحذف بناءً على طلب، وليس بواسطة ميزة حذف تلقائي في الموقع؛ وقد تؤثر المتطلبات القانونية والسجلات اللازمة لمعالجة اتفاق قائم في البيانات التي يمكن حذفها. تعتمد حقوقك على القوانين المنطبقة على حالتك.'], links: [mail('تواصل بشأن بياناتك', 'طلب بشأن الخصوصية — AnoX')] },
+          { heading: 'تحديثات هذا الإشعار', paragraphs: ['آخر تحديث: 27 سبتمبر 2026. إذا تغيرت ممارساتنا في التعامل مع المعلومات، سنحدّث هذا الإشعار وتاريخه. وسنتعامل مع التغييرات الجوهرية التي تتطلب إشعارًا إضافيًا أو خيارًا جديدًا وفقًا للقانون المنطبق.'] }
+        ]
+      },
+      terms: {
+        title: 'استخدام الموقع وطلبات الشراء',
+        intro: 'توضح هذه الشروط وضع الموقع الحالي والخطوات اللازمة قبل الاتفاق مع AnoX LLC على الشراء بالنيابة عنك.',
+        sections: [
+          { heading: 'الخدمة والموقع', paragraphs: ['مقر AnoX LLC في نيوجيرسي بالولايات المتحدة. نساعد العملاء في الجزائر على اكتشاف المنتجات وطلب المساعدة في الشراء والإيصال عبر الحدود. لسنا المتجر الأصلي أو الشركة المصنّعة للمنتجات المعروضة.', 'لا يوفر الموقع حاليًا بوابة دفع إلكتروني. حفظ السلة أو إرسال استفسار أو إنشاء حساب أو محادثة المساعد لا يُنشئ طلبًا مدفوعًا ولا يؤكد شراء منتج.'] },
+          { heading: 'قبل الموافقة على الشراء', paragraphs: ['يتطلب الشراء عرض سعر مكتوبًا ومفصّلًا وموافقتك الصريحة على شروطه. قبل إرسال أي مبلغ، احصل على تحديد للمتجر أو مصدر المنتج وخياراته وكميته وسعره لدى المصدر وعملته ورسوم AnoX وتكلفة الشحن وطريقة الدفع وكيفية التعامل مع الضرائب والرسوم الجمركية.', 'يجب أن يبيّن الاتفاق المكتوب أيضًا ما يشمله وما يستثنيه، وافتراضات التوفر والشحن، وشروط الإلغاء والإرجاع، والمسؤولية عن الفقد والتلف والتأمين وأي تكاليف إضافية. يجب توضيح كل تكلفة تقديرية أو غير مشمولة. إذا لم يُتفق على هذه النقاط، فالطلب غير جاهز للدفع.'] },
+          { heading: 'معلومات المنتجات والأسعار', paragraphs: ['تساعدك معلومات الكتالوج على استكشاف المنتجات. قد تتغير الأسعار والتوفر والصور والمواصفات، ويجب التحقق منها لدى المصدر المحدد قبل قبول الشراء. أي تقدير معروض ليس مبلغًا نهائيًا مستحقًا. عرض منتج لا يثبت تفويضًا من المتجر أو شراكة مع العلامة التجارية.'] },
+          { heading: 'الشحن والإرجاع والاستفسارات', paragraphs: ['توضح صفحتا الشحن والإرجاع النقاط التي ينبغي حسمها لكل اتفاق. لا يعد هذا الموقع بموعد توصيل موحّد أو فترة إرجاع أو جدول لاسترداد المبالغ أو تغطية تأمينية أو نتيجة محددة لإجراءات الجمارك.'], links: [{ label: 'معلومات الشحن', href: '#shipping' }, { label: 'الإرجاع والإلغاء', href: '#returns' }, { label: 'تواصل مع AnoX', href: '#contact' }] },
+          { heading: 'استخدام الحساب والمحتوى', paragraphs: ['قدّم معلومات صحيحة وحافظ على سرية بيانات الدخول. لا تستخدم الموقع لانتحال شخصية أخرى أو إرسال طلبات غير قانونية أو تعطيل الخدمات. تعود أسماء المتاجر ومواد المنتجات إلى أصحابها، وعرضها لا ينقل إليك أي حقوق فيها. للمواقع الخارجية شروطها الخاصة.'] },
+          { heading: 'حقوقك وهذه الشروط', paragraphs: ['لا تحل شروط الموقع محل الشروط المكتوبة لاتفاق شراء محدد، ولا تُسقط الحقوق التي يمنحك إياها القانون المنطبق. أرسل الأسئلة أو الخلافات بشأن اتفاق إلى anox@anox.app مع المراسلات ذات الصلة. آخر تحديث: 27 سبتمبر 2026.'], links: [mail('استفسر عن شروط الشراء', 'استفسار عن شروط الشراء — AnoX')] }
+        ]
+      },
+      affiliate: {
+        title: 'الإفصاح عن العمولات والعلاقات التجارية',
+        intro: 'ظهور منتج على AnoX لا يعني وحده وجود علاقة تسويق بالعمولة بين AnoX ومتجره أو علامته التجارية.',
+        sections: [
+          { heading: 'متى قد تُستحق عمولة', paragraphs: ['إذا استخدمت AnoX رابطًا مؤهلًا بموجب اتفاق فعلي للتسويق بالعمولة، فقد نتلقى عمولة عن شراء أو إحالة مؤهلة. سيظهر إفصاح واضح عن العمولة بالقرب من ذلك الرابط أو التوصية. لا تعني هذه الصفحة العامة أن كل منتج أو رابط يحقق عمولة.'] },
+          { heading: 'العلاقات يجب أن تكون فعلية', paragraphs: ['لا ندّعي أن متجرًا وافق على AnoX أو دخل في شراكة معها أو أيّدها لمجرد عرض منتجاته هنا. لا ينبغي الاعتماد على وجود شراكة مسماة أو عضوية في برنامج إلا إذا ذُكرت صراحة واستندت إلى اتفاق معتمد.'] },
+          { heading: 'الرسوم والمحتوى المدفوع', paragraphs: ['تختلف عمولة الإحالة عن رسوم الشراء أو المناولة أو الشحن التي قد تتقاضاها AnoX. يجب توضيح أي رسوم تدفعها أنت في عرض السعر المكتوب. وإذا كان موضع عرض مدفوعًا أو برعاية جهة، فيجب الإفصاح عن هذه العلاقة عند عرضه.'] },
+          { heading: 'استفسر عن رابط', paragraphs: ['إذا أردت فهم العلاقة التجارية المرتبطة بتوصية معيّنة، أرسل لنا رابط الصفحة أو المنتج.'], links: [mail('استفسر عن علاقة تجارية', 'استفسار عن العمولات — AnoX'), { label: 'اقرأ إشعار الخصوصية', href: '#privacy' }] }
+        ]
+      },
+      shipping: {
+        title: 'الشحن إلى الجزائر',
+        intro: 'تقدّم AnoX المساعدة في الشراء بالنيابة عنك والإيصال عبر الحدود. يجب تأكيد ترتيبات الشحن الخاصة بالمنتج والوجهة قبل الدفع.',
+        sections: [
+          { heading: 'تأكيد مسار الشحنة كاملًا', paragraphs: ['قد يشمل المسار شحنًا من متجر داخل الولايات المتحدة ثم نقلًا إلى الجزائر. قبل قبول عرض السعر، تأكد من المتجر أو المصدر والوجهة والناقل أو الخدمة ومراحل تسليم الشحنة بين الجهات ومعلومات التتبع التي ستتوفر. نجاح شحنة سابقة لا يضمن المسار أو الشروط نفسها لطلب آخر.'] },
+          { heading: 'التكاليف والجمارك', paragraphs: ['يجب أن يفصل عرض السعر المكتوب بين سعر المنتج ورسوم الخدمة والشحن وأي تقديرات أو تكاليف مستثناة. تأكد من الجهة المسؤولة عن الرسوم الجمركية والضرائب والتخليص والتوصيل المحلي وأي رسوم لا يشملها العرض. لا ننشر نسبة جمركية موحّدة ولا نعد بأن كل منتج مسموح باستيراده.'] },
+          { heading: 'المدة والتتبع', paragraphs: ['لا تُنشر هنا مدة توصيل موحّدة أو التزام عام من شركة شحن. تعتمد المدة على المتجر وخدمة النقل المتفق عليها ومتطلبات الوجهة والتخليص الجمركي. يجب وصف أي مدة تقديرية بأنها تقدير ضمن الاتفاق المكتوب. اختيار منتج أو وجود مسودة في الموقع لا يثبت الإرسال؛ تأكيد الشحن يتطلب بيانات شحنة فعلية.'] },
+          { heading: 'الفقد والتلف والتأمين', paragraphs: ['يجب الاتفاق قبل الدفع على التغطية التأمينية وإجراءات المطالبة لدى الناقل والمسؤولية في كل مرحلة وكيفية التعامل مع الفقد أو التلف. لا تفترض أن التأمين أو الاستبدال مشمول. إذا حدثت مشكلة، تواصل معنا وأرفق المراسلات وبيانات الشحنة ذات الصلة لمراجعة الإجراء المتفق عليه.'] },
+          { heading: 'تحقق من المنتج قبل الشراء', paragraphs: ['أرسل رابط المنتج والكمية والوجهة العامة لمناقشة إمكانية التنفيذ. لا ترسل أي مبلغ قبل قبول عرض سعر كامل وشروط الشحن والإرجاع ذات الصلة.'], links: [mail('استفسر عن الشحن', 'استفسار عن الشحن — AnoX'), { label: 'الإرجاع والإلغاء', href: '#returns' }] }
+        ]
+      },
+      returns: {
+        title: 'الإرجاع والإلغاء واسترداد المبالغ',
+        intro: 'تعتمد خيارات الإرجاع على المتجر المحدد واتفاق الشراء بالنيابة المكتوب. لا ينشر الموقع سياسة واحدة للإرجاع أو استرداد المبالغ تشمل جميع المنتجات.',
+        sections: [
+          { heading: 'الاتفاق على الشروط قبل الدفع', paragraphs: ['قبل قبول عرض السعر، تأكد من إمكانية إرجاع المنتج أو إلغاء شرائه، والمهلة أو الاستثناءات التي يضعها المتجر، وعنوان الإرجاع، وطريقة حساب المبلغ المسترد ودفعه. واتفق أيضًا على رسوم الخدمة والشحن والجمارك وغيرها من التكاليف التي يمكن استردادها أو التي تتحملها أنت. لا تُحدَّد هنا مهلة موحّدة لاسترداد المبلغ ولا يُوعَد بإرجاع مجاني.'] },
+          { heading: 'قبل الشراء من المتجر وبعده', paragraphs: ['يجب تقييم طلب التغيير أو الإلغاء بحسب مرحلة التنفيذ وقواعد المتجر. قد تختلف الخيارات والتكاليف بعد الشراء أو الشحن. إرسال الطلب وحده لا يؤكد الموافقة على الإلغاء أو استرداد المبلغ.'] },
+          { heading: 'منتج تالف أو مفقود أو غير مطابق', paragraphs: ['تواصل معنا مع مرجع المنتج أو الشحنة ووصف المشكلة. احتفظ بالتغليف والمراسلات والصور ذات الصلة إن توفرت. لا تُعِد المنتج إلى عنوان تفترض أنه صحيح؛ اطلب تعليمات إرجاع مكتوبة. يجب النظر في متطلبات المتجر أو الناقل أو القانون المنطبقة على الحالة الفعلية.'] },
+          { heading: 'اطلب مراجعة حالتك', paragraphs: ['راسل anox@anox.app لمناقشة اتفاقك. تحدد الشروط المكتوبة الخاصة به والقانون المنطبق الحلول المتاحة، ولا تُسقط هذه الصفحة حقوقك القانونية.'], links: [mail('استفسر عن إرجاع أو إلغاء', 'استفسار عن إرجاع أو إلغاء — AnoX'), { label: 'معلومات الشحن', href: '#shipping' }] }
+        ]
+      },
+      partners: {
+        title: 'تعاون مع AnoX',
+        intro: 'ترحب AnoX LLC بمناقشة فرص التعاون مع المتاجر والعلامات التجارية ومقدمي الكتالوجات والخدمات اللوجستية لخدمة العملاء في الجزائر.',
+        sections: [
+          { heading: 'ما نقدّمه', paragraphs: ['نساعد العملاء على اكتشاف منتجات من الولايات المتحدة وطلب خدمة الشراء بالنيابة وترتيب الإيصال عبر الحدود. مقر AnoX LLC في نيوجيرسي بالولايات المتحدة، وهي تدير anox.app.'] },
+          { heading: 'مجالات التعاون', paragraphs: ['قد يشمل التعاون توفير كتالوجات منتجات مصرّح باستخدامها أو اتفاقات إحالة معتمدة أو خدمات تنفيذ وإيصال. تتطلب أي علاقة الاتفاق على نطاقها والمسؤوليات وحقوق المحتوى والشروط التجارية المنطبقة. هذه الصفحة دعوة لمناقشة التعاون، وليست قائمة بشركاء معتمدين.'] },
+          { heading: 'محتوى المنتجات وهوية العلامة', paragraphs: ['عرض منتج أو ذكر متجر لا يثبت رعاية أو تفويضًا أو تأييدًا. يجب أن يحترم استخدام الكتالوجات والصور والعلامات حقوق المزود وشروطه. يمكن لأصحاب المحتوى التواصل للإبلاغ عن مشكلة تتعلق بالإذن أو لطلب مراجعة مادة معروضة.'] },
+          { heading: 'ابدأ النقاش', paragraphs: ['يرجى إرسال اسم الشركة وموقعها وصفتك فيها والخدمة أو البرنامج المقترح والأذونات ذات الصلة بالكتالوج أو المحتوى. يمكننا بعدها مناقشة مدى ملاءمة نطاق التعاون المقترح لـ AnoX.'], links: [mail('ناقش تعاونًا مقترحًا', 'اقتراح تعاون — AnoX'), mail('أبلغ عن مسألة تخص حقوق المحتوى', 'استفسار عن أذونات المحتوى — AnoX'), { label: 'الإفصاح عن العمولات', href: '#affiliate' }] }
+        ]
+      },
+      help: {
+        title: 'المساعدة في AnoX',
+        intro: 'تعرّف على كيفية استكشاف المنتجات وطلب عرض سعر واستخدام حسابك والتواصل معنا.',
+        sections: [
+          { heading: 'كيف أطلب منتجًا؟', paragraphs: ['تصفح الكتالوج أو أرسل رابط المنتج والمقاس والطراز والكمية المطلوبة. يلزم التحقق من المصدر والتوفر والتكاليف وشروط الإيصال قبل الاتفاق على الشراء.'], links: [mail('أرسل استفسارًا عن منتج', 'استفسار عن منتج — AnoX'), { label: 'استكشف المنتجات', href: '#shop' }] },
+          { heading: 'هل حفظ السلة يُنشئ طلب شراء؟', paragraphs: ['لا. السلة والمنتجات المحفوظة أدوات مساعدة داخل المتصفح. كما أن الاستفسار ليس تأكيدًا للشراء. لا توجد بوابة دفع متصلة بالموقع؛ يتطلب الشراء عرض سعر مكتوبًا واتفاقًا صريحًا على الشروط قبل الدفع.'], links: [{ label: 'اقرأ شروط طلب الشراء', href: '#terms' }] },
+          { heading: 'هل يمكن الاعتماد على مساعد التسوق؟', paragraphs: ['يمكن للمساعد تسهيل الاستكشاف أو شرح معلومات المنتج، لكن إجاباته قد تكون ناقصة أو غير دقيقة. أكّد المنتج والسعر وإمكانية شرائه وشروط إيصاله في عرض السعر المكتوب. لا يستطيع المساعد اعتماد شراء أو موعد توصيل أو استرداد مبلغ أو علاقة مع متجر. تجنّب مشاركة معلومات شخصية حساسة في المحادثة.'], links: [{ label: 'كيفية التعامل مع رسائل المساعد', href: '#privacy' }] },
+          { heading: 'الدخول إلى الحساب والمعلومات المحفوظة', paragraphs: ['استخدم صفحة تسجيل الدخول للوصول إلى حسابك. إذا احتجت إلى مساعدة، تواصل معنا دون مشاركة كلمة المرور أو رمز التحقق. قد لا تظهر اختيارات المنتجات والتفضيلات المحفوظة في متصفح على جهاز آخر. مسح بيانات الموقع يحذف الاختيارات والتفضيلات المحلية، أما بيانات الحساب أو البريد فتتطلب طلبًا منفصلًا بشأن الخصوصية.'], links: [{ label: 'تسجيل الدخول', href: '#signin' }, { label: 'إشعار الخصوصية والخيارات', href: '#privacy' }] },
+          { heading: 'الشحن والإرجاع وأسئلة أخرى', paragraphs: ['تعتمد شروط الشحن والإرجاع على اتفاقك المكتوب. لأي سؤال محدد، راسل anox@anox.app مع مرجع المنتج أو المراسلات ذات الصلة.'], links: [{ label: 'معلومات الشحن', href: '#shipping' }, { label: 'الإرجاع والإلغاء', href: '#returns' }, { label: 'خيارات التواصل', href: '#contact' }] }
+        ]
+      }
+    }
+  };
+
+  content.en.partners.sections.splice(2,0,
+    {heading:'Approved sources, preserved attribution',paragraphs:['We seek documented retailer APIs, licensed product feeds and approved affiliate feeds. Unauthorized scraping is not an acceptable partner integration method. Merchant attribution, source links, source timestamps, currency and data provenance remain attached to catalog records. A technical connection or network membership is not evidence of approval by an individual advertiser.']},
+    {heading:'Integration boundaries',paragraphs:['Each provider has a separate adapter, normalization rules, media and retailer host allowlists, authorization status and bounded requests. The existing Nike catalog connection is classified as authorization unverified pending documentary evidence. Future providers remain disconnected until their source, rights and operating conditions are approved.','Provider credentials must remain in server-side systems. Provider-specific rate limits, permitted data fields, refresh intervals, attribution, image rights and retention requirements must be agreed and configured before onboarding. Browsing data is not authority to reserve inventory, charge a customer or confirm an order.']});
+  content.ar.partners.sections.splice(2,0,
+    {heading:'مصادر مصرّح بها ونَسب واضح',paragraphs:['نسعى لاستخدام واجهات المتاجر الموثقة وخلاصات المنتجات المرخّصة وخلاصات برامج الإحالة المعتمدة. الاستخراج غير المصرّح به ليس وسيلة مقبولة لتكامل الشركاء. يحتفظ سجل المنتج باسم المتجر ورابط المصدر وتاريخ بياناته وعملته. الاتصال التقني أو عضوية شبكة إحالة لا يثبتان موافقة معلن بعينه.']},
+    {heading:'حدود التكامل',paragraphs:['لكل مزوّد موائم مستقل وقواعد لتوحيد البيانات وقوائم مسموحة لنطاقات الصور والمتجر وحالة تفويض وطلبات محدودة. يُصنّف تفويض اتصال كتالوج Nike الحالي بأنه غير متحقق حتى تتوفر أدلة موثّقة. تبقى المصادر المستقبلية غير متصلة حتى اعتماد المصدر وحقوقه وشروطه.','يجب أن تبقى بيانات اعتماد المزوّد في أنظمة الخادم. يلزم الاتفاق على حدود الطلبات والحقول والتحديث ونَسب المحتوى وحقوق الصور والاحتفاظ بالبيانات قبل تفعيل المزوّد. بيانات التصفح لا تمنح سلطة لحجز المخزون أو تحصيل الأموال أو تأكيد الطلب.']});
+
+  var footerLabels = {
+    en: { about: 'About AnoX', contact: 'Contact', privacy: 'Privacy & choices', terms: 'Website terms', affiliate: 'Affiliate disclosure', shipping: 'Shipping', returns: 'Returns & cancellations', partners: 'Work with AnoX', help: 'Help' },
+    ar: { about: 'عن AnoX', contact: 'تواصل معنا', privacy: 'الخصوصية والخيارات', terms: 'شروط الموقع', affiliate: 'الإفصاح عن العمولات', shipping: 'الشحن', returns: 'الإرجاع والإلغاء', partners: 'تعاون مع AnoX', help: 'المساعدة' }
+  };
+
+  return {
+    routes: Object.keys(content.en),
+    footerLabels: footerLabels,
+    get: function (route, lang) {
+      if (typeof route !== 'string' || !Object.prototype.hasOwnProperty.call(content.en, route)) return null;
+      var language = typeof lang === 'string' && lang.toLowerCase().split('-')[0] === 'ar' ? 'ar' : 'en';
+      return JSON.parse(JSON.stringify(content[language][route]));
+    }
+  };
+}));
+
+;
+
 
   (function(){
     "use strict";
+    if(window.AnoXAnalytics?.isMetricsFrame)return;
 
     /* ================================================================
        01. Safe primitives, localization and formatting
@@ -1517,13 +2105,13 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       const handling={};for(const key of ['battery','liquid','fragrance','restricted'])handling[key]=['yes','no','unknown'].includes(raw.handling&&raw.handling[key])?raw.handling[key]:'unknown';
       const dimensions=isObject(raw.dimensionsMm)&&['length','width','height'].every(k=>whole(raw.dimensionsMm[k],1,100000))?{length:raw.dimensionsMm.length,width:raw.dimensionsMm.width,height:raw.dimensionsMm.height}:null;
       const classification={hsCode:typeof raw.hsCode==='string'&&/^\d{2,10}$/.test(raw.hsCode)?raw.hsCode:null,status:'unverified'};
-      return deepFreeze({dimensionsMm:dimensions,classification,id,slug,name,brand:text(raw.brand,100),category:raw.category,kind:raw.kind,currency:'USD',priceCents:raw.priceCents,priceUsd:raw.priceCents/100,weightGrams:raw.weightGrams,estimatedWeight:raw.weightGrams/1000,colors:[...new Set(variants.map(v=>v.color))],sizes:[...new Set(variants.map(v=>v.size))],variants,stock:variants.reduce((n,v)=>n+v.stock,0),isNew:raw.isNew===true,isPopular:raw.isPopular===true,demo:mode==='preview',rating:null,reviewCount:0,compareAtPriceCents:whole(raw.compareAtPriceCents,0,1e8)?raw.compareAtPriceCents:null,updatedAt:normalizedDate(raw.updatedAt),availability:['in_stock','out_of_stock'].includes(raw.availability)?raw.availability:'unknown',comparisonGroup:text(raw.comparisonGroup,50)||raw.kind,specs:(Array.isArray(raw.specs)?raw.specs:[]).slice(0,30).map(s=>({key:text(s.key,50),label:localizedRecord(s.label),value:localizedRecord(s.value)})),description:localizedRecord(raw.description,1000),media,handling,source:{schema:'anox.catalog-source/2',providerId:provider.id,itemId:raw.id,mode,merchantUrl:mode==='live'?merchantUrl:null,verifiedAt:mode==='live'?verifiedAt:null,availabilityVerifiedAt:mode==='live'?availabilityAt:null,availability:mode==='preview'?'illustrative':source.availability==='verified'&&availabilityAt?'verified':'unknown'},purchasable:mode==='live'&&raw.purchasable===true});
+      return deepFreeze({dimensionsMm:dimensions,classification,id,slug,name,brand:text(raw.brand,100),category:raw.category,kind:raw.kind,currency:'USD',priceCents:raw.priceCents,priceUsd:raw.priceCents/100,weightGrams:raw.weightGrams,estimatedWeight:raw.weightGrams/1000,colors:[...new Set(variants.map(v=>v.color))],sizes:[...new Set(variants.map(v=>v.size))],variants,stock:variants.reduce((n,v)=>n+v.stock,0),isNew:raw.isNew===true,isPopular:raw.isPopular===true,demo:mode==='preview',rating:null,reviewCount:0,compareAtPriceCents:whole(raw.compareAtPriceCents,0,1e8)?raw.compareAtPriceCents:null,updatedAt:normalizedDate(raw.updatedAt),availability:['in_stock','out_of_stock'].includes(raw.availability)?raw.availability:'unknown',comparisonGroup:text(raw.comparisonGroup,50)||raw.kind,specs:(Array.isArray(raw.specs)?raw.specs:[]).slice(0,30).map(s=>({key:text(s.key,50),label:localizedRecord(s.label),value:localizedRecord(s.value)})),description:localizedRecord(raw.description,1000),media,handling,variantDetailsKnown:raw.variantDetailsKnown===true,source:{authorization:provider.authorization?.status||'unverified',sourceType:provider.sourceType||'internal',fetchedAt:normalizedDate(source.fetchedAt),schema:'anox.catalog-source/2',providerId:provider.id,itemId:raw.id,mode,merchantUrl:mode==='live'?merchantUrl:null,verifiedAt:mode==='live'?verifiedAt:null,availabilityVerifiedAt:mode==='live'?availabilityAt:null,availability:mode==='preview'?'illustrative':source.availability==='verified'&&availabilityAt?'verified':'unknown'},purchasable:mode==='live'&&raw.purchasable===true});
     }
     class CatalogRepository{
       constructor(registry){
         this.registry=registry;this.records=Object.freeze([]);this.localRecords=Object.freeze([]);this.liveRecords=Object.freeze([]);this.lookup=new Map();this.providers=new Map();this.status="idle";this.liveStatus="idle";this.liveQuery="";this.liveTotal=0;this.liveNextOffset=null;this.liveError="";this.version=0;this.listeners=new Set();this.epoch=0;this.liveEpoch=0;this.pendingLoad=null;this.livePending=null;
       }
-      all(){return this.records;}live(){return this.liveRecords;}get(id){return this.lookup.get(id);}subscribe(fn){this.listeners.add(fn);return ()=>this.listeners.delete(fn);}providerStatus(id){return this.providers.get(id)?.status||"unavailable";}
+      all(){return DEVELOPER_MODE?this.records:this.records.filter(product=>!product.demo);}live(){return this.liveRecords;}get(id){return this.lookup.get(id);}subscribe(fn){this.listeners.add(fn);return ()=>this.listeners.delete(fn);}providerStatus(id){return this.providers.get(id)?.status||"unavailable";}
       usingLive(query=""){const q=text(query,100).trim();return q===this.liveQuery&&["loading","ready","partial"].includes(this.liveStatus);}
       liveSource(query=""){return this.usingLive(query)?this.liveRecords:Object.freeze([]);}
       rebuildRecords(){
@@ -1544,7 +2132,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
         this.status=ids.length&&[...this.providers.values()].every(p=>p.status==="ready")?"ready":this.localRecords.length?"partial":"unavailable";this.rebuildRecords();return this;
       }
       loadLivePage({query="",offset=0,limit=24,append=false}={}){
-        const q=text(query,100).trim();if(append&&this.liveNextOffset===null)return Promise.resolve(this);if(!append&&this.liveQuery===q&&["loading","ready","partial","unavailable"].includes(this.liveStatus))return this.livePending||Promise.resolve(this);
+        const q=text(query,100).trim();if(append&&this.liveNextOffset===null)return Promise.resolve(this);if(!append&&this.liveQuery===q&&["loading","ready","partial"].includes(this.liveStatus))return this.livePending||Promise.resolve(this);
         const epoch=++this.liveEpoch;this.liveQuery=q;this.liveStatus="loading";this.liveError="";
         const pending=(async()=>{const result=await this.registry.page("nike-live",append?offset:0,limit,null,q);if(epoch!==this.liveEpoch)return this;if(result.status==="unavailable"){this.liveStatus="unavailable";this.liveError=result.errors.join(",")||"provider_unavailable";this.liveRecords=append?this.liveRecords:Object.freeze([]);this.liveTotal=0;this.liveNextOffset=null;}else{const incoming=append?[...this.liveRecords,...result.items]:result.items,seen=new Set();this.liveRecords=Object.freeze(incoming.filter(product=>{if(seen.has(product.id))return false;seen.add(product.id);return true;}));this.liveStatus=result.status;this.liveTotal=result.total??this.liveRecords.length;this.liveNextOffset=result.nextOffset;this.providers.set("nike-live",deepFreeze({status:result.status,total:result.total,loaded:this.liveRecords.length,nextOffset:result.nextOffset,errors:result.errors}));}this.rebuildRecords();return result;})();
         this.livePending=pending;pending.then(()=>{if(this.livePending===pending)this.livePending=null;},()=>{if(this.livePending===pending)this.livePending=null;});return pending;
@@ -1782,7 +2370,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       };
       return raw;
     });
-    const PROVIDERS=new ProductProviderRegistry();PROVIDERS.register({id:'anox-preview',mode:'preview',transport:'offline',trustedMedia:false,eager:true,async list({limit=100,offset=0}={}){return {items:OFFLINE_RECORDS.slice(offset,offset+limit),total:OFFLINE_RECORDS.length,nextOffset:offset+limit<OFFLINE_RECORDS.length?offset+limit:null};}});PROVIDERS.register({id:'nike-live',mode:'live',transport:'api',trustedMedia:true,eager:false,async list({limit=24,offset=0,query='',signal}={}){if(!window.AnoXLiveCatalog)throw Error('live_adapter_missing');return window.AnoXLiveCatalog.fetchPage({q:query,limit,offset,signal});}});const Catalog=new CatalogRepository(PROVIDERS);const productBy=value=>Catalog.get(value);
+    const PROVIDERS=new ProductProviderRegistry();PROVIDERS.register({id:'anox-preview',mode:'preview',transport:'offline',trustedMedia:false,eager:new URLSearchParams(location.search).get('debug')==='1',async list({limit=100,offset=0}={}){return {items:OFFLINE_RECORDS.slice(offset,offset+limit),total:OFFLINE_RECORDS.length,nextOffset:offset+limit<OFFLINE_RECORDS.length?offset+limit:null};}});PROVIDERS.register({...window.AnoXLiveCatalog.provider,id:'nike-live',mode:'live',transport:'api',trustedMedia:true,eager:false,async list({limit=24,offset=0,query='',signal}={}){if(!window.AnoXLiveCatalog)throw Error('live_adapter_missing');return window.AnoXLiveCatalog.fetchPage({q:query,limit,offset,signal});}});const Catalog=new CatalogRepository(PROVIDERS);const productBy=value=>Catalog.get(value);
     const REGIONS=[
       ["Adrar","أدرار"],["Chlef","الشلف"],["Laghouat","الأغواط"],["Oum El Bouaghi","أم البواقي"],["Batna","باتنة"],
       ["Béjaïa","بجاية"],["Biskra","بسكرة"],["Béchar","بشار"],["Blida","البليدة"],["Bouira","البويرة"],
@@ -2100,7 +2688,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
        ================================================================ */
 
     let artSequence=0;
-    function productArt(product,color=product.colors[0],view=0,transparent=false){const media=product.media?.filter(m=>m.trusted&&(m.data||m.url));if(media?.length&&!transparent){const image=media[view%media.length],src=image.data||image.url;return '<img class="provider-art" src="'+esc(src)+'" width="'+image.width+'" height="'+image.height+'" alt="'+esc(localized(image.alt))+'" loading="lazy" decoding="async" data-media-fallback="'+esc(product.id)+'">';}return generatedArtwork(product,color,view,transparent);}
+    function productArt(product,color=product.colors[0],view=0,transparent=false){if(!product.demo&&(!product.media?.length||transparent))return '<span class="anox-media-unavailable">'+esc(tx("الصورة غير متاحة","Image unavailable"))+'</span>';const media=product.media?.filter(m=>m.trusted&&(m.data||m.url));if(media?.length&&!transparent){const image=media[view%media.length],src=image.data||image.url;return '<img class="provider-art" src="'+esc(src)+'" width="'+image.width+'" height="'+image.height+'" alt="'+esc(localized(image.alt))+'" loading="lazy" decoding="async" data-media-fallback="'+esc(product.id)+'">';}return generatedArtwork(product,color,view,transparent);}
     function generatedArtwork(product,color=product.colors[0],view=0,transparent=false){
       const id="anox-art-"+(++artSequence),c=colorHex(color),ink="#243449",light="#f8fafc";
       let shape="";
@@ -2278,15 +2866,15 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       for(const key of ["available","isNew","popular"])filters[key]=params.get(key)==="1";
       return {filters,sort:["featured","low","high","newest"].includes(params.get("sort"))?params.get("sort"):"featured",page:parseCatalogPage(params.get("page"))};
     }
-    function readFilterParams(params){Object.assign(ui,parseCatalogParams(params));}
+    function readFilterParams(params){Object.assign(ui,parseCatalogParams(params));if(!DEVELOPER_MODE)ui.filters.budget=0;}
     function filterCatalogProducts(source,filters,sort="featured"){
       const f=filters,estimates=new Map(),estimate=product=>{if(!estimates.has(product.id))estimates.set(product.id,productQuote(product));return estimates.get(product.id);};
       const list=source.filter(product=>
         (!f.category||product.category===f.category)&&(!f.brand||product.brand===f.brand)&&
         (!f.maxPrice||product.priceCents<=f.maxPrice*100)&&(!f.budget||estimate(product).totalDzd<=f.budget)&&
-        (!f.available||product.stock>0)&&(!f.isNew||product.isNew)&&(!f.popular||product.isPopular)
+        (!f.available||(product.source?.mode==='live'?product.availability==='in_stock'&&product.updatedAt&&Date.now()-Date.parse(product.updatedAt)<=86400000:product.stock>0))&&(!f.isNew||product.isNew)&&(!f.popular||product.isPopular)
       );
-      if(sort==="low"||sort==="high")list.sort((a,b)=>(estimate(a).totalCents-estimate(b).totalCents)*(sort==="high"?-1:1));
+      if(sort==="low"||sort==="high")list.sort((a,b)=>((!DEVELOPER_MODE?a.priceCents:estimate(a).totalCents)-(!DEVELOPER_MODE?b.priceCents:estimate(b).totalCents))*(sort==="high"?-1:1));
       else if(sort==="newest")list.sort((a,b)=>Number(b.isNew)-Number(a.isNew));
       return list;
     }
@@ -2374,20 +2962,11 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       return '<button type="button" class="v2-header-action anox-conversation-trigger" data-open="assistant" aria-label="AnoX" aria-haspopup="dialog" aria-controls="dialog" aria-expanded="'+(ui.dialog==="assistant")+'"><span class="v2-action-icon"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5a8 8 0 0 1-8 8H4l1.8-4A8 8 0 1 1 20 11.5Z"/><path d="M8.5 10.5h7M8.5 14h4"/></svg></span><span class="anox-trigger-label">AnoX</span></button>';
     }
     function anoxChatProductCard(result){
-      if(!isObject(result)||typeof result.productId!=="string"||result.productId.length>180)return "";
-      const reason=text(result.reason,300).trim(),product=Catalog.get(result.productId);
-      if(product&&product.demo===false&&product.source?.mode==="live"&&product.source.verifiedAt&&Number.isSafeInteger(product.priceCents)&&product.priceCents>=0){
-        const media=product.media?.find(item=>item.trusted===true&&(typeof item.data==="string"||typeof item.url==="string"));
-        const name=localized(product.name);
-        const image=media?'<img src="'+esc(media.data||media.url)+'" width="'+media.width+'" height="'+media.height+'" alt="'+esc(name)+'" loading="lazy" decoding="async" data-media-fallback="'+esc(product.id)+'">':'<span>'+esc(tx("الصورة غير متاحة","Image unavailable"))+'</span>';
-        return '<article class="anox-chat-product"><div class="anox-chat-product-media">'+image+'</div><div><small>'+esc(product.brand)+'</small><h4>'+esc(name)+'</h4><strong><bdi>'+formatUSD(product.priceCents)+'</bdi></strong>'+(reason?'<p>'+esc(reason)+'</p>':'')+'<a href="#product/'+esc(encodeURIComponent(product.slug))+'" data-nav>'+esc(tx("عرض المنتج","View product"))+'</a></div></article>';
-      }
-      const title=text(result.title,300).trim(),brand=text(result.brand,120).trim(),price=Number(result.price),currency=text(result.currency,8).toUpperCase();
-      if(!title||!brand||!Number.isFinite(price)||price<0||currency!=="USD")return "";
-      let imageUrl="";try{const u=new URL(text(result.imageUrl,1200));if(u.protocol==="https:"&&u.hostname.toLowerCase()==="static.nike.com")imageUrl=u.href;}catch{}
-      const image=imageUrl?'<img src="'+esc(imageUrl)+'" width="420" height="390" alt="'+esc(title)+'" loading="lazy" decoding="async">':'<span>'+esc(tx("الصورة غير متاحة","Image unavailable"))+'</span>';
-      return '<article class="anox-chat-product"><div class="anox-chat-product-media">'+image+'</div><div><small>'+esc(brand)+'</small><h4>'+esc(title)+'</h4><strong><bdi>'+formatUSD(Math.round(price*100))+'</bdi></strong>'+(reason?'<p>'+esc(reason)+'</p>':'')+'<a href="#search?q='+esc(encodeURIComponent(title))+'">'+esc(tx("عرض المنتج","View product"))+'</a></div></article>';
-    }
+  if(!isObject(result)||typeof result.productId!=='string')return '';
+  const product=Catalog.get(result.productId)||Catalog.get('nike-live__'+result.productId);
+  if(!product||product.demo||product.source?.mode!=='live')return '';
+  return '<article class="anox-chat-product"><div class="anox-chat-product-media">'+productArt(product)+'</div><div><small>'+esc(product.brand)+'</small><h4>'+esc(localized(product.name))+'</h4><strong><bdi>'+formatUSD(product.priceCents)+'</bdi></strong><p>'+esc(text(result.reason,300))+'</p><a href="#product/'+esc(product.slug)+'" data-nav>'+esc(tx('عرض المنتج','View product'))+'</a></div></article>';
+}
     function anoxConversationMessages(){
       return anoxConversation.turns.map(turn=>'<article class="anox-conversation-turn" data-role="'+turn.role+'" aria-label="'+esc(turn.role==="user"?tx("أنت","You"):"AnoX")+'"><p>'+esc(turn.text)+'</p>'+(turn.products?.length?'<div class="anox-chat-products">'+turn.products.map(anoxChatProductCard).join("")+'</div>':'')+'</article>').join("");
     }
@@ -2453,6 +3032,8 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
         if(request!==anoxConversation.request)return;
         if(["reply","out_of_scope"].includes(result?.status)&&typeof result.text==="string"&&result.text.trim()&&result.text.length<=6000){
           const products=Array.isArray(result.products)?result.products.slice(0,6):[];
+          for(const result of products){if(typeof result.productId!=="string")continue;const id=result.productId.replace(/^nike-live__/,"");if(/^[A-Za-z0-9_-]{1,80}$/.test(id)&&!Catalog.get("nike-live__"+id)){try{await fetchCanonicalProduct(id);}catch{}}}
+          if(request!==anoxConversation.request)return;
           if(products.some(product=>!anoxChatProductCard(product))){anoxConversation.status="unavailable";return;}
           anoxConversation.turns.push({role:"user",text:message},{role:"assistant",text:result.text,products:products.map(product=>({productId:text(product.productId,180),reason:text(product.reason,300),title:text(product.title,300),brand:text(product.brand,120),price:Number(product.price),currency:text(product.currency,8),availability:text(product.availability,80),imageUrl:text(product.imageUrl,1200),productUrl:text(product.productUrl,1200),lastUpdated:text(product.lastUpdated,80)}))});
           anoxConversation.turns=anoxConversation.turns.slice(-24);anoxConversation.draft="";
@@ -2618,12 +3199,12 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
 
     const productGrid=(products,context)=>'<div class="product-grid">'+products.filter(Boolean).map(product=>productCard(product,context)).join("")+'</div>';
 
-    function liveCatalogStateMessage(kind,query=""){
-      const messages={loading:tx("جارٍ تحميل منتجات Nike…","Loading Nike products…"),unavailable:tx("تعذر تحميل كتالوج Nike الآن. جرّب مرة أخرى بعد قليل.","The Nike catalog is unavailable right now. Try again shortly."),empty:query?tx("لم نجد منتجات Nike تطابق بحثك.","No Nike products match your search."):tx("لا توجد منتجات Nike متاحة حاليًا.","No Nike products are currently available.")};
-      return '<div class="v2-live-catalog-state '+kind+'" role="'+(kind==="unavailable"?"alert":"status")+'"><strong>'+esc(messages[kind])+'</strong><span>'+esc(tx("يمكنك المحاولة مجددًا أو استخدام بحث مختلف.","You can retry or try a different search."))+'</span></div>';
-    }
+    function liveCatalogStateMessage(kind,query=''){
+  const messages={loading:tx('جارٍ تحميل المنتجات…','Loading products…'),unavailable:tx('تعذر تحميل المنتجات حاليًا.','Products could not be loaded right now.'),empty:tx('لا توجد نتائج متاحة لهذا الاختيار.','No listings are available for this selection.')};
+  return '<div class="v2-live-catalog-state '+kind+'" role="'+(kind==='unavailable'?'alert':'status')+'"><strong>'+esc(messages[kind])+'</strong>'+(kind==='unavailable'?button(tx('إعادة المحاولة','Try again'),'data-live-retry','btn secondary'):'')+'</div>';
+}
     function liveLoadMoreMarkup(query=""){if(!Catalog.usingLive(query)||Catalog.liveNextOffset===null)return "";return '<div class="v2-live-load-more"><button type="button" class="btn secondary" data-live-load-more data-catalog-query="'+esc(query)+'">'+esc(tx("تحميل المزيد","Load more"))+'</button><span class="fine">'+esc((Catalog.liveTotal||Catalog.liveRecords.length)+' '+tx("منتجًا","products"))+'</span></div>';}
-    async function ensureLiveCatalog(query="",append=false){const q=text(query,100).trim();if(append&&Catalog.liveNextOffset===null)return;if(!append&&Catalog.liveQuery===q&&Catalog.liveStatus!=="idle")return;const offset=append?(Catalog.liveNextOffset||0):0;await Catalog.loadLivePage({query:q,offset,limit:24,append});SearchService.rebuild();const route=currentRoute();if((route.name==="shop"&&q==="")||(route.name==="search"&&text(route.params.get("q")||"",100).trim()===q)||(route.name==="home"&&q===""))renderRoute({focus:false});}
+    async function ensureLiveCatalog(query="",append=false){const q=text(query,100).trim();if(append&&Catalog.liveNextOffset===null)return;if(!append&&Catalog.liveQuery===q&&["loading","ready","partial"].includes(Catalog.liveStatus))return;const offset=append?(Catalog.liveNextOffset||0):0;await Catalog.loadLivePage({query:q,offset,limit:24,append});SearchService.rebuild();const route=currentRoute();if((route.name==="shop"&&q==="")||(route.name==="search"&&text(route.params.get("q")||"",100).trim()===q)||(["home","new","brands","wishlist"].includes(route.name)&&q===""))renderRoute({focus:false});}
     async function loadMoreLiveCatalog(button){if(!button||button.disabled)return;button.disabled=true;button.setAttribute("aria-busy","true");await ensureLiveCatalog(button.dataset.catalogQuery||"",true);}
 
     const DEVELOPER_MODE=new URLSearchParams(location.search).get('debug')==='1';
@@ -2758,7 +3339,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       if(currentRoute().name==="wishlist")renderWishlist();
       toast(exists?tx("أُزيل من المفضلة.","Removed from wishlist."):tx("حُفظ في المفضلة.","Saved to wishlist."),"success");
     }
-    function renderWishlist(){
+    function renderWishlist(){if(!DEVELOPER_MODE)return renderLiveWishlist();
       pageTitle(navLabel("wishlist"));
       const products=state.wishlist.map(productBy).filter(Boolean),pagination=catalogPage(products,currentRoute().params.get("page"));
       $("main").innerHTML=pageShell(tx("احفظ ما يعجبك لوقت لاحق","Saved for later"),tx("قارن اختياراتك أو انقلها إلى السلة بعد تحديد خياراتها.","Compare your picks or move them to your cart after choosing their options."),
@@ -2813,14 +3394,14 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
         return '<article class="cart-line"><a class="line-art" href="#product/'+product.slug+'" data-product="'+product.id+'" aria-label="'+esc(localized(product.name))+'">'+productArt(product,line.color)+'</a><div class="line-info"><span class="product-brand">'+esc(product.brand)+'</span><h3>'+esc(localized(product.name))+'</h3><p>'+esc(colorName(line.color)+" · "+line.size)+'</p><div class="line-actions"><div class="quantity"><button type="button" data-cart-delta="-1" data-line="'+esc(key)+'" aria-label="'+esc(tx("إنقاص كمية ","Decrease quantity for ")+localized(product.name))+'" '+(line.qty<=1?"disabled":"")+'>'+icon("minus")+'</button><span>'+line.qty+'</span><button type="button" data-cart-delta="1" data-line="'+esc(key)+'" aria-label="'+esc(tx("زيادة كمية ","Increase quantity for ")+localized(product.name))+'" '+(line.qty>=Math.min(variant.stock,20)?"disabled":"")+'>'+icon("plus")+'</button></div>'+button(tx("تعديل الخيارات","Edit options"),'data-edit-line="'+esc(key)+'"',"text-btn")+button(tx("إزالة","Remove"),'data-remove-line="'+esc(key)+'"',"text-btn")+'</div></div><div class="line-price"><strong><bdi>'+formatUSD(product.priceCents*line.qty)+'</bdi></strong><span><bdi>'+formatDZD(itemDZD(product,line.qty))+'</bdi></span></div></article>';
       }).join("");
     }
-    function renderCart(){
+    function renderCart(){if(!DEVELOPER_MODE)return renderCommerceBoundary("cart");
       pageTitle(navLabel("cart"));
       $("main").innerHTML=pageShell(tx("راجع سلتك","Review your cart"),state.cart.length?cartQuantity()+" "+tx("قطعة · كل تكاليف الوصول تقديرية","items · all landed costs are estimated"):"",
         state.cart.length?'<div class="split"><section class="surface">'+cartLinesMarkup()+'</section><aside>'+summaryMarkup(cartQuote())+'<div class="actions actions-spaced">'+button(tx("متابعة إلى إتمام الطلب","Continue to checkout"),'data-checkout-start',"btn primary full")+'</div><p class="fine" style="margin-top:13px">'+esc(tx("ستُراجع التفاصيل قبل حفظ طلب محلي. لا توجد دفعة فعلية.","You’ll review the details before saving a local order. No actual payment is taken."))+'</p></aside></div>':
           emptyMarkup(tx("سلتك فارغة","Your cart is empty"),tx("ابدأ بمنتج يعجبك، وستظهر تكلفة وصوله التقديرية هنا.","Start with a product you like and its estimated landed cost will appear here.")),
         "YOUR CART");
     }
-    function cartDrawerMarkup(){
+    function cartDrawerMarkup(){if(!DEVELOPER_MODE)return '<p>'+esc(tx("الشراء والدفع عبر الموقع غير متاحين حاليًا. يمكنك حفظ المنتجات في المفضلة أو التواصل معنا بشأن طلب شراء.","Online purchasing and payment are currently unavailable. Save products to your wishlist or contact us about a purchase."))+'</p><div class="actions">'+routeLink("wishlist",navLabel("wishlist"),"btn secondary")+routeLink("contact",tx("تواصل معنا","Contact us"),"btn primary")+'</div>';
       return state.cart.length?'<div>'+cartLinesMarkup()+'</div><div style="margin-top:28px">'+summaryMarkup(cartQuote(),{compact:true})+'</div><div class="drawer-checkout">'+routeLink("cart",tx("عرض السلة","View cart")+" · "+(cartQuote()?formatUSD(cartQuote().totalCents):tx("راجع العناصر","Review items")),"btn primary full")+'</div>':
         emptyMarkup(tx("السلة فارغة","Your cart is empty"),tx("أضف منتجًا لترى تكلفة وصوله التقديرية.","Add a product to see its estimated landed cost."));
     }
@@ -2961,28 +3542,19 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     }
 
     /* Production account transport. Public identifiers only; no secret is embedded in the browser. */
-    const ANOX_CLOUD=Object.freeze({region:"us-east-2",clientId:"63738r9gpr126qpgp1a5cubchi",cognitoEndpoint:"https://cognito-idp.us-east-2.amazonaws.com/",apiBase:"https://zmumi2wruk.execute-api.us-east-2.amazonaws.com",sessionKey:"anox:auth:v1"});
-    const cloudAccount={session:null,user:null,orders:[],busy:false,error:""};
-    let authEphemeralPassword="";
-    function cloudReadSession(){try{const raw=sessionStorage.getItem(ANOX_CLOUD.sessionKey);if(!raw)return null;const value=JSON.parse(raw);return value?.idToken&&value?.accessToken&&value?.refreshToken?value:null;}catch{return null;}}
-    function cloudWriteSession(value){cloudAccount.session=value||null;try{if(value)sessionStorage.setItem(ANOX_CLOUD.sessionKey,JSON.stringify(value));else sessionStorage.removeItem(ANOX_CLOUD.sessionKey);}catch{}}
-    cloudAccount.session=cloudReadSession();
-    function cloudAuthMessage(error){const code=error?.code||error?.name||"";const map={UsernameExistsException:tx("يوجد حساب بهذا البريد بالفعل.","An account with this email already exists."),CodeMismatchException:tx("رمز التحقق غير صحيح.","The verification code is incorrect."),ExpiredCodeException:tx("انتهت صلاحية الرمز. اطلب رمزًا جديدًا.","The verification code expired."),NotAuthorizedException:tx("البريد أو كلمة المرور غير صحيحة.","Email or password is incorrect."),UserNotFoundException:tx("لم نجد حسابًا بهذا البريد.","No account was found for this email."),UserNotConfirmedException:tx("يجب تأكيد البريد الإلكتروني أولًا.","Verify your email first."),InvalidPasswordException:tx("كلمة المرور لا تستوفي المتطلبات.","The password does not meet the requirements."),LimitExceededException:tx("تم تجاوز حد المحاولات مؤقتًا. حاول لاحقًا.","Too many attempts. Try again later."),TooManyRequestsException:tx("محاولات كثيرة جدًا. حاول بعد قليل.","Too many requests. Try again shortly."),UNAUTHORIZED:tx("انتهت الجلسة. سجّل الدخول من جديد.","Your session expired. Sign in again.")};return map[code]||tx("تعذر إكمال العملية. حاول مرة أخرى.","The request could not be completed. Try again.");}
-    async function cloudCognito(target,body){const response=await fetch(ANOX_CLOUD.cognitoEndpoint,{method:"POST",headers:{"Content-Type":"application/x-amz-json-1.1","X-Amz-Target":"AWSCognitoIdentityProviderService."+target},body:JSON.stringify(body),credentials:"omit",cache:"no-store",referrerPolicy:"no-referrer"});const data=await response.json().catch(()=>({}));if(!response.ok){const code=String(data.__type||data.code||"").split("#").pop();const error=Error(data.message||code||("HTTP "+response.status));error.code=code||("HTTP_"+response.status);throw error;}return data;}
-    function cloudSessionFrom(result,priorRefreshToken=""){const a=result?.AuthenticationResult;if(!a?.IdToken||!a?.AccessToken){const error=Error("Invalid authentication response");error.code="UNAUTHORIZED";throw error;}return {idToken:a.IdToken,accessToken:a.AccessToken,refreshToken:a.RefreshToken||priorRefreshToken,expiresAt:Date.now()+Math.max(60,Number(a.ExpiresIn||3600))*1000-30000};}
-    async function cloudRefresh(){const current=cloudAccount.session;if(!current?.refreshToken){const error=Error("No refresh token");error.code="UNAUTHORIZED";throw error;}const result=await cloudCognito("InitiateAuth",{AuthFlow:"REFRESH_TOKEN_AUTH",ClientId:ANOX_CLOUD.clientId,AuthParameters:{REFRESH_TOKEN:current.refreshToken}});const next=cloudSessionFrom(result,current.refreshToken);cloudWriteSession(next);return next;}
-    async function cloudValidSession(){if(!cloudAccount.session)return null;if(Number(cloudAccount.session.expiresAt||0)>Date.now()+15000)return cloudAccount.session;try{return await cloudRefresh();}catch{cloudSignOut(false);return null;}}
-    async function cloudSignIn(email,password){const result=await cloudCognito("InitiateAuth",{AuthFlow:"USER_PASSWORD_AUTH",ClientId:ANOX_CLOUD.clientId,AuthParameters:{USERNAME:email.trim().toLowerCase(),PASSWORD:password}});if(result.ChallengeName){const e=Error(result.ChallengeName);e.code="UNSUPPORTED_AUTH_CHALLENGE";throw e;}cloudWriteSession(cloudSessionFrom(result));cloudAccount.user=null;cloudAccount.orders=[];}
-    async function cloudSignUp(email,password){return cloudCognito("SignUp",{ClientId:ANOX_CLOUD.clientId,Username:email.trim().toLowerCase(),Password:password,UserAttributes:[{Name:"email",Value:email.trim().toLowerCase()}]});}
-    async function cloudConfirm(email,code){return cloudCognito("ConfirmSignUp",{ClientId:ANOX_CLOUD.clientId,Username:email.trim().toLowerCase(),ConfirmationCode:String(code||"").trim()});}
-    async function cloudApi(path,options={},retry=true){const session=await cloudValidSession();if(!session?.idToken){const e=Error("Not signed in");e.code="UNAUTHORIZED";throw e;}const headers=new Headers(options.headers||{});headers.set("Authorization","Bearer "+session.idToken);if(options.body!==undefined&&!headers.has("Content-Type"))headers.set("Content-Type","application/json");const response=await fetch(ANOX_CLOUD.apiBase+path,{...options,headers,credentials:"omit",cache:"no-store",referrerPolicy:"no-referrer"});if(response.status===401&&retry&&cloudAccount.session?.refreshToken){await cloudRefresh();return cloudApi(path,options,false);}const data=await response.json().catch(()=>({}));if(!response.ok){const e=Error(data.error||("HTTP "+response.status));e.code=data.error||("HTTP_"+response.status);throw e;}return data;}
-    async function cloudLoadAccount(){if(!cloudAccount.session||cloudAccount.busy)return;cloudAccount.busy=true;cloudAccount.error="";try{const [me,orders]=await Promise.all([cloudApi("/me"),cloudApi("/orders")]);cloudAccount.user=me.user||null;cloudAccount.orders=Array.isArray(orders.orders)?orders.orders:[];}catch(error){cloudAccount.error=cloudAuthMessage(error);}finally{cloudAccount.busy=false;if(currentRoute().name==="account"&&!ui.rendering)renderRoute({focus:false});}}
-    function cloudSignOut(rerender=true){cloudWriteSession(null);cloudAccount.user=null;cloudAccount.orders=[];cloudAccount.error="";authEphemeralPassword="";if(rerender&&currentRoute().name==="account")renderRoute({focus:false});}
-
+    const ANOX_CLOUD=window.AnoXAuth.config,cloudAccount=window.AnoXAuth.state;
+    let authEphemeralPassword='',authUiEpoch=0;
+    function cloudAuthMessage(error){const code=error?.code||error?.name||"";const map={UsernameExistsException:tx("يوجد حساب بهذا البريد بالفعل.","An account with this email already exists."),CodeMismatchException:tx("رمز التحقق غير صحيح.","The verification code is incorrect."),ExpiredCodeException:tx("انتهت صلاحية الرمز. اطلب رمزًا جديدًا.","The verification code expired. Request another code."),NotAuthorizedException:tx("البريد أو كلمة المرور غير صحيحة.","Email or password is incorrect."),UserNotFoundException:tx("تعذر تسجيل الدخول. راجع بياناتك أو استخدم استعادة الحساب.","Sign-in could not be completed. Check your details or recover your account."),UserNotConfirmedException:tx("يجب تأكيد البريد الإلكتروني أولًا.","Verify your email first."),InvalidPasswordException:tx("كلمة المرور لا تستوفي المتطلبات.","The password does not meet the requirements."),LimitExceededException:tx("تم تجاوز حد المحاولات مؤقتًا. حاول لاحقًا.","Too many attempts. Try again later."),TooManyRequestsException:tx("محاولات كثيرة جدًا. حاول بعد قليل.","Too many requests. Try again shortly."),UNAUTHORIZED:tx("انتهت الجلسة. سجّل الدخول من جديد.","Your session expired. Sign in again.")};return map[code]||tx("تعذر إكمال العملية. حاول مرة أخرى.","The request could not be completed. Try again.");}
+    const cloudSignIn=(email,password)=>window.AnoXAuth.signIn(email,password);
+    const cloudSignUp=(email,password)=>window.AnoXAuth.signUp(email,password);
+    const cloudConfirm=(email,code)=>window.AnoXAuth.confirm(email,code);
+    const cloudApi=(path,options)=>window.AnoXAuth.api(path,options);
+    const cloudLoadAccount=(force=false)=>window.AnoXAuth.loadAccount(force);
+    function cloudSignOut(rerender=true){window.AnoXAuth.signOut();authEphemeralPassword='';resetAnoXConversation();if(rerender&&currentRoute().name==='account')renderRoute({focus:false});}
     /* Account access. Passwords remain ephemeral and are never written to local/session storage. */
     const authFlow={mode:"",email:"",delivery:{},errors:{},passwordChecked:false,status:"",busy:false,reviewed:null,backendError:""};
     function authRoute(){return ["signin","signup"].includes(currentRoute().name);}
-    function authReset(){
+    function authReset(){authUiEpoch++;if(!cloudAccount.session)window.AnoXAuth.cancelPending();
       document.querySelectorAll('[data-auth-sensitive]').forEach(input=>{input.value="";input.type="password";});
       Object.assign(authFlow,{mode:"",email:"",delivery:{},errors:{},passwordChecked:false,status:"",busy:false,reviewed:null,backendError:""});authEphemeralPassword="";
     }
@@ -3047,7 +3619,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       $("site-header").innerHTML='<div class="anox-auth-header"><a class="brand" href="#home" data-nav aria-label="'+esc(tx("الصفحة الرئيسية لـ AnoX","AnoX home"))+'">'+brand()+'</a><div class="anox-auth-tools"><button type="button" data-language="'+(state.lang==="ar"?"en":"ar")+'" aria-label="'+esc(tx("التبديل إلى الإنجليزية","Switch to Arabic"))+'">'+(state.lang==="ar"?"EN":"العربية")+'</button><button type="button" data-theme aria-label="'+esc(tx("تبديل المظهر","Toggle theme"))+'">'+icon(state.theme==="dark"?"sun":"moon")+'</button></div></div>';
       updateStorageBanner();
     }
-    function renderAuth(){
+    function renderAuth(){if(!DEVELOPER_MODE)return renderProductionAuth();
       const mode=currentRoute().name,signup=mode==="signup";
       if(authFlow.mode!==mode){authReset();authFlow.mode=mode;}
       let step=currentRoute().params.get("step")||"email";
@@ -3080,7 +3652,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       const status=authFlow.backendError||(authFlow.status==="save"?tx("تعذر تأكيد حفظ التفاصيل. حاول مجددًا قبل مغادرة الصفحة.","Saving could not be confirmed. Try again before leaving this page."):authFlow.status==="conflict"?tx("تغيّرت بياناتك المحفوظة أثناء المراجعة. ارجع وراجع بيانات التوصيل قبل الحفظ.","Your saved details changed during review. Go back and review delivery information before saving."):"");
       $("main").innerHTML='<section class="anox-auth '+(step==="delivery"?'anox-auth--delivery':'')+'" aria-labelledby="auth-heading">'+previous+stepCopy+'<h1 id="auth-heading" tabindex="-1">'+esc(heading)+'</h1><p class="anox-auth-intro">'+esc(step==="payment"?tx("أنت تختار متى تضيفها.","Add it when you are ready."):unavailable)+'</p>'+content+'<p id="auth-status" class="anox-auth-status" role="status" tabindex="-1">'+esc(status)+'</p>'+trouble+secondary+'</section>';
     }
-    async function submitAuth(form){
+    async function submitAuth(form){if(!DEVELOPER_MODE)return submitProductionAuth(form);
       if(authFlow.busy)return;authFlow.status="";authFlow.errors={};authFlow.backendError="";
       if(form.id==="auth-email-form"){
         authFlow.email=form.elements.email.value.trim().toLowerCase();authFlow.passwordChecked=false;
@@ -3133,7 +3705,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
         target.setAttribute("aria-pressed",String(show));target.setAttribute("aria-label",show?tx("إخفاء كلمة المرور","Hide password"):tx("إظهار كلمة المرور","Show password"));target.textContent=show?tx("إخفاء","Hide"):tx("إظهار","Show");
       }else if(target.hasAttribute("data-auth-help")){
         const panel=$("auth-help-panel");panel.hidden=!panel.hidden;target.setAttribute("aria-expanded",String(!panel.hidden));
-      }else if(target.hasAttribute("data-auth-change")){authFlow.passwordChecked=false;authStepLink("email");}
+      }else if(target.hasAttribute("data-auth-change")){authUiEpoch++;window.AnoXAuth.cancelPending();authFlow.busy=false;authFlow.backendError="";authFlow.errors={};authEphemeralPassword="";authFlow.passwordChecked=false;authStepLink("email");}
       else if(target.hasAttribute("data-auth-back")){
         const step=currentRoute().params.get("step");authStepLink(step==="payment"?"delivery":step==="confirm"?"delivery":step==="delivery"?"password":"email");
       }else if(target.hasAttribute("data-auth-skip")){authReset();navigate("account");}
@@ -3143,7 +3715,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
 
     window.addEventListener("pageshow",event=>{if(event.persisted&&authRoute())renderRoute();});
 
-    function renderAccount(){
+    function renderAccount(){if(!DEVELOPER_MODE)return renderProductionAccount();
       pageTitle(navLabel("account"));
       const signedIn=!!cloudAccount.session,user=cloudAccount.user||{},name=user.displayName||state.profile.name||user.email||"";
       const address=state.checkoutData,hasAddress=!Object.keys(deliveryErrors(address)).length;
@@ -3347,26 +3919,13 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
        ================================================================ */
 
     function renderCollections(){
-      pageTitle(navLabel("brands"));
-      const names=[...new Set(Catalog.all().map(product=>product.brand))];
-      $("main").innerHTML=pageShell(tx("عالم AnoX، مجموعة بمجموعة","The AnoX collections"),tx("مجموعات خيالية أنشئت لتوضيح التجربة. لا تمثل شراكة مع علامة أو توافرًا لدى بائع.","Fictional collections created to illustrate the experience. They do not imply a brand partnership or seller availability."),
-        '<div class="collection-grid">'+names.map(name=>{
-          const items=Catalog.all().filter(product=>product.brand===name);
-          return '<button type="button" class="collection-card" data-brand="'+esc(name)+'"><div class="art">'+productArt(items[0])+'</div><strong>'+esc(name)+'</strong><span>'+items.length+" "+esc(tx("منتجات توضيحية","illustrative products"))+' →</span></button>';
-        }).join("")+'</div>',"CURATED COLLECTIONS");
-    }
+  if(DEVELOPER_MODE){renderPublicPage('about');return;}
+  if(Catalog.liveStatus==='idle'||Catalog.liveQuery!=='')void ensureLiveCatalog('');
+  const brands=[...new Set(Catalog.liveSource('').map(p=>p.brand))];pageTitle(tx('العلامات في الكتالوج','Brands in the catalog'));
+  $('main').innerHTML=pageShell(tx('العلامات في الكتالوج','Brands in the catalog'),tx('ذكر علامة لا يعني شراكة أو تأييدًا.','A brand listing does not imply partnership or endorsement.'),brands.length?'<div class="actions">'+brands.map(name=>button(esc(name),'data-brand="'+esc(name)+'"','btn secondary')).join('')+'</div>':liveCatalogStateMessage(Catalog.liveStatus==='loading'?'loading':Catalog.liveStatus==='unavailable'?'unavailable':'empty'));
+}
     
-    function renderHow(){
-      pageTitle(navLabel("how"));
-      const steps=[
-        [tx("اكتشف","Discover"),tx("ابحث في الكتالوج أو احفظ رابط منتج تريد طلبه.","Explore the catalog or save a link to a product you want to request.")],
-        [tx("راجع التكلفة","Review the cost"),tx("افصل سعر المنتج عن الخدمة والشحن، وانتبه إلى الرسوم المستثناة.","Separate the item, service and shipping amounts, and check excluded charges.")],
-        [tx("راجع التفاصيل","Review the details"),tx("اختر اللون والمقاس والكمية. في التشغيل الفعلي يجب تأكيد المصدر والمخزون أولًا.","Choose color, size and quantity. Live operations must first confirm the source and inventory.")],
-        [tx("تابع الرحلة","Follow the journey"),tx("جرّب سجل الطلب والتتبّع المحلي. التوريد والدفع والشحن الحقيقي لم تُربط بعد.","Try the local order record and timeline. Real sourcing, payment and shipping are not yet connected.")]
-      ];
-      $("main").innerHTML=pageShell(tx("مسار واضح عبر الحدود","A clearer cross-border journey"),tx("من الاكتشاف إلى فهم التكلفة، مع فصل واضح بين تجربة الواجهة والتشغيل التجاري الفعلي.","From discovery to cost clarity, with a clear separation between the interface experience and live commercial operations."),
-        '<div class="steps-grid">'+steps.map(([title,body],index)=>'<article class="step-card"><div class="step-number">0'+(index+1)+'</div><h2>'+esc(title)+'</h2><p>'+esc(body)+'</p></article>').join("")+'</div><section class="section-tight"><div class="cost-editorial"><div><span class="eyebrow">TRANSPARENT ESTIMATES</span><h2>'+esc(tx("تقدير واحد. مكوّنات واضحة.","One estimate. Clearly separated."))+'</h2><p>'+esc(tx("القيم الحالية تشرح المنطق فقط. لا تُستخدم لاتخاذ التزام دفع حقيقي؛ تحتاج الخدمة الحية عرضًا صادرًا عن خادم موثوق ومعلومات شحن ورسوم مؤكدة.","Current values explain the model only. They must not create a real payment commitment; live service requires a trusted server quote and confirmed shipping and fee information."))+'</p><div class="actions actions-spaced">'+routeLink("settings",tx("جرّب افتراضاتك","Try your assumptions"),"btn primary")+'</div></div>'+summaryMarkup(Catalog.all()[0]?productQuote(Catalog.all()[0]):null,{compact:true})+'</div></section>',"THE ANOX JOURNEY");
-    }
+    function renderHow(){renderPublicPage('about');}
     
 
     /* ================================================================
@@ -3715,7 +4274,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     window.addEventListener("pagehide",()=>{
       if(catalogToolLifecycle){catalogToolLifecycle.abort();catalogToolLifecycle=null;}
     });
-    window.addEventListener("pageshow",registerCatalogTool);
+    window.addEventListener("pageshow",()=>{if(DEVELOPER_MODE)registerCatalogTool();});
 
     /* Explicit opt-in only: index.html?debug=1#debug. Tests use isolated repositories and pure state objects. No fake orders, storage writes, profile reads or network calls. */
     async function runSelfTests(){
@@ -3867,7 +4426,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       await test('Keyboard: negative Tab stops are skipped and an empty modal receives focus',()=>{const f=focusFixture();moveDialogFocus({key:'Tab',preventDefault(){}},f.root,f.middle);assert(f.focused===f.last);f.root.querySelectorAll=()=>[f.excluded];moveDialogFocus({key:'Tab',preventDefault(){}},f.root,f.middle);assert(f.focused===f.root);});
       await test('Keyboard: closed details exclude content but retain the visible summary',()=>{const summary={contains:node=>node===summary},details={querySelector:()=>summary,parentElement:null};summary.closest=()=>details;const content={closest:()=>details};assert(outsideClosedDetails(summary));assert(!outsideClosedDetails(content));});
       await test('Keyboard: modified platform shortcuts are not intercepted',()=>{const f=focusFixture();for(const key of ['altKey','ctrlKey','metaKey'])assert(!moveDialogFocus({key:'Tab',[key]:true,preventDefault(){throw Error('Platform shortcut intercepted');}},f.root,f.first));assert(!moveDialogFocus({key:'Escape',preventDefault(){throw Error('Non-Tab intercepted');}},f.root,f.first));assert(f.focused===null);});
-      await test('Security: exact inline script hash and production CSP',async()=>{const policy=document.querySelector('meta[http-equiv="Content-Security-Policy"]').content,scripts=[...document.querySelectorAll('script')],inline=scripts.filter(script=>!script.hasAttribute('src')),external=scripts.filter(script=>script.hasAttribute('src'));assert(inline.length===1&&external.some(script=>script.getAttribute('src')?.startsWith('/catalog-live.js'))&&external.some(script=>script.getAttribute('src')==='/analytics.js'));const directive=policy.split(';').map(value=>value.trim()).find(value=>value.startsWith('script-src '));assert(directive&&directive.includes("'self'")&&!directive.includes('unsafe-inline')&&!directive.includes('unsafe-eval'));assert(policy.includes('https://zmumi2wruk.execute-api.us-east-2.amazonaws.com')&&policy.includes('https://cognito-idp.us-east-2.amazonaws.com')&&policy.includes('https://static.nike.com')&&policy.includes("default-src 'none'"));assert(window.crypto?.subtle,'SHA-256 verification requires Web Crypto');const digest=await window.crypto.subtle.digest('SHA-256',new TextEncoder().encode(inline[0].textContent)),hash=btoa(String.fromCharCode(...new Uint8Array(digest)));assert(directive.includes("'sha256-"+hash+"'"),'Inline script hash mismatch');});
+      await test('Security: exact inline script hash and production CSP',async()=>{const policy=document.querySelector('meta[http-equiv="Content-Security-Policy"]').content,scripts=[...document.querySelectorAll('script')],inline=scripts.filter(script=>!script.hasAttribute('src')),external=scripts.filter(script=>script.hasAttribute('src'));assert(inline.length===1&&external.length===0&&document.documentElement.dataset.anoxBundle==='1');const directive=policy.split(';').map(value=>value.trim()).find(value=>value.startsWith('script-src '));assert(directive&&directive.includes("'self'")&&!directive.includes('unsafe-inline')&&!directive.includes('unsafe-eval'));assert(policy.includes('https://zmumi2wruk.execute-api.us-east-2.amazonaws.com')&&policy.includes('https://cognito-idp.us-east-2.amazonaws.com')&&policy.includes('https://static.nike.com')&&policy.includes("default-src 'none'"));assert(window.crypto?.subtle,'SHA-256 verification requires Web Crypto');const digest=await window.crypto.subtle.digest('SHA-256',new TextEncoder().encode(inline[0].textContent)),hash=btoa(String.fromCharCode(...new Uint8Array(digest)));assert(directive.includes("'sha256-"+hash+"'"),'Inline script hash mismatch');});
       return results;
     }
     async function renderDeveloperTests(){if(!DEVELOPER_MODE)return;pageTitle('AnoX · Developer checks');$('main').innerHTML=pageShell('Developer checks','Isolated in-memory checks. No customer records are created or saved.','<p role="status">Running…</p>');const results=await runSelfTests();if(currentRoute().name!=='debug')return;$('main').innerHTML=pageShell('Developer checks',results.filter(r=>r.pass).length+'/'+results.length+' PASS','<div class="surface"><div class="actions">'+button('Run again','data-run-tests','btn secondary')+'</div><div class="comparison-scroll" tabindex="0" role="region" aria-label="Automated test results"><table class="comparison-table"><caption>Isolated application self-tests</caption><thead><tr><th scope="col">Result</th><th scope="col">Check</th></tr></thead><tbody>'+results.map(r=>'<tr><td>'+ (r.pass?'PASS':'FAIL')+'</td><th scope="row">'+esc(r.name)+(r.pass?'':' · '+esc(r.error))+'</th></tr>').join('')+'</tbody></table></div></div>');$('main').setAttribute('aria-busy','false');}
@@ -3876,7 +4435,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
        19. Boot
        ================================================================ */
 
-    document.addEventListener('error',event=>{const image=event.target;if(image instanceof HTMLImageElement&&image.dataset.mediaFallback){const p=Catalog.get(image.dataset.mediaFallback);if(p){const wrapper=document.createElement('span');wrapper.innerHTML=generatedArtwork(p);image.replaceWith(wrapper);}else image.remove();}},true);
+    document.addEventListener('error',event=>{const image=event.target;if(image instanceof HTMLImageElement&&image.dataset.mediaFallback){const p=Catalog.get(image.dataset.mediaFallback);if(p){const wrapper=document.createElement('span');wrapper.innerHTML=p.demo?generatedArtwork(p):'<span class="anox-media-unavailable">'+esc(tx("الصورة غير متاحة","Image unavailable"))+'</span>';image.replaceWith(wrapper);}else image.remove();}},true);
     document.addEventListener('click',async event=>{if(event.target.closest('[data-reload-catalog]')){updateCatalogStatus();await Catalog.load();SearchService.rebuild();renderRoute({focus:false});}if(DEVELOPER_MODE&&event.target.closest('[data-run-tests]'))renderDeveloperTests();});
 
 const V2_WORDMARK="<svg xmlns=\"http://www.w3.org/2000/svg\" class=\"anox-wordmark\" viewBox=\"0 0 236 64\" width=\"236\" height=\"64\" role=\"img\" aria-label=\"AnoX\" focusable=\"false\">\n  <path data-letter=\"A\" fill=\"currentColor\" d=\"M4 56 25 8h8l21 48h-9L29 20 13 56Z\"/>\n  <path data-letter=\"n\" fill=\"currentColor\" d=\"M62 22h8v5c3-4 7-6 12-6 11 0 17 7 17 18v17h-8V39c0-7-3-11-10-11s-11 5-11 12v16h-8Z\"/>\n  <path data-letter=\"o\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"7.5\" d=\"M143 39c-9-10-14-14-20-14-8 0-13 6-13 14s5 14 13 14c6 0 11-4 20-14s14-14 20-14c8 0 13 6 13 14s-5 14-13 14c-6 0-11-4-20-14Z\"/>\n  <path data-letter=\"X\" fill=\"currentColor\" d=\"m184 8 15 19 15-19h10l-20 24 20 24h-10l-15-19-15 19h-10l20-24-20-24Z\" transform=\"translate(7)\"/>\n</svg>";
@@ -4123,7 +4682,7 @@ const V2_CATEGORY_COPY={
   Accessories:bi('التفاصيل تصنع الفرق.','The finishing touches.')
 };
 function V2CatalogChoices(params=currentRoute().params){
-  const products=Catalog.all(),result={};
+  const products=Catalog.all().filter(p=>p.demo||p.variantDetailsKnown),result={};
   for(const [key,field] of [['size','sizes'],['color','colors']]){
     const value=params.get(key)||'';
     result[key]=value.length<=80&&products.some(p=>p[field].includes(value))?value:'';
@@ -4138,7 +4697,7 @@ function V2FilterSelect({id,key,label,values,value,choice=false,help=''}){
   return `<div class="v2-filter-field"><label for="${esc(id)}">${esc(label)}</label><select class="select" id="${esc(id)}" ${choice?'data-v2-filter':'data-filter'}="${esc(key)}">${values.map(([val,title])=>`<option value="${esc(val)}"${String(val)===String(value)?' selected':''}>${esc(title)}</option>`).join('')}</select>${help?`<p class="field-help">${esc(help)}</p>`:''}</div>`;
 }
 function filterMarkup(suffix){
-  const f=ui.filters,choice=V2CatalogChoices(),all=Catalog.all(),source=f.category?all.filter(p=>p.category===f.category):all;
+  const f=ui.filters,choice=V2CatalogChoices(),all=Catalog.all(),source=(f.category?all.filter(p=>p.category===f.category):all).filter(p=>p.demo||p.variantDetailsKnown);
   const any=tx('الكل','All'),options=(values,label=v=>v)=>[['',any],...values.map(v=>[v,label(v)])];
   const select=(key,label,values,value,extra={})=>V2FilterSelect({id:`${key}-${suffix}`,key,label,values,value,...extra});
   return `<div class="v2-filter-fields">
@@ -4150,7 +4709,7 @@ function filterMarkup(suffix){
     </details>
     <details class="v2-filter-section"${f.maxPrice||f.budget?' open':''}><summary>${esc(tx('السعر وتكلفة الوصول','Price & landed cost'))}</summary>
       ${select('maxPrice',tx('سعر المنتج بالدولار','Item price in USD'),[...new Set([0,50,75,150,300,f.maxPrice])].sort((a,b)=>a-b).map(v=>[v,v?tx('حتى ','Up to ')+formatUSD(v*100):any]),f.maxPrice)}
-      ${select('budget',tx('ميزانية الوصول بالدينار','Landed budget in DZD'),[0,10000,15000,25000,50000,100000].map(v=>[v,v?tx('حتى ','Up to ')+formatDZD(v):any]),f.budget,{help:tx('تقدير لقطعة واحدة، دون الجمارك.','One-item estimate, excluding customs.')})}
+      ${DEVELOPER_MODE?select('budget',tx('ميزانية الوصول بالدينار','Landed budget in DZD'),[0,10000,15000,25000,50000,100000].map(v=>[v,v?tx('حتى ','Up to ')+formatDZD(v):any]),f.budget,{help:tx('تقدير لقطعة واحدة، دون الجمارك.','One-item estimate, excluding customs.')}):''}
     </details>
     <fieldset class="v2-filter-checks"><legend>${esc(tx('الاكتشاف','Discover'))}</legend>${[['available',tx('متاح للاختيار','Available to select')],['isNew',tx('المضاف حديثًا','Recently added')],['popular',tx('مختارات AnoX','AnoX picks')]].map(([k,label])=>`<label><input type="checkbox" data-filter="${k}"${f[k]?' checked':''}><span>${esc(label)}</span></label>`).join('')}</fieldset>
   </div>`;
@@ -4169,7 +4728,7 @@ function catalogResults(products,query=''){
   const pagination=catalogPage(products,ui.page),route=currentRoute();ui.page=pagination.page;
   const pageParams=filterParams();for(const [k,v] of Object.entries(V2CatalogChoices()))if(v)pageParams.set(k,v);if(route.name==='search'&&query)pageParams.set('q',query);
   const resultLabel=products.length?`${pagination.start}–${pagination.end} ${tx('من','of')} ${pagination.total} ${tx('منتج','products')}`:tx('لا توجد نتائج','No results');
-  const sorts=[['featured',tx('مختاراتنا','Featured')],['low',tx('تكلفة الوصول: الأقل','Landed cost: low first')],['high',tx('تكلفة الوصول: الأعلى','Landed cost: high first')],['newest',tx('الأحدث','Newest')]];
+  const sorts=[['featured',tx('مختاراتنا','Featured')],['low',DEVELOPER_MODE?tx('تكلفة الوصول: الأقل','Landed cost: low first'):tx('السعر: الأقل','Price: low first')],['high',DEVELOPER_MODE?tx('تكلفة الوصول: الأعلى','Landed cost: high first'):tx('السعر: الأعلى','Price: high first')],['newest',tx('الأحدث','Newest')]];
   const toolbar=`<div class="v2-catalog-toolbar"><div><button type="button" class="btn secondary small v2-filter-trigger" data-open="filters">${icon('filter')}${esc(tx('الفلاتر','Filters'))}</button><span id="results-count" class="v2-results-count" role="status" tabindex="-1">${esc(resultLabel)}</span></div><label class="v2-sort"><span>${esc(tx('الترتيب','Sort'))}</span><select class="select" data-sort>${sorts.map(([v,l])=>`<option value="${v}"${ui.sort===v?' selected':''}>${esc(l)}</option>`).join('')}</select></label></div>`;
   const liveMore=liveLoadMoreMarkup(query);
   const content=products.length?`<div class="product-grid v2-catalog-grid">${pagination.items.map(p=>productCard(p)).join('')}</div>${Catalog.usingLive(query)?liveMore:catalogPaginationMarkup(pagination,route.name==='search'?'search':'shop',pageParams)}`:emptyMarkup(tx('مساحة لاختيار مختلف','Room for a different choice'),tx('وسّع الفلاتر أو أرسل رابط المنتج الذي تبحث عنه.','Try fewer filters, or send the link to what you want.'),tx('طلب منتج','Request a product'),'request','search');
@@ -4178,7 +4737,7 @@ function catalogResults(products,query=''){
 function V2CategoryHeader(){
   const category=ui.filters.category,cap=ui.filters.maxPrice;
   const title=category?v2CategoryLabel(category):cap===50?tx('اختيارات بأقل من 50 دولارًا','The under-$50 edit'):tx('عالم من الاختيارات','A world to choose from');
-  const desc=category&&V2_CATEGORY_COPY[category]?localized(V2_CATEGORY_COPY[category]):tx('اكتشف المنتج. واعرف تقدير وصوله إلى الجزائر.','Discover the product. See its estimated cost to Algeria.');
+  const desc=category&&V2_CATEGORY_COPY[category]?localized(V2_CATEGORY_COPY[category]):tx('اكتشف المنتجات، ثم تواصل معنا لمراجعة تكلفة إيصالها إلى الجزائر.','Discover products, then contact us to review fulfillment costs to Algeria.');
   const links=[['',tx('كل المنتجات','All products')],...['Shoes','Fashion','Beauty','Electronics','Accessories'].map(c=>[c,v2CategoryLabel(c)])];
   return `<header class="v2-category-heading"><nav class="v2-breadcrumb" aria-label="${esc(tx('مسار التنقل','Breadcrumb'))}">${routeLink('home',tx('الرئيسية','Home'))}<span aria-hidden="true">/</span>${category?routeLink('shop',tx('تسوّق','Shop'))+'<span aria-hidden="true">/</span>':''}<span aria-current="page">${esc(title)}</span></nav><div class="v2-category-title"><div><span class="v2-kicker">ANOX / ${category?esc(category.toUpperCase()):'DISCOVER'}</span><h1>${esc(title)}</h1><p>${esc(desc)}</p></div><span class="v2-category-note">${esc(tx('USD + تقدير الوصول بالدينار','USD + your DZD landed estimate'))}</span></div><nav class="v2-category-links" aria-label="${esc(tx('تصفح الفئات','Browse categories'))}">${links.map(([c,l])=>`<a href="#shop${c?'?category='+encodeURIComponent(c):''}" data-nav${category===c?' aria-current="page"':''}>${esc(l)}</a>`).join('')}</nav></header>`;
 }
@@ -4222,13 +4781,9 @@ document.addEventListener('click',e=>{const t=e.target.closest('[data-v2-remove-
 
 /* Component: customer.js */
 function renderFooter(){
-      const groups=[
-        [tx("تسوّق","Shop"),[["shop",navLabel("shop")],["new",navLabel("new")],["brands",navLabel("brands")],["wishlist",navLabel("wishlist")]]],
-        [tx("رحلة AnoX","AnoX journey"),[["how",navLabel("how")],["request",navLabel("request")],["requests",navLabel("requests")],["track",navLabel("track")],["business",navLabel("business")]]],
-        [tx("المساعدة والحساب","Help & account"),[["help",tx("الأسئلة الشائعة","FAQ")],["help?section=shipping",tx("الشحن والإرجاع","Shipping & returns")],["help?section=privacy",tx("الخصوصية والشروط","Privacy & terms")],["help?section=contact",tx("التواصل","Contact")],["settings",navLabel("settings")],["account",navLabel("account")]]]
-      ];
-      $("footer").innerHTML='<div class="container"><div class="footer-grid"><div><a class="brand" href="#home" data-nav>'+brand()+'</a><p class="footer-about">'+esc(tx("اختيارات من السوق الأمريكي، وتجربة أوضح للعملاء في الجزائر. نبدأ بالاكتشاف وفهم التكلفة، قبل أي التزام بالشراء.","Discovery from the US market, with more clarity for customers in Algeria. Understand the product and its cost before making a purchase commitment."))+'</p></div>'+groups.map(([title,links])=>'<div><h2>'+esc(title)+'</h2><nav aria-label="'+esc(title)+'">'+links.map(([route,label])=>routeLink(route,label)).join("")+'</nav></div>').join("")+'</div><div class="footer-bottom"><span>© '+new Date().getFullYear()+' AnoX. '+esc(tx("جميع الحقوق محفوظة.","All rights reserved."))+'</span><span>'+esc(tx("من أمريكا إلى الجزائر","From the US to Algeria"))+'</span></div></div>';
-    }
+  const pageLinks=['about','contact','partners','privacy','terms','affiliate','shipping','returns'];
+  $('footer').innerHTML='<div class="container"><div class="footer-grid"><div><a class="brand" href="#home" data-nav>'+brand()+'</a><p class="footer-about">AnoX LLC<br>'+esc(tx('نيوجيرسي، الولايات المتحدة','New Jersey, United States'))+'</p><a href="mailto:anox@anox.app">anox@anox.app</a></div><div><h2>'+esc(tx('اكتشف','Discover'))+'</h2><nav>'+['shop','new','brands','wishlist'].map(n=>routeLink(n,navLabel(n))).join('')+'</nav></div><div><h2>'+esc(tx('AnoX والمساعدة','AnoX & help'))+'</h2><nav>'+pageLinks.slice(0,3).map(n=>routeLink(n,window.AnoXPublicPages.footerLabels[state.lang][n])).join('')+routeLink('help',tx('المساعدة','Help'))+routeLink('account',navLabel('account'))+'</nav></div><div><h2>'+esc(tx('الشروط والخصوصية','Policies & privacy'))+'</h2><nav>'+pageLinks.slice(3).map(n=>routeLink(n,window.AnoXPublicPages.footerLabels[state.lang][n])).join('')+'</nav></div></div><div class="footer-bottom"><span>© '+new Date().getFullYear()+' AnoX LLC</span><span>'+esc(tx('من أمريكا إلى الجزائر','From the US to Algeria'))+'</span></div></div>';
+}
 function V2DeveloperStorageBanner(){
       const banner=$("storage-banner");
       if(!banner)return;
@@ -4260,7 +4815,7 @@ function updateStorageBanner(){
 }
 function updateCatalogStatus(){
   let banner=$('catalog-status');if(!banner){banner=document.createElement('div');banner.id='catalog-status';banner.className='storage-banner';banner.setAttribute('role','status');$('storage-banner').after(banner);}
-  const live=Catalog.liveStatus,visible=live==='loading'||live==='unavailable'||live==='partial'||Catalog.status!=='ready';banner.hidden=!visible;
+  const live=Catalog.liveStatus,visible=DEVELOPER_MODE?(live==='loading'||live==='unavailable'||live==='partial'||Catalog.status!=='ready'):['home','shop','search','new','brands','wishlist'].includes(currentRoute().name)&&['loading','unavailable','partial'].includes(live);banner.hidden=!visible;
   banner.textContent=live==='loading'?tx('جارٍ تحميل منتجات Nike…','Loading Nike products…'):live==='unavailable'?tx('تعذر تحميل كتالوج Nike الآن.','Nike catalog could not be loaded.'):live==='partial'?tx('عُرضت بعض منتجات Nike؛ يمكنك تحميل المزيد.','Some Nike products are shown; you can load more.'):Catalog.status==='loading'?tx('جارٍ تهيئة الكتالوج…','Preparing the catalog…'):Catalog.status==='partial'?tx('بعض بيانات الكتالوج المحلي غير متاحة.','Some local catalog data is unavailable.'):tx('الكتالوج غير متاح.','Catalog unavailable.');banner.inert=!!ui.dialog;
 }
 function pageTitle(label){document.title=label+' — AnoX';document.querySelector('meta[name="description"]')?.setAttribute('content',tx('AnoX — اختيارات من أمريكا مع تقدير واضح لوصولها إلى الجزائر.','AnoX — discoveries from the US, with a clear estimated cost to Algeria.'));}
@@ -4271,22 +4826,7 @@ function pageShell(title,intro,content,eyebrow="ANOX",headingActions=""){
       return '<div class="page route-enter"><div class="container"><div class="page-heading"><div><span class="eyebrow">'+esc(v2CustomerText(eyebrow))+'</span><h1>'+esc(title)+'</h1>'+(intro?'<p>'+esc(intro)+'</p>':"")+'</div>'+headingActions+'</div>'+content+'</div></div>';
     }
 
-function renderHelp(){
-      pageTitle(navLabel("help"));
-      const faqs=[
-        [bi("ما هي AnoX؟","What is AnoX?"),bi("AnoX تجربة اكتشاف وتجارة عابرة للحدود موجهة للعملاء في الجزائر. هذا الملف يقدّم الواجهة ورحلة التكلفة والطلب محليًا؛ ليس متجرًا متصلًا يقبل المدفوعات.","AnoX is a cross-border discovery and commerce experience for customers in Algeria. This file provides the interface, cost journey and local order flow; it is not a connected store accepting payments.")],
-        [bi("هل المنتجات والأسعار والمخزون حقيقية؟","Are products, prices and inventory real?"),bi("لا. مجموعات AnoX الحالية خيالية، وأسعارها ومواصفاتها ومخزون خياراتها بيانات توضيحية. لا نعرض تقييمات أو مراجعات مختلقة، ولا نُثبت أصالة منتجات غير متصلة بمورد.","No. The current AnoX collections are fictional, with illustrative prices, specifications and variant inventory. We do not display fabricated reviews or claim authenticity for products without a connected supplier.")],
-        [bi("هل السعر بالدينار نهائي؟","Is the DZD amount final?"),bi("لا. هو تقدير بناءً على افتراضات الصرف والخدمة والشحن. الجمارك والضرائب المحلية والتأمين مستثناة. لا يمثل هذا سعر صرف حيًا أو عرض بيع ملزمًا.","No. It is an estimate based on exchange, service and shipping assumptions. Customs, local taxes and insurance are excluded. It is neither a live exchange rate nor a binding offer.")],
-        [bi("لماذا تختلف تكلفة السلة عن جمع تقديرات المنتجات؟","Why does a cart differ from adding product estimates?"),bi("تقدير المنتج المنفرد يتضمن رسم شحن أساسيًا. السلة المجمّعة تطبق هذا الرسم مرة واحدة ثم تضيف الشحن بحسب الوزن، ولذلك يجب مراجعة إجمالي السلة.","An individual product estimate includes a base shipping fee. A combined cart pays that fee once, then adds weight-based shipping. Always review the cart total.")],
-        [bi("ماذا يحدث عند حفظ الطلب؟","What happens when I save an order?"),bi("يُحفظ سجل توضيحي في هذا المتصفح، مع الخيارات والعنوان والأسعار وقت التأكيد. لا تتم معالجة دفعة ولا شراء أو حجز مخزون أو إرسال تفاصيل إلى خادم.","An illustrative record is saved in this browser with options, delivery details and prices at confirmation. No payment, purchase, inventory reservation or server submission occurs.")],
-        [bi("هل التتبّع مباشر؟","Is tracking live?"),bi("لا. المراحل محاكاة يمكنك تجربتها، وليست تحديثات من بائع أو شركة شحن.","No. The stages are a simulation you can try, not updates from a seller or carrier.")],
-        [bi("هل فُحص رابط طلب المنتج؟","Was my requested product link inspected?"),bi("لا. يُحفظ الرابط كما تدخله بعد التحقق من صيغته. لا يجري الملف أي طلب شبكي لاستخراج المنتج أو السعر. افتراضات العرض يحددها المستخدم.","No. The link is saved after format validation. This file makes no network request to extract products or prices. Quote assumptions are supplied by the user.")],
-        [bi("هل توجد شراكات رسمية مع متاجر أمريكية؟","Are there official partnerships with US retailers?"),bi("لا يعلن هذا الملف أي شراكة أو اعتماد أو توريد مؤكّد. أسماء المجموعات الحالية تحمل AnoX وهي خيالية؛ أي تكامل حقيقي يحتاج مصدرًا معتمدًا وشروط استخدام مناسبة.","This file does not claim any partnership, endorsement or confirmed supply. The current AnoX collections are fictional. Real integrations require approved sources and appropriate usage terms.")],
-        [bi("هل يمكنني فتح الملف دون إنترنت؟","Can I open the file without internet?"),bi("نعم. التصميم والرسوم والكود مضمنة داخل الملف. التخزين المحلي يعتمد على المتصفح وإعداداته؛ إذا تعذر الحفظ ستظهر رسالة واضحة وستبقى البيانات في الجلسة الحالية فقط.","Yes. Design, illustrations and code are embedded in the file. Local storage depends on your browser and settings. If saving fails, a clear notice appears and data remains only in the current session.")]
-      ];
-      $("main").innerHTML=pageShell(tx("معلومات واضحة، من البداية","Clarity from the start"),tx("كل ما تحتاج معرفته عن هذه النسخة، وما يحدث لبياناتك، وما لم يُربط بعد.","What you need to know about this version, what happens to your data and what is not connected."),
-        '<div class="faq-list">'+faqs.map(([question,answer])=>'<details class="faq"><summary>'+esc(v2CustomerText(localized(question)))+'</summary><p>'+esc(v2CustomerText(localized(answer)))+'</p></details>').join("")+'</div><div class="help-grid"><section class="surface help-card" id="help-shipping" tabindex="-1">'+icon("truck")+'<h2>'+esc(tx("الشحن والإرجاع","Shipping & returns"))+'</h2><p>'+esc(tx("تغطية الشحن والمدة والرسوم وسياسة الإرجاع غير مفعّلة تجاريًا في هذا الملف. اختيار ولاية أو عرض مرحلة تتبّع لا يؤكد توفر خدمة. يجب عرض شروط واضحة وتأكيد التكلفة والأهلية قبل أي شراء حقيقي.","Shipping coverage, timing, charges and returns are not commercially enabled in this file. Selecting a wilaya or displaying a tracking stage does not confirm service availability. Clear terms, cost and eligibility must be confirmed before any real purchase."))+'</p></section><section class="surface help-card" id="help-privacy" tabindex="-1">'+icon("shield")+'<h2>'+esc(tx("الخصوصية والشروط المحلية","Local privacy & terms"))+'</h2><p>'+esc(tx("لا يستخدم الملف تحليلات أو ملفات تتبّع أو خطوطًا خارجية، ولا يرسل النماذج إلى خادم. تُحفظ التفضيلات والمسودات والسلة والسجلات في تخزين هذا المتصفح إن سمح بذلك. يمكنك مسح بيانات AnoX من صفحة الحساب. البيانات ليست مشفّرة كخزنة خاصة، ولا تُدخل كلمات مرور أو بيانات بطاقات أو معلومات حساسة. الروابط الخارجية لا تُفتح إلا باختيارك وقد تخضع لسياسات مواقعها.","This file uses no analytics, tracking cookies or external fonts, and does not send forms to a server. Preferences, drafts, cart and records are stored in this browser when permitted. You can clear AnoX data from Account. Storage is not a private encrypted vault; do not enter passwords, card data or sensitive information. External links open only when you choose them and are subject to their own policies."))+'</p><div class="actions actions-spaced">'+routeLink("account",tx("إدارة بياناتي","Manage my data"),"btn secondary small")+'</div></section><section class="surface help-card" id="help-contact" tabindex="-1">'+icon("info")+'<h2>'+esc(tx("التواصل والتشغيل الفعلي","Contact & live operations"))+'</h2><p>'+esc(tx("لا توجد قناة دعم أو فريق مبيعات متصل بهذا الملف، ولا ندّعي إرسال رسالتك إلى أحد. طلبات المنتجات والأعمال تبقى محلية. يجب ربط بيانات الشركة وقنوات الدعم والموردين والدفع قبل فتح المنصة لطلبات شراء حقيقية.","No support channel or sales team is connected to this file, and it does not claim to send your message to anyone. Product and business requests remain local. Company information, support channels, suppliers and payments must be connected before accepting real purchases."))+'</p><div class="actions actions-spaced">'+routeLink("requests",tx("مراجعة طلباتي المحلية","Review my local requests"),"btn secondary small")+'</div></section></div>',"HELP CENTER");
-    }
+function renderHelp(){renderPublicPage('help');}
 
 function renderCompare(){
       pageTitle(tx("مقارنة المنتجات","Compare products"));
@@ -4306,12 +4846,9 @@ function renderCompare(){
     }
 
 function renderNew(){
-      pageTitle(navLabel("new"));
-      const products=Catalog.all().filter(product=>product.isNew),featured=products[0],pagination=catalogPage(products,currentRoute().params.get("page"));
-      if(!featured){$("main").innerHTML=pageShell(navLabel("new"),"",emptyMarkup(tx("لا توجد إضافات جديدة حاليًا","No new additions yet"),tx("يمكنك استكشاف جميع المنتجات أو حفظ طلب خاص.","Explore the full catalog or save a special request."),navLabel("shop"),"shop"));return;}
-      $("main").innerHTML=pageShell(tx("اختيارات جديدة للاكتشاف","New discoveries to explore"),tx("إضافات إلى الكتالوج التوضيحي. ليست إعلانات مدفوعة أو منتجات متاحة للشراء الآن.","New additions to the illustrative catalog. These are not paid placements or products currently offered for purchase."),
-        '<div class="editorial-grid"><article class="editorial-feature"><span class="eyebrow">THE CURRENT EDIT</span>'+productArt(featured,featured.colors[0],0,true)+'<h2>'+esc(localized(featured.name))+'</h2><p>'+esc(v2CustomerProductDescription(featured))+'</p>'+button(tx("اكتشف التفاصيل","Explore details"),'data-options="'+featured.id+'"',"btn primary")+'</article><div class="editorial-side">'+products.slice(1,3).map(product=>'<article class="editorial-small"><div><span class="eyebrow">'+esc(categoryLabel(product.category))+'</span><h3>'+esc(localized(product.name))+'</h3>'+button(tx("عرض المنتج","View product"),'data-options="'+product.id+'"',"text-btn")+'</div>'+productArt(product)+'</article>').join("")+'</div></div><section class="section-tight"><div class="section-head"><h2>'+esc(tx("أضيفت حديثًا","Recently added"))+'</h2></div>'+productGrid(pagination.items)+catalogPaginationMarkup(pagination,"new",new URLSearchParams())+'</section>',"ANOX EDIT / DISCOVERY");
-    }
+  if(Catalog.liveStatus==='idle'||Catalog.liveQuery!=='')void ensureLiveCatalog('');pageTitle(tx('اكتشف الكتالوج','Explore the catalog'));
+  const products=Catalog.liveSource('');$('main').innerHTML=pageShell(tx('اكتشف الكتالوج','Explore the catalog'),tx('اختيارات من المصدر المتصل. تحقّق من السعر والخيارات لدى المتجر قبل الطلب.','Listings from the connected source. Confirm price and options with the retailer before requesting a purchase.'),products.length?productGrid(products):liveCatalogStateMessage(Catalog.liveStatus==='loading'?'loading':Catalog.liveStatus==='unavailable'?'unavailable':'empty'));
+}
 
 
 /* Component: home.js */
@@ -4323,10 +4860,10 @@ function renderHome() {
   const categories=['Shoes','Fashion','Beauty','Accessories','Sports','Lifestyle'].filter(key=>catalog.some(product=>product.category===key));
   const catalogBlock=Catalog.liveStatus==='loading'&&!catalog.length?liveCatalogStateMessage('loading'):Catalog.liveStatus==='unavailable'?liveCatalogStateMessage('unavailable'):products.length?'<section class="anox-home-selection" aria-labelledby="anox-selection-title"><div class="anox-home-section-head"><h2 id="anox-selection-title">'+esc(tx('اختيارات تستحق نظرة.','Worth a closer look.'))+'</h2>'+routeLink('shop',tx('كل المنتجات','View all products'),'v2-inline-link')+'</div><div class="anox-home-grid">'+products.map(product=>productCard(product)).join('')+'</div></section>':liveCatalogStateMessage('empty');
   $('main').innerHTML='<div class="v2-home anox-home">'+
-    '<section class="anox-home-hero anox-home-shell" aria-labelledby="anox-home-title"><div class="anox-home-intro"><p class="anox-home-eyebrow">'+esc(tx('من أمريكا إلى الجزائر','FROM THE US TO ALGERIA'))+'</p><h1 id="anox-home-title"><span>'+esc(tx('اختيارات أبعد.','Good finds.'))+'</span><span>'+esc(tx('تكلفة أوضح.','A clearer cost.'))+'</span></h1><p class="anox-home-description">'+esc(tx('اكتشف المنتجات وقارن تكلفة وصولها التقديرية إلى الجزائر. التفاصيل أمامك، والاختيار لك.','Discover products and understand their estimated cost to Algeria. See the details. Find what fits your day.'))+'</p>'+routeLink('shop',tx('استكشف المنتجات','Explore products'),'v2-primary-link')+'</div><figure class="anox-home-visual">'+V2HeroPicture()+'</figure></section>'+
+    '<section class="anox-home-hero anox-home-shell" aria-labelledby="anox-home-title"><div class="anox-home-intro"><p class="anox-home-eyebrow">'+esc(tx('من أمريكا إلى الجزائر','FROM THE US TO ALGERIA'))+'</p><h1 id="anox-home-title"><span>'+esc(tx('اختيارات أبعد.','Good finds.'))+'</span><span>'+esc(tx('تكلفة أوضح.','A clearer cost.'))+'</span></h1><p class="anox-home-description">'+esc(tx('اكتشف منتجات من أمريكا، وتواصل معنا لمراجعة تكلفة شرائها وإيصالها إلى الجزائر.','Discover U.S. products and contact us to review purchasing and fulfillment costs to Algeria.'))+'</p>'+routeLink('shop',tx('استكشف المنتجات','Explore products'),'v2-primary-link')+'</div><figure class="anox-home-visual">'+V2HeroPicture()+'</figure></section>'+
     '<div class="anox-home-shell">'+(categories.length?'<nav class="anox-home-categories" aria-label="'+esc(tx('تسوّق حسب الفئة','Shop by category'))+'"><span>'+esc(tx('تسوّق حسب الفئة','Shop by category'))+'</span><div>'+categories.map(key=>routeLink('shop?category='+encodeURIComponent(key),v2CategoryLabel(key),'anox-home-category')).join('')+'</div></nav>':'')+
     catalogBlock+
-    '<section class="anox-home-request" aria-labelledby="anox-request-title"><div><h2 id="anox-request-title">'+esc(tx('لديك منتج آخر في بالك؟','Something else in mind?'))+'</h2><p>'+esc(tx('أضف رابط المنتج واحفظ التفاصيل لمراجعتها.','Add a product link and save the details to review.'))+'</p></div>'+routeLink('request',tx('أضف رابط منتج','Add a product link'),'v2-inline-link')+'</section></div></div>';
+    '<section class="anox-home-request" aria-labelledby="anox-request-title"><div><h2 id="anox-request-title">'+esc(tx('لديك منتج آخر في بالك؟','Something else in mind?'))+'</h2><p>'+esc(tx('راسلنا برابط المنتج والخيارات التي تبحث عنها.','Email us the product link and the options you need.'))+'</p></div>'+routeLink('request',tx('أضف رابط منتج','Add a product link'),'v2-inline-link')+'</section></div></div>';
 }
 
 function V2HeroPicture(){
@@ -4460,7 +4997,7 @@ function V2ProductOptions(product){
   return color+size+quantity;
 }
 function V2Disclosure(title,body){return `<details class="v2-product-disclosure"><summary>${esc(title)}</summary><div>${body}</div></details>`;}
-function V2ProductServices(product){
+function V2ProductServices(product){if(product.source?.mode==='live')return '<div class="v2-product-services">'+V2Disclosure(tx('عن المنتج','About this product'),'<p>'+esc(localized(product.description))+'</p>')+V2Disclosure(tx('المصدر والشروط','Source & conditions'),'<p>'+esc(tx('تأتي هذه القائمة من المصدر المتصل. لا يعني ظهورها تفويضًا أو شراكة مع المتجر. الأسعار والتوفر قد يتغيران.','This listing comes from the connected source. Its appearance does not imply retailer authorization or partnership. Prices and availability may change.'))+'</p>'+routeLink('shipping',tx('الشحن','Shipping'))+' · '+routeLink('returns',tx('الإرجاع','Returns')))+ '</div>'; 
   const detail=V2Disclosure(tx('عن المنتج والمواصفات','About & specifications'),`<p>${esc(v2CustomerProductDescription(product))}</p><dl class="spec-list">${product.specs.map(s=>`<div><dt>${esc(v2CustomerText(localized(s.label)))}</dt><dd>${esc(v2CustomerText(localized(s.value)))}</dd></div>`).join('')}<div><dt>${esc(tx('وزن الشحن التوضيحي','Illustrative shipping weight'))}</dt><dd><bdi>${product.weightGrams/1000} kg</bdi></dd></div></dl>`);
   const shipping=V2Disclosure(tx('الشحن إلى الجزائر','Shipping to Algeria'),`<p>${esc(tx('التقدير حسب وزن المنتج. تُراجع المدة والوزن الحجمي والجمارك في العرض النهائي قبل الشراء.','The estimate uses product weight. Delivery time, dimensional weight and customs are reviewed in the final quote before purchase.'))}</p>`);
   const inspection=V2Disclosure(tx('الفحص والإرجاع','Inspection & returns'),`<p>${esc(tx('راجع أهلية الفحص وشروط الإرجاع والرسوم في عرض المنتج قبل تأكيد الشراء.','Review inspection eligibility, return terms and fees in the product quote before confirming your purchase.'))}</p>`);
@@ -4470,7 +5007,7 @@ function productDetailMarkup(product){
   const s=ui.selection,variant=variantFor(product,s.color,s.size),remaining=remainingStock(product,s.color,s.size,ui.editKey),liked=state.wishlist.includes(product.id),live=product.source?.mode==='live';
   const intro='<div class="v2-pdp-intro"><nav class="v2-breadcrumb" aria-label="'+esc(tx('مسار التنقل','Breadcrumb'))+'">'+routeLink('shop',tx('تسوّق','Shop'))+'<span aria-hidden="true">/</span>'+routeLink('shop?category='+encodeURIComponent(product.category),v2CategoryLabel(product.category))+'</nav><p class="v2-pdp-brand">'+esc(product.brand)+'</p><h1>'+esc(localized(product.name))+'</h1>'+V2Price(product)+'<span class="v2-pdp-price-caption">'+esc(tx('سعر المنتج الأمريكي','US item price'))+'</span>'+liveProductMeta(product)+(live?'':productCostDisclosure(product,s.qty))+'</div>';
   const action=live?'<div class="v2-pdp-actions">'+liveProductLink(product,tx('عرض لدى المتجر','View at retailer'))+'<button type="button" class="v2-pdp-wish" data-wishlist="'+esc(product.id)+'" aria-label="'+esc(tx('المفضلة','Wishlist'))+'" aria-pressed="'+liked+'">'+icon('heart')+'</button></div><p class="v2-pdp-trust">'+esc(tx('السعر والتوفر مأخوذان من الكتالوج المتصل.','Price and availability come from the connected catalog.'))+'</p>':'<div class="v2-pdp-actions"><button type="button" class="btn primary" data-add-product'+(!variant||!product.stock||remaining<s.qty||ui.cartBusy?' disabled':'')+'>'+esc(ui.editKey?tx('حفظ تعديل السلة','Save cart changes'):tx('أضف إلى السلة','Add to cart'))+'</button><button type="button" class="v2-pdp-wish" data-wishlist="'+esc(product.id)+'" aria-label="'+esc(tx('المفضلة','Wishlist'))+'" aria-pressed="'+liked+'">'+icon('heart')+'</button></div><p class="v2-pdp-trust">'+esc(tx('راجع تقدير الوصول والتفاصيل قبل التأكيد.','Review the landed estimate and details before confirming.'))+'</p>';
-  return '<article class="v2-product-detail">'+V2ProductGallery(product)+'<div class="v2-product-information">'+intro+V2ProductOptions(product)+action+V2ProductServices(product)+'</div></article>';
+  return '<article class="v2-product-detail">'+V2ProductGallery(product)+'<div class="v2-product-information">'+intro+(live?'<p>'+esc(tx('تأكّد من المقاس واللون والمخزون لدى المتجر.','Confirm size, color and stock with the retailer.'))+'</p>':V2ProductOptions(product))+action+V2ProductServices(product)+'</div></article>';
 }
 
 function renderProduct(product,initial=false,focusSelector=''){
@@ -4506,33 +5043,35 @@ function renderRoute({focus=true}={}){
         if(route.name!=="product"){ui.editKey="";ui.moveWishlist="";}
         if(["shop","search"].includes(route.name))readFilterParams(route.params);
         switch(route.name){
+          case "about":case "contact":case "privacy":case "terms":case "affiliate":case "shipping":case "returns":case "partners":renderPublicPage(route.name);break;
           case "home":renderHome();break;
           case "shop":renderShop();break;
           case "search":renderSearch();break;
           case "wishlist":renderWishlist();break;
           case "cart":renderCart();break;
-          case "checkout":renderCheckout();break;
+          case "checkout":if(DEVELOPER_MODE)renderCheckout();else renderCommerceBoundary('checkout');break;
           case "account":renderAccount();break;
           case "signin":case "signup":renderAuth();break;
-          case "order":renderOrder();break;
-          case "request":renderRequest(false);break;
-          case "business":renderRequest(true);break;
-          case "requests":renderRequests();break;
-          case "quote":renderQuote();break;
-          case "settings":renderSettings();break;
-          case "compare":renderCompare();break;
+          case "order":if(DEVELOPER_MODE)renderOrder();else renderCommerceBoundary('order');break;
+          case "request":if(DEVELOPER_MODE)renderRequest(false);else renderPublicInquiry(false);break;
+          case "business":if(DEVELOPER_MODE)renderRequest(true);else renderPublicInquiry(true);break;
+          case "requests":if(DEVELOPER_MODE)renderRequests();else renderCommerceBoundary('requests');break;
+          case "quote":if(DEVELOPER_MODE)renderQuote();else renderCommerceBoundary('quote');break;
+          case "settings":if(DEVELOPER_MODE)renderSettings();else renderCommerceBoundary('settings');break;
+          case "compare":if(DEVELOPER_MODE)renderCompare();else renderLiveWishlist();break;
           case "brands":renderCollections();break;
           case "new":renderNew();break;
           case "how":renderHow();break;
-          case "track":renderTrack();break;
+          case "track":if(DEVELOPER_MODE)renderTrack();else renderCommerceBoundary('track');break;
           case "help":renderHelp();break;
           case "debug":if(DEVELOPER_MODE)renderDeveloperTests();else renderHelp();break;
           case "product":{
             let slug;
             try{slug=decodeURIComponent(route.path.slice(8));}catch{slug="";}
             const product=productBy(slug);
-            if(!product){
-              history.replaceState(null,"","#shop");readFilterParams(new URLSearchParams());renderShop();
+            if(!product&&!DEVELOPER_MODE&&slug.startsWith("nike-live--")&&!productResolution.has(slug)){ $("main").innerHTML=pageShell(tx("المنتج","Product"),"",liveCatalogStateMessage("loading"));void ensureLiveProduct(slug);break;}
+            if(!product||(!DEVELOPER_MODE&&product.demo)){
+              $("main").innerHTML=pageShell(tx("المنتج غير متاح","Product unavailable"),tx("تعذر العثور على هذا المنتج في المصدر الحالي.","This product could not be found in the current source."),routeLink("shop",navLabel("shop"),"btn primary"));
               toast(tx("هذا المنتج غير موجود في الكتالوج.","This product is not in the catalog."),"warning");
               break;
             }
@@ -4571,7 +5110,7 @@ function renderRoute({focus=true}={}){
       }catch(error){
         closeDialog(false);
         pageTitle(tx("تعذر عرض الصفحة","Unable to display this page"));
-        $("main").innerHTML=pageShell(tx("لنحاول مرة أخرى","Let’s try again"),tx("لم نرسل أي بيانات ولم نعالج أي دفعة. سجلاتك المحفوظة لم تُحذف.","No data was sent and no payment was processed. Your saved records were not deleted."),
+        $("main").innerHTML=pageShell(tx("لنحاول مرة أخرى","Let’s try again"),tx("تعذر عرض الصفحة. راجع حسابك أو تواصل مع AnoX قبل إعادة محاولة طلب أرسلته.","This page could not be displayed. Check your account or contact AnoX before retrying a submitted request."),
           '<div class="notice warning">'+icon("warning")+'<span>'+esc(tx("حدث خطأ أثناء عرض هذه الصفحة.","An error occurred while displaying this page."))+'</span></div><div class="actions actions-spaced">'+button(tx("إعادة المحاولة","Try again"),"data-retry","btn primary")+routeLink("home",navLabel("home"),"btn secondary")+'</div>');
         $("main").setAttribute("aria-busy","false");
         console.error("AnoX rendering error:",error);
@@ -4736,8 +5275,17 @@ function V2Price(product) {
   const sale=whole(product.compareAtPriceCents,0,1e8)&&product.compareAtPriceCents>product.priceCents;
   return '<div class="v2-price"><bdi>'+formatUSD(product.priceCents)+'</bdi>'+(sale?'<del>'+formatUSD(product.compareAtPriceCents)+'</del>':'')+'</div>';
 }
-function liveProductMeta(product){if(product.source?.mode!=='live')return '';const availability=product.stock>0?tx('متوفر','Available'):tx('غير متوفر','Unavailable');const updated=product.updatedAt?dateLabel(product.updatedAt,true):tx('تاريخ التحديث غير متاح','Update date unavailable');return '<div class="v2-live-product-meta"><span class="'+(product.stock>0?'is-available':'is-unavailable')+'">'+esc(tx('التوفر: ','Availability: ')+availability)+'</span><span>'+esc(tx('آخر تحديث: ','Updated: ')+updated)+'</span></div>';}
-function liveProductLink(product,label=tx('عرض المنتج','View product')){const url=safeURL(product.source?.merchantUrl);return url?'<a class="text-btn v2-live-product-link" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'+esc(label)+'</a>':'<span class="fine">'+esc(tx('رابط المنتج غير متاح','Product link unavailable'))+'</span>';}
+function liveProductMeta(product){
+  if(product.source?.mode!=='live')return DEVELOPER_MODE?'<span class="fine">'+esc(tx('بيانات تجريبية، ليست للبيع','Demonstration data, not for sale'))+'</span>':'';
+  const old=!product.updatedAt||Date.now()-Date.parse(product.updatedAt)>86400000;
+  const availability=old?tx('يجب تأكيد التوفر','Confirm availability'):product.availability==='in_stock'?tx('المصدر يذكر أنه متوفر','Source reports available'):product.availability==='out_of_stock'?tx('المصدر يذكر أنه غير متوفر','Source reports unavailable'):tx('التوفر غير محدد','Availability not specified');
+  return '<div class="v2-live-product-meta"><span>'+esc(availability)+'</span><span>'+esc(product.updatedAt?tx('تحديث المصدر: ','Source updated: ')+dateLabel(product.updatedAt,true):tx('وقت تحديث المصدر غير متاح','Source update time unavailable'))+'</span></div>';
+}
+function liveProductLink(product,label=tx('عرض لدى المتجر','View at retailer')){
+  const url=safeURL(product.source?.merchantUrl);if(!url)return '';
+  try{if(!window.AnoXLiveCatalog.provider.merchantHosts.includes(new URL(url).hostname)||new URL(url).port)return '';}catch{return '';}
+  return '<a class="text-btn v2-live-product-link" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer" data-retailer-link="nike-live">'+esc(label)+'</a>';
+}
 
 function V2LandedCost(product,{compact=true}={}) {
   const estimate=productQuote(product);
@@ -4775,9 +5323,118 @@ function V2HomeCostExample(product) {
 
 
 
-    document.addEventListener('error',event=>{const image=event.target;if(image instanceof HTMLImageElement&&image.dataset.mediaFallback){const p=Catalog.get(image.dataset.mediaFallback);if(p){const wrapper=document.createElement('span');wrapper.innerHTML=generatedArtwork(p);image.replaceWith(wrapper);}else image.remove();}},true);
+    document.addEventListener('error',event=>{const image=event.target;if(image instanceof HTMLImageElement&&image.dataset.mediaFallback){const p=Catalog.get(image.dataset.mediaFallback);if(p){const wrapper=document.createElement('span');wrapper.innerHTML=p.demo?generatedArtwork(p):'<span class="anox-media-unavailable">'+esc(tx("الصورة غير متاحة","Image unavailable"))+'</span>';image.replaceWith(wrapper);}else image.remove();}},true);
 
-    async function boot(){updateShell();await Catalog.load();SearchService.rebuild();await Storage.load();renderRoute({focus:false});$('footer').hidden=false;registerCatalogTool();}
+    
+function renderPublicPage(route){
+  const page=window.AnoXPublicPages.get(route,state.lang);if(!page)return false;
+  pageTitle(page.title);
+  const links=list=>(list||[]).map(link=>{const href=link.href;if(!(href.startsWith('#')||href.startsWith('mailto:anox@anox.app')||safeURL(href)))return '';return '<a class="v2-inline-link" href="'+esc(href)+'" '+(href.startsWith('#')?'data-nav':'rel="noopener noreferrer"')+'>'+esc(link.label)+'</a>';}).join('');
+  const sections=page.sections.map((section,index)=>'<section class="anox-policy-section" aria-labelledby="policy-'+index+'"><h2 id="policy-'+index+'">'+esc(section.heading)+'</h2>'+section.paragraphs.map(p=>'<p>'+esc(p)+'</p>').join('')+'<div class="actions">'+links(section.links)+'</div></section>').join('');
+  const consent=route==='privacy'?'<section class="anox-policy-section"><h2>'+esc(tx('خيارات التحليلات','Analytics choices'))+'</h2><p id="analytics-choice" role="status">'+esc(window.AnoXAnalytics.getConsent()==='granted'?tx('التحليلات مفعّلة باختيارك.','Analytics are enabled by your choice.'):tx('التحليلات الاختيارية متوقفة.','Optional analytics are off.'))+'</p><div class="actions"><button class="btn secondary" data-anox-consent="denied">'+esc(tx('رفض التحليلات','Reject analytics'))+'</button><button class="btn secondary" data-anox-consent="granted">'+esc(tx('السماح بالتحليلات','Allow analytics'))+'</button><button class="text-btn" data-clear-local>'+esc(tx('مسح بيانات المتصفح المحفوظة','Clear saved browser data'))+'</button></div></section>':'';
+  $('main').innerHTML=pageShell(page.title,page.intro,'<div class="anox-policy">'+sections+consent+'</div>','ANOX LLC');return true;
+}
+
+function renderPublicInquiry(business=false){
+  const draft=state.drafts.request||{},url=v2ClassifySearch(text(draft.url,2000)),name=text(draft.name,160);
+  const body=(name?'Product: '+name+'\n':'')+(url.kind==='url'?'Link: '+url.url+'\n':'')+'\nSize / model:\nQuantity:\nQuestion:';
+  pageTitle(tx('استفسار عن منتج','Product inquiry'));
+  $('main').innerHTML=pageShell(business?tx('تواصل تجاري','Business inquiry'):tx('لديك منتج في بالك؟','Have a product in mind?'),tx('راسل AnoX بشأن المنتج والخيارات والكمية المطلوبة.','Email AnoX with the product, options and quantity you need.'),'<div class="anox-policy"><section class="anox-policy-section"><h2>'+esc(tx('من التفاصيل إلى عرض واضح','From details to a clear quote'))+'</h2><p>'+esc(tx('نراجع المصدر والتوفر وتكاليف الشراء والإيصال قبل أي اتفاق. الاستفسار لا يؤكد شراءً أو حجز مخزون.','Source, availability, purchasing and fulfillment costs must be reviewed before any agreement. An inquiry does not confirm a purchase or reserve stock.'))+'</p><a class="btn primary" href="mailto:anox@anox.app?subject='+encodeURIComponent(business?'AnoX business inquiry':'AnoX product inquiry')+'&amp;body='+esc(encodeURIComponent(body))+'" data-inquiry-email>'+esc(tx('فتح رسالة بريد','Open email draft'))+'</a><p class="fine">'+esc(tx('يفتح تطبيق البريد لديك. راجع الرسالة واختر إرسالها بنفسك. لا تُرسل أي بيانات بمجرد فتح هذه الصفحة.','This opens your email application. Review the message and send it when ready. Opening this page does not submit any information.'))+'</p><p>anox@anox.app</p></section>'+routeLink('terms',tx('شروط طلب الشراء','Purchase inquiry terms'))+'</div>','ANOX LLC');
+}
+
+function renderCommerceBoundary(route){
+  pageTitle(tx('خدمات AnoX','AnoX services'));
+  const tracking=route==='track';
+  $('main').innerHTML=pageShell(tracking?tx('معلومات شحنتك','Your shipment information'):tx('قبل تأكيد الشراء','Before confirming a purchase'),tracking?tx('راسلنا بمرجع شحنتك أو اتفاقك لمراجعة حالتها.','Email your shipment or arrangement reference to request its status.'):tx('الشراء والدفع عبر الموقع غير متاحين حاليًا.','Online purchasing and payment are currently unavailable.'),'<div class="anox-policy"><p>'+esc(tx('لا يُنشئ أي اختيار محفوظ طلبًا مدفوعًا. يلزم عرض مكتوب وشروط شراء وشحن وإرجاع متفق عليها لكل طلب.','Saved selections do not create a paid order. Each purchase needs a written quote and agreed purchase, shipping and return conditions.'))+'</p><div class="actions">'+routeLink('contact',tx('تواصل مع AnoX','Contact AnoX'),'btn primary')+routeLink('account',tx('عرض الحساب','View account'),'btn secondary')+'</div></div>','ANOX LLC');
+}
+
+function renderProductionAuth(){
+  const mode=currentRoute().name,signup=mode==='signup';if(authFlow.mode!==mode){authReset();authFlow.mode=mode;}
+  let step=currentRoute().params.get('step')||'email';
+  if(!['email','password','confirm','recover','reset'].includes(step)||step!=='email'&&!authEmailValid(authFlow.email)){step='email';history.replaceState(null,'','#'+mode);}
+  const heading=step==='confirm'?tx('تأكيد البريد','Verify email'):['recover','reset'].includes(step)?tx('استعادة الحساب','Recover your account'):signup?tx('إنشاء حساب','Create account'):tx('تسجيل الدخول','Sign in');pageTitle(heading);
+  const next='<button class="anox-auth-primary" type="submit" '+(authFlow.busy?'disabled':'')+'>'+esc(authFlow.busy?tx('جارٍ المتابعة…','Please wait…'):tx('التالي','Next'))+'</button>';
+  const email=authField('email',tx('البريد الإلكتروني','Email'),{type:'email',autocomplete:'username',attrs:'maxlength="160" dir="ltr" '+(step==='email'?'':'readonly')});
+  const password='<div class="field"><label for="auth-password">'+esc(tx('كلمة المرور','Password'))+'</label><div class="anox-auth-password"><input class="input" id="auth-password" type="password" name="password" data-auth-sensitive autocomplete="'+(signup||step==='reset'?'new-password':'current-password')+'" required maxlength="128" aria-describedby="auth-password-help"><button type="button" class="anox-auth-reveal" data-auth-reveal aria-controls="auth-password" aria-pressed="false">'+esc(tx('إظهار','Show'))+'</button></div><p class="field-help" id="auth-password-help">'+esc(signup||step==='reset'?tx('استخدم 12 حرفًا على الأقل. تُطبّق أيضًا متطلبات أمان الحساب.','Use at least 12 characters. The account security policy also applies.'):tx('تُرسل كلمة المرور إلى خدمة تسجيل الدخول عبر اتصال آمن. لا تُحفظ في المتصفح.','Your password is sent securely to the sign-in service and is not saved in browser storage.'))+'</p></div>';
+  const code=authField('code',tx('رمز التحقق','Verification code'),{autocomplete:'one-time-code',attrs:'inputmode="numeric" maxlength="12" dir="ltr"'});
+  let content='<form id="auth-'+step+'-form" data-anox-auth novalidate>'+email+(step==='password'?password:step==='confirm'?code:step==='reset'?code+password:'')+next+'</form>';
+  if(step==='confirm')content+='<p class="fine">'+esc(tx('أدخل رمز التحقق المرسل إلى بريدك. يمكنك طلب رمز آخر.','Enter the verification code sent to your email. You can request another code.'))+'</p><button class="anox-auth-link" data-auth-resend '+(authFlow.busy?'disabled':'')+'>'+esc(tx('طلب رمز آخر','Request another code'))+'</button>';
+  if(step==='email'||step==='password')content+='<button class="anox-auth-link" data-auth-recover>'+esc(tx('مشكلة في تسجيل الدخول؟','Trouble signing in?'))+'</button>';
+  const secondary=step==='email'?'<div class="anox-auth-divider">'+esc(tx('أو','Or'))+'</div>'+routeLink(signup?'signin':'signup',signup?tx('تسجيل الدخول','Sign in'):tx('إنشاء حساب','Create account'),'anox-auth-secondary'):'<button type="button" class="anox-auth-link" data-auth-change>'+esc(tx('تغيير البريد / رجوع','Change email / Back'))+'</button>';
+  $('main').innerHTML='<section class="anox-auth" aria-labelledby="auth-heading"><h1 id="auth-heading" tabindex="-1">'+esc(heading)+'</h1>'+content+'<p id="auth-status" class="anox-auth-status" role="status" tabindex="-1">'+esc(authFlow.backendError||'')+'</p>'+secondary+'<p class="fine">'+routeLink('privacy',tx('إشعار الخصوصية','Privacy notice'))+'</p></section>';
+  if(authFlow.busy)$('main').querySelectorAll('form input,form button,form select,form textarea').forEach(node=>node.disabled=true);
+}
+
+async function submitProductionAuth(form){
+  if(authFlow.busy)return;authFlow.backendError='';authFlow.errors={};
+  const step=currentRoute().params.get('step')||'email';
+  if(step==='email'){authFlow.email=String(form.elements.email.value).trim().toLowerCase();if(!authEmailValid(authFlow.email)){authFlow.errors.email='email';renderProductionAuth();authFocusErrors();return;}authStepLink('password');return;}
+  const password=String(form.elements.password?.value||''),code=String(form.elements.code?.value||'').trim(),email=authFlow.email,mode=authFlow.mode,epoch=authUiEpoch;
+  if((step==='password'||step==='reset')&&(!password.trim()||((mode==='signup'||step==='reset')&&password.length<12))){authFlow.backendError=authError('password');renderProductionAuth();$('auth-password')?.focus();return;}
+  if((step==='confirm'||step==='reset')&&!/^\d{4,12}$/.test(code)){authFlow.backendError=tx('أدخل رمز تحقق صالحًا.','Enter a valid verification code.');renderProductionAuth();$('auth-code')?.focus();return;}
+  authFlow.busy=true;renderProductionAuth();
+  try{
+    if(step==='password'){
+      if(mode==='signin'){await cloudSignIn(email,password);if(epoch!==authUiEpoch)return;navigate('account');return;}
+      await cloudSignUp(email,password);if(epoch!==authUiEpoch)return;authFlow.passwordChecked=true;authStepLink('confirm');
+    }else if(step==='confirm'){await cloudConfirm(email,code);if(epoch!==authUiEpoch)return;navigate('signin');toast(tx('تم تأكيد البريد. سجّل الدخول للمتابعة.','Email verified. Sign in to continue.'));}
+    else if(step==='recover'){await window.AnoXAuth.forgot(email);if(epoch!==authUiEpoch)return;authStepLink('reset');}
+    else if(step==='reset'){await window.AnoXAuth.reset(email,code,password);if(epoch!==authUiEpoch)return;navigate('signin');toast(tx('تم تغيير كلمة المرور. سجّل الدخول.','Password changed. Sign in to continue.'));}
+  }catch(error){if(epoch!==authUiEpoch)return;if(error.code==='UserNotConfirmedException'||error.code==='UsernameExistsException'){authFlow.passwordChecked=true;authStepLink('confirm');}else authFlow.backendError=cloudAuthMessage(error);}
+  finally{if(epoch===authUiEpoch){authFlow.busy=false;if(authRoute())renderProductionAuth();}}
+}
+
+function renderProductionAccount(){
+  const signedIn=!!cloudAccount.session,user=cloudAccount.user||{};pageTitle(navLabel('account'));
+  const heading=signedIn&&user.displayName?tx('أهلًا، ','Hello, ')+user.displayName:tx('حساب AnoX','AnoX account');
+  const entry=signedIn?button(tx('تسجيل الخروج','Sign out'),'data-cloud-signout','btn secondary'):routeLink('signin',tx('تسجيل الدخول','Sign in'),'btn primary')+routeLink('signup',tx('إنشاء حساب','Create account'),'btn secondary');
+  const records=cloudAccount.orders.map(order=>'<article class="order-card"><div><h3>'+esc(order.orderId)+'</h3><p>'+esc(dateLabel(order.createdAt))+'</p><span>'+esc(order.paymentStatus||order.status)+'</span></div><bdi>'+esc(order.amountTotal!==null&&order.currency?formatMoney(order.amountTotal,order.currency,CURRENCIES[order.currency]?.minorDigits??2):'—')+'</bdi></article>').join('');
+  $('main').innerHTML=pageShell(heading,signedIn?tx('معلومات الحساب والطلبات المستلمة من AnoX.','Account information and orders received from AnoX.'):tx('سجّل الدخول للوصول إلى حسابك.','Sign in to access your account.'),'<div class="anox-policy"><div class="actions">'+entry+'</div>'+(signedIn?'<section class="anox-policy-section"><h2>'+esc(tx('الملف الشخصي','Profile'))+'</h2><p><bdi>'+esc(user.email||'')+'</bdi></p></section><section class="anox-policy-section"><h2>'+esc(tx('الطلبات','Orders'))+'</h2>'+(cloudAccount.loadStatus==='loading'?'<p role="status">'+esc(tx('جارٍ التحميل…','Loading…'))+'</p>':cloudAccount.loadStatus==='error'?'<p role="alert">'+esc(cloudAuthMessage({code:cloudAccount.error}))+'</p>'+button(tx('إعادة المحاولة','Try again'),'data-account-retry','btn secondary'):records||'<p>'+esc(tx('لا توجد طلبات في هذا الحساب.','There are no orders in this account.'))+'</p>')+'</section>':'')+'<section class="anox-policy-section"><h2>'+esc(tx('الخصوصية','Privacy'))+'</h2><p>'+esc(tx('مسح بيانات المتصفح منفصل عن حذف بيانات حسابك.','Clearing browser data is separate from deleting account data.'))+'</p>'+routeLink('privacy',tx('إدارة خيارات البيانات','Manage data choices'))+'</section></div>');
+  if(signedIn&&cloudAccount.loadStatus==='idle')void cloudLoadAccount();
+}
+
+const productResolution=new Map();
+const wishlistRecords=new Map(),wishlistFailures=new Set();let wishlistLoading=false;
+function renderLiveWishlist(){
+  const ids=state.wishlist.filter(id=>id.startsWith('nike-live__')).slice(0,50);
+  const missing=ids.filter(id=>!productBy(id)&&!wishlistRecords.has(id)&&!wishlistFailures.has(id));
+  const products=ids.map(id=>productBy(id)||wishlistRecords.get(id)).filter(Boolean);
+  const failed=ids.some(id=>wishlistFailures.has(id));
+  pageTitle(navLabel('wishlist'));
+  const status=missing.length||wishlistLoading?'<p role="status">'+esc(tx('جارٍ تحميل المنتجات المحفوظة…','Loading saved products…'))+'</p>':failed?'<p role="status">'+esc(tx('تعذر تحميل بعض المنتجات المحفوظة. حاول مجددًا.','Some saved products could not be loaded. Please try again.'))+'</p>'+button(tx('إعادة المحاولة','Try again'),'data-wishlist-retry','btn secondary'):'';
+  $('main').innerHTML=pageShell(tx('احفظ ما يعجبك لوقت لاحق','Saved for later'),tx('ارجع إلى المنتجات المحفوظة لمراجعة التفاصيل لدى المصدر.','Revisit your saved products to review details at the source.'),status+(products.length?productGrid(products,'wishlist'):!ids.length?emptyMarkup(tx('المفضلة فارغة','Your wishlist is empty'),tx('احفظ المنتجات التي ترغب بمقارنتها أو زيارتها لاحقًا.','Save products you want to compare or revisit later.')):''),'WISHLIST');
+  if(missing.length&&!wishlistLoading)void loadWishlistProducts(missing);
+}
+async function loadWishlistProducts(ids){
+  wishlistLoading=true;let cursor=0;
+  // The existing device wishlist is capped at 50 IDs; at most three canonical requests run together.
+  await Promise.all(Array.from({length:Math.min(3,ids.length)},async()=>{while(cursor<ids.length){const id=ids[cursor++];try{wishlistRecords.set(id,await fetchCanonicalProduct(id.slice('nike-live__'.length)));}catch{wishlistFailures.add(id);}}}));
+  wishlistLoading=false;if(currentRoute().name==='wishlist')renderRoute({focus:false});
+}
+
+async function fetchCanonicalProduct(id){const raw=await window.AnoXLiveCatalog.getProduct(id),product=normalizeProduct(raw,PROVIDERS.descriptor('nike-live'));if(!Catalog.liveRecords.some(p=>p.id===product.id))Catalog.liveRecords=Object.freeze([...Catalog.liveRecords,product]);Catalog.rebuildRecords();SearchService.rebuild();return product;}
+async function ensureLiveProduct(slug){productResolution.set(slug,'loading');try{await fetchCanonicalProduct(slug.slice('nike-live--'.length));productResolution.set(slug,'ready');}catch{productResolution.set(slug,'unavailable');}if(currentRoute().path==='product/'+slug)renderRoute({focus:false});}
+window.addEventListener('anox-auth-change',()=>{if(currentRoute().name==='account'&&!ui.rendering)renderRoute({focus:false});});
+window.addEventListener('anox-consent-change',()=>{if(currentRoute().name==='privacy')renderRoute({focus:false});});
+document.addEventListener('click',async event=>{
+ const node=event.target.closest('button,a');if(!node)return;
+ if(node.hasAttribute('data-wishlist-retry')){event.preventDefault();wishlistFailures.clear();renderLiveWishlist();}
+ if(node.hasAttribute('data-live-retry')){event.preventDefault();Catalog.resetLive();await ensureLiveCatalog(currentRoute().name==='search'?currentRoute().params.get('q')||'':'');}
+ if(node.hasAttribute('data-account-retry')){event.preventDefault();void cloudLoadAccount(true);renderProductionAccount();}
+ if(node.hasAttribute('data-anox-consent')){event.preventDefault();window.AnoXAnalytics.setConsent(node.dataset.anoxConsent);}
+ if(node.hasAttribute('data-auth-resend')||node.hasAttribute('data-auth-recover')){
+  event.preventDefault();if(authFlow.busy)return;
+  const input=$('auth-email');if(input&&!input.readOnly)authFlow.email=input.value.trim().toLowerCase();
+  if(!authEmailValid(authFlow.email)){authFlow.errors.email='email';renderProductionAuth();authFocusErrors();return;}
+  if(node.hasAttribute('data-auth-recover')){authStepLink('recover');return;}
+  const epoch=authUiEpoch;authFlow.busy=true;renderProductionAuth();try{await window.AnoXAuth.resend(authFlow.email);if(epoch===authUiEpoch)authFlow.backendError=tx('إذا كان الحساب يحتاج تأكيدًا، راجع بريدك للرمز.','If verification is needed, check your email for a code.');}catch(e){if(epoch===authUiEpoch)authFlow.backendError=cloudAuthMessage(e);}finally{if(epoch===authUiEpoch){authFlow.busy=false;renderProductionAuth();}}
+ }
+ if(node.hasAttribute('data-retailer-link'))window.AnoXAnalytics.track('outbound_retailer_click',{route:currentRoute().name,provider:'nike-live'});
+ if(node.hasAttribute('data-inquiry-email'))window.AnoXAnalytics.track('product_request_started',{route:'request'});
+});
+window.addEventListener('hashchange',()=>{const route=window.AnoXAnalytics.routeName(location.hash);window.AnoXAnalytics.track('page_view',{route});if(route==='partners')window.AnoXAnalytics.track('partner_page_view',{route});if(route==='product')window.AnoXAnalytics.track('product_view',{route,provider:'nike-live'});if(route==='search')window.AnoXAnalytics.track('product_search',{route});});
+
+    async function boot(){updateShell();await Catalog.load();SearchService.rebuild();await Storage.load();renderRoute({focus:false});$('footer').hidden=false;if(DEVELOPER_MODE)registerCatalogTool();}
     boot().catch(()=>{renderCatalogUnavailable();$('main').setAttribute('aria-busy','false');$('footer').hidden=false;});
 
   })();
