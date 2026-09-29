@@ -1167,8 +1167,140 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
 .v2-live-load-more{display:flex;justify-content:center;align-items:center;gap:12px;flex-wrap:wrap;margin:24px 0 4px}
 
 .anox-policy{max-width:780px;padding-block:8px 64px;line-height:1.8}.anox-policy-section{padding-block:24px;border-bottom:1px solid var(--line)}.anox-policy-section:last-child{border-bottom:0}.anox-policy-section h2{font-size:1.3rem;font-weight:600;margin-block:0 12px}.anox-policy-section p{margin-block:0 16px}.anox-policy .actions{gap:18px;flex-wrap:wrap;margin-block:20px}.anox-policy a{overflow-wrap:anywhere}.anox-policy .actions .v2-inline-link{min-height:44px;display:inline-flex;align-items:center}.anox-media-unavailable{display:flex;align-items:center;justify-content:center;min-height:200px;color:var(--muted);font-size:.85rem;padding:24px}.anox-auth-link{min-height:44px}.anox-auth form+button{margin-top:18px}
+/* AnoX cinematic hero */
+.anox-cinema{
+  position:relative;
+  min-height:100%;
+  aspect-ratio:1.2;
+  overflow:hidden;
+  display:grid;
+  place-items:center;
+  padding:48px 28px;
+  background:
+    radial-gradient(circle at 50% 45%,rgba(255,255,255,.08),transparent 32%),
+    linear-gradient(145deg,#07090d,#111722 55%,#07090d);
+  color:#fff;
+  isolation:isolate;
+}
 
-</style>
+.anox-cinema-copy{
+  position:relative;
+  z-index:2;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+}
+
+.anox-cinema-ai{
+  font-size:clamp(.65rem,1vw,.82rem);
+  letter-spacing:.28em;
+  color:rgba(255,255,255,.58);
+  opacity:0;
+  animation:anoxCinemaUp .8s ease forwards .15s;
+}
+
+.anox-cinema-logo{
+  position:relative;
+  margin-top:16px;
+  font-size:clamp(3.4rem,7vw,6.5rem);
+  line-height:1;
+  letter-spacing:-.065em;
+  font-weight:600;
+  background:linear-gradient(110deg,#fff 20%,#aeb9c9 45%,#fff 60%,#7f8a9b 85%);
+  background-size:220% 100%;
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+  opacity:0;
+  filter:blur(12px);
+  transform:scale(.96);
+  animation:
+    anoxCinemaLogo 1.15s cubic-bezier(.2,.8,.2,1) forwards .35s,
+    anoxCinemaShimmer 5s linear infinite 1.5s;
+}
+
+.anox-cinema-main{
+  margin-top:22px;
+  font-size:clamp(1.55rem,3vw,2.5rem);
+  font-weight:600;
+  opacity:0;
+  transform:translateY(18px);
+  animation:anoxCinemaUp .85s ease forwards .85s;
+}
+
+.anox-cinema-sub{
+  margin-top:12px;
+  max-width:32ch;
+  font-size:clamp(.82rem,1.3vw,1rem);
+  line-height:1.8;
+  color:rgba(255,255,255,.62);
+  opacity:0;
+  transform:translateY(16px);
+  animation:anoxCinemaUp .85s ease forwards 1.1s;
+}
+
+.anox-cinema-glow{
+  position:absolute;
+  width:55%;
+  aspect-ratio:1;
+  border-radius:50%;
+  background:rgba(112,145,255,.14);
+  filter:blur(70px);
+  animation:anoxCinemaGlow 5s ease-in-out infinite;
+}
+
+.anox-cinema-line{
+  position:absolute;
+  z-index:1;
+  width:130%;
+  height:1px;
+  left:-15%;
+  top:53%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent);
+  box-shadow:0 0 18px rgba(255,255,255,.25);
+  opacity:.35;
+  animation:anoxCinemaLine 4s ease-in-out infinite;
+}
+
+@keyframes anoxCinemaLogo{
+  to{
+    opacity:1;
+    filter:blur(0);
+    transform:scale(1);
+  }
+}
+
+@keyframes anoxCinemaUp{
+  to{
+    opacity:1;
+    transform:translateY(0);
+  }
+}
+
+@keyframes anoxCinemaShimmer{
+  0%{background-position:120% 0}
+  100%{background-position:-120% 0}
+}
+
+@keyframes anoxCinemaGlow{
+  0%,100%{transform:scale(.9);opacity:.45}
+  50%{transform:scale(1.18);opacity:.8}
+}
+
+@keyframes anoxCinemaLine{
+  0%,100%{transform:translateX(-12%);opacity:.18}
+  50%{transform:translateX(12%);opacity:.55}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .anox-cinema *{
+    animation:none!important;
+    opacity:1!important;
+    transform:none!important;
+    filter:none!important;
+  }
+}</style> 
 </head>
 <body>
   <a id="skip-link" class="sr-only skip-link" href="#main">انتقل إلى المحتوى</a>
@@ -4865,11 +4997,17 @@ function renderHome() {
 }
 
 function V2HeroPicture(){
-  const template=$('v2-hero-template'),picture=template.content.cloneNode(true),img=picture.querySelector('img');
-  img.alt=tx('أحذية وعناية وتقنية وأزياء وإكسسوارات للحياة اليومية','Footwear, beauty, technology, apparel and everyday accessories');
-  const holder=document.createElement('div');holder.append(picture);return holder.innerHTML;
+  return '<div class="anox-cinema" aria-label="'+esc(tx('AnoX · شراء سهل بالذكاء الاصطناعي','AnoX · Easy AI-powered shopping'))+'">'+
+    '<div class="anox-cinema-glow"></div>'+
+    '<div class="anox-cinema-line"></div>'+
+    '<div class="anox-cinema-copy">'+
+      '<span class="anox-cinema-ai">AI-POWERED SHOPPING</span>'+
+      '<strong class="anox-cinema-logo">AnoX</strong>'+
+      '<span class="anox-cinema-main">'+esc(tx('شراء سهل','Shopping made easy'))+'</span>'+
+      '<span class="anox-cinema-sub">'+esc(tx('اكتشف. اختر. ودع AnoX يساعدك.','Discover. Choose. Let AnoX help.'))+'</span>'+
+    '</div>'+
+  '</div>';
 }
-
 
 /* Component: identity.js */
 function brand(){return V2_WORDMARK;}
