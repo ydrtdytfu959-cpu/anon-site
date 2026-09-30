@@ -2528,11 +2528,11 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
        ================================================================ */
 
     function defaultState(){
-      return {
-        marketId:"DZ",lang:"en",theme:"dark",settings:clone(DEFAULT_SETTINGS)
-        viewed:[],recent:[],orders:[],requests:[],profile:{name:""},checkoutData:{},drafts:{}
-      };
-    }
+  return {
+    marketId:"DZ",lang:"en",theme:"dark",settings:clone(DEFAULT_SETTINGS),cart:[],wishlist:[],compare:[],
+    viewed:[],recent:[],orders:[],requests:[],profile:{name:""},checkoutData:{},drafts:{}
+  };
+}
     let state=defaultState();
     const ui={
       dialog:null,opener:null,productBase:"#shop",selection:null,editKey:"",moveWishlist:"",
