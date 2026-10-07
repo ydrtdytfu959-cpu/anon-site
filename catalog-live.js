@@ -252,7 +252,7 @@
     const inStock = String(offer.availability).toLowerCase() === "instock";
     const variantInfo = channel3Variants(raw, inStock);
     const name = localized(title, title);
-    const images = Array.isArray(raw.images) ? raw.images.slice(0,8) : [];
+    const images = Array.isArray(raw.images) ? raw.images.slice(0,1) : [];
     const media = images.flatMap(image => {
       const url = trustedImageUrl(firstValue(image?.cleaned_url, image?.url));
       if (!url) return [];
