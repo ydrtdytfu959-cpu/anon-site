@@ -6,8 +6,12 @@
   "use strict";
 
   const API_BASE = "https://zmumi2wruk.execute-api.us-east-2.amazonaws.com/catalog";
-  const IMAGE_HOSTS = new Set(["static.nike.com"]);
+  const CHANNEL3_API_BASE = "https://zmumi2wruk.execute-api.us-east-2.amazonaws.com/catalog/search";
+  const IMAGE_HOSTS = new Set(["static.nike.com", "cdn.trychannel3.com"]);
   const DEFAULT_LIMIT = 24;
+  const DEFAULT_CHANNEL3_QUERY = "popular fashion";
+  const nikeProvider = Object.freeze({ id: "nike-live", merchant: "Nike", mode: "live", transport: "api", sourceType: "affiliate-feed", authorization: Object.freeze({ status: "unverified", evidence: null }), approvedLive: false, imageHosts: Object.freeze(["static.nike.com"]), merchantHosts: Object.freeze(["nike.com", "www.nike.com"]) });
+  const channel3Provider = Object.freeze({ id: "channel3-live", merchant: "Channel3", mode: "live", transport: "api", sourceType: "catalog-api", authorization: Object.freeze({ status: "provider-terms", evidence: "Channel3 customer output" }), approvedLive: false, imageHosts: Object.freeze(["cdn.trychannel3.com"]), merchantHosts: Object.freeze(["buy.trychannel3.com"]) });
 
   const stringValue = value => typeof value === "string" ? value.trim() : "";
   const firstValue = (...values) => values.find(value => value !== undefined && value !== null && value !== "");
@@ -191,5 +195,120 @@
     return normalizeNikeProduct(record, 0);
   }
 
-  return Object.freeze({ API_BASE, IMAGE_HOSTS, buildCatalogUrl, getProduct, normalizeNikeProduct, parseCatalogPage, fetchPage });
+
+
+  function channel3Category(raw) {
+    const path = Array.isArray(raw?.category?.path) ? raw.category.path.map(entry => stringValue(entry?.title)).filter(Boolean) : [];
+    const value = [stringValue(raw?.category?.title), ...path].join(" ").toLowerCase();
+    if (/shoe|sneaker|boot|footwear/.test(value)) return "Shoes";
+    if (/beauty|cosmetic|skin|fragrance|makeup/.test(value)) return "Beauty";
+    if (/accessor|bag|watch|jewel|eyewear/.test(value)) return "Accessories";
+    if (/sport|fitness|training|outdoor/.test(value)) return "Sports";
+    return "Fashion";
+  }
+
+  function channel3Brand(raw) {
+    const brands = Array.isArray(raw?.brands) ? raw.brands : [];
+    return stringValue(brands.find(entry => stringValue(entry?.name))?.name) || "Brand";
+  }
+
+  function channel3Offer(raw) {
+    const offers = (Array.isArray(raw?.offers) ? raw.offers : []).filter(offer => {
+      const currency = stringValue(offer?.price?.currency).toUpperCase();
+      const price = numberValue(offer?.price?.price);
+      return currency === "USD" && Number.isFinite(price) && price >= 0 && safeHttpsUrl(offer?.url);
+    });
+    return offers.sort((a,b) => {
+      const rank = offer => (String(offer?.availability).toLowerCase() === "instock" ? 4 : 0) + (String(offer?.condition).toLowerCase() === "new" ? 2 : 0) + (stringValue(offer?.domain).endsWith(".com") ? 1 : 0);
+      return rank(b) - rank(a);
+    })[0] || null;
+  }
+
+  function selectedOption(raw, matcher) {
+    const selected = Array.isArray(raw?.variants?.selected) ? raw.variants.selected : [];
+    const hit = selected.find(entry => matcher.test(stringValue(entry?.name)));
+    return stringValue(hit?.label);
+  }
+
+  function channel3Variants(raw, inStock) {
+    const options = Array.isArray(raw?.variants?.options) ? raw.variants.options : [];
+    const sizeOption = options.find(option => /size/i.test(stringValue(option?.name)));
+    const selectedColor = selectedOption(raw, /color|wash|style/i) || "Default";
+    const sizes = Array.isArray(sizeOption?.values) ? sizeOption.values.filter(value => value?.exists === true && stringValue(value?.label)).map(value => stringValue(value.label)).slice(0,60) : [];
+    if (!sizes.length) return { variants: [{ color: selectedColor, size: "Unspecified", stock: 0 }], known: false };
+    return { variants: sizes.map(size => ({ color: selectedColor, size, stock: inStock ? 1 : 0 })), known: true };
+  }
+
+  function normalizeChannel3Product(raw, index = 0, fetchedAt = new Date().toISOString()) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+    const id = stringValue(raw.id);
+    const title = stringValue(raw.title);
+    if (!/^[A-Za-z0-9_-]{1,80}$/.test(id) || !title) return null;
+    const offer = channel3Offer(raw);
+    if (!offer) return null;
+    const priceCents = cents(offer.price?.price);
+    if (priceCents === null) return null;
+    const compareAtPriceCents = cents(offer.price?.compare_at_price);
+    const inStock = String(offer.availability).toLowerCase() === "instock";
+    const variantInfo = channel3Variants(raw, inStock);
+    const name = localized(title, title);
+    const images = Array.isArray(raw.images) ? raw.images.slice(0,8) : [];
+    const media = images.flatMap(image => {
+      const url = trustedImageUrl(firstValue(image?.cleaned_url, image?.url));
+      if (!url) return [];
+      return [{ url, alt: localized(stringValue(image?.alt_text) || title, title), width: 420, height: 390 }];
+    });
+    const category = channel3Category(raw);
+    const kind = safeKey(firstValue(raw?.category?.slug, raw?.category?.title, category), "product").toLowerCase();
+    return {
+      id,
+      slug: id,
+      name,
+      brand: channel3Brand(raw),
+      category,
+      kind: /^[a-z][a-z0-9-]{0,29}$/.test(kind) ? kind : "product",
+      currency: "USD",
+      priceCents,
+      compareAtPriceCents: compareAtPriceCents !== null && compareAtPriceCents > priceCents ? compareAtPriceCents : null,
+      weightGrams: 0,
+      variantDetailsKnown: variantInfo.known,
+      stock: variantInfo.variants.reduce((total, variant) => total + variant.stock, 0),
+      variants: variantInfo.variants,
+      media,
+      description: localized(firstValue(raw.description, raw.key_features?.join?.(". "), title), title),
+      updatedAt: fetchedAt,
+      availability: inStock ? "in_stock" : String(offer.availability).toLowerCase() === "outofstock" ? "out_of_stock" : "unknown",
+      source: {
+        merchantUrl: safeHttpsUrl(offer.url),
+        merchantDomain: stringValue(offer.domain),
+        verifiedAt: fetchedAt,
+        availabilityVerifiedAt: fetchedAt,
+        availability: inStock ? "verified" : "reported",
+        sourceType: "catalog-api"
+      },
+      purchasable: false
+    };
+  }
+
+  function buildChannel3Url({ q = "", limit = DEFAULT_LIMIT } = {}) {
+    const query = stringValue(q) || DEFAULT_CHANNEL3_QUERY;
+    const boundedLimit = Math.max(1, Math.min(50, Math.floor(numberValue(limit) || DEFAULT_LIMIT)));
+    return `${CHANNEL3_API_BASE}?q=${encodeURIComponent(query)}&limit=${boundedLimit}`;
+  }
+
+  function parseChannel3Page(payload, { q = "", limit = DEFAULT_LIMIT, offset = 0 } = {}) {
+    const data = payload && typeof payload === "object" && payload.data && typeof payload.data === "object" ? payload.data : payload;
+    const raw = Array.isArray(data?.products) ? data.products : [];
+    const fetchedAt = new Date().toISOString();
+    const items = raw.slice(0, Math.max(1, Math.min(50, limit))).map((item,index) => normalizeChannel3Product(item, index, fetchedAt)).filter(Boolean);
+    return { q: stringValue(q), limit, offset, items, total: items.length, nextOffset: null, nextPageToken: stringValue(data?.next_page_token) || null, fetchedAt };
+  }
+
+  async function fetchChannel3Page(options = {}) {
+    const response = await fetch(buildChannel3Url(options), { credentials: "omit", cache: "no-store", referrerPolicy: "no-referrer", signal: options.signal });
+    if (!response.ok) throw new Error(`channel3_http_${response.status}`);
+    return parseChannel3Page(await response.json(), options);
+  }
+
+  return Object.freeze({ API_BASE, CHANNEL3_API_BASE, IMAGE_HOSTS, nikeProvider, channel3Provider, buildCatalogUrl, buildChannel3Url, getProduct, normalizeNikeProduct, normalizeChannel3Product, parseCatalogPage, parseChannel3Page, fetchPage, fetchChannel3Page });
 });
