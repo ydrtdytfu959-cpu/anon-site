@@ -1,0 +1,150 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "AnoX Channel3 catalog proxy with scoped runtime credentials and expiring response cache.",
+  "Parameters": {
+    "Channel3SecretArn": {
+      "Type": "String",
+      "Description": "Existing Channel3 secret ARN; only the deployed Lambda resolves its value.",
+      "Default": "arn:aws:secretsmanager:us-east-2:427064007352:secret:AnoX/Channel3/Production-22Xm3D",
+      "AllowedPattern": "^arn:aws:secretsmanager:us-east-2:427064007352:secret:AnoX/Channel3/Production-[A-Za-z0-9]{6}$"
+    }
+  },
+  "Resources": {
+    "CatalogCache": {
+      "Type": "AWS::DynamoDB::Table",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "BillingMode": "PAY_PER_REQUEST",
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "pk",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "pk",
+            "KeyType": "HASH"
+          }
+        ],
+        "TimeToLiveSpecification": {
+          "AttributeName": "expiresAt",
+          "Enabled": true
+        },
+        "SSESpecification": {
+          "SSEEnabled": true
+        },
+        "Tags": [
+          {
+            "Key": "Service",
+            "Value": "AnoX-Channel3-Catalog"
+          }
+        ]
+      }
+    },
+    "Channel3Role": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "Channel3CatalogRuntime",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "secretsmanager:GetSecretValue"
+                  ],
+                  "Resource": {
+                    "Ref": "Channel3SecretArn"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:DeleteItem"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "CatalogCache",
+                      "Arn"
+                    ]
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/AnoX-Channel3-Catalog:*"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "Channel3Function": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": "AnoX-Channel3-Catalog",
+        "Runtime": "nodejs24.x",
+        "Handler": "index.handler",
+        "Timeout": 20,
+        "MemorySize": 256,
+        "Role": {
+          "Fn::GetAtt": [
+            "Channel3Role",
+            "Arn"
+          ]
+        },
+        "Environment": {
+          "Variables": {
+            "CHANNEL3_SECRET_ID": {
+              "Ref": "Channel3SecretArn"
+            },
+            "CACHE_TABLE": {
+              "Ref": "CatalogCache"
+            }
+          }
+        },
+        "Code": {
+          "ZipFile": "'use strict';\nconst {createHash, randomUUID} = require('node:crypto');\n\nconst VERSION = 1;\nconst SEARCH_TTL = 300_000, DISCOVERY_TTL = 600_000, CURSOR_TTL = 1_800_000;\nconst MAX_PAGE_BYTES = 300 * 1024, MAX_UPSTREAM_BYTES = 2 * 1024 * 1024;\nconst LEASE_MS = 25_000; // Longer than the Lambda's 20s invocation deadline.\nconst SECTIONS = Object.freeze({\n  featured: 'popular fashion', men: \"men's fashion\", women: \"women's fashion\",\n  shoes: 'shoes', clothing: 'clothing', beauty: 'beauty products',\n  accessories: 'fashion accessories', sports: 'sportswear', brands: 'fashion brands'\n});\nclass SafeError extends Error {\n  constructor(status, code) {super(code); this.status = status; this.code = code;}\n}\nconst fail = (status, code) => {throw new SafeError(status, code);};\nconst object = value => value !== null && typeof value === 'object' && !Array.isArray(value);\nconst hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');\nconst cleanString = (value, max) => typeof value === 'string' ? value.slice(0, max) : '';\nconst tokenValid = value => typeof value === 'string' && value.length > 0 && value.length <= 8192 && value.isWellFormed() && !/[\\u0000-\\u001f\\u007f]/.test(value);\nconst cursorKey = (context, token) => 'cursor#' + hash([VERSION, context, token]);\nfunction safeUrl(value, host) {\n  if (typeof value !== 'string' || value.length > 2048) return '';\n  try {const url = new URL(value); return url.protocol === 'https:' && url.hostname === host && !url.username && !url.password && !url.port ? url.href : '';}\n  catch {return '';}\n}\nfunction filtersFor(raw) {\n  if (raw === undefined) return {};\n  if (typeof raw !== 'string' || Buffer.byteLength(raw) > 2048) fail(400, 'INVALID_FILTERS');\n  let input; try {input = JSON.parse(raw);} catch {fail(400, 'INVALID_FILTERS');}\n  if (!object(input) || Object.keys(input).some(key => !['conditions', 'availability'].includes(key))) fail(400, 'INVALID_FILTERS');\n  const output = {};\n  for (const key of ['availability', 'conditions']) {\n    if (!(key in input)) continue;\n    const allowed = key === 'conditions' ? ['new', 'used'] : ['InStock', 'OutOfStock'];\n    if (!Array.isArray(input[key]) || !input[key].length || input[key].length > 2 || input[key].some(value => !allowed.includes(value))) fail(400, 'INVALID_FILTERS');\n    output[key] = [...new Set(input[key])].sort();\n  }\n  return output;\n}\nfunction parseRequest(event) {\n  if (event?.requestContext?.http?.method !== 'GET') fail(405, 'METHOD_NOT_ALLOWED');\n  if (event.rawPath && event.rawPath !== '/catalog/search') fail(404, 'NOT_FOUND');\n  let params = event.queryStringParameters || {};\n  if (!object(params)) fail(400, 'INVALID_QUERY');\n  if (typeof event.rawQueryString === 'string') {\n    if (Buffer.byteLength(event.rawQueryString) > 32768) fail(400, 'INVALID_QUERY');\n    // URLSearchParams replaces invalid UTF-8 with U+FFFD. Reject malformed\n    // encoding instead of charging for a silently changed query or cursor.\n    try {decodeURIComponent(event.rawQueryString.replace(/\\+/g, ' '));} catch {fail(400, 'INVALID_QUERY');}\n    const parsed = new URLSearchParams(event.rawQueryString), seen = new Set();\n    params = Object.create(null);\n    for (const [key, value] of parsed) {if (seen.has(key)) fail(400, 'INVALID_QUERY'); seen.add(key); params[key] = value;}\n  }\n  if (Object.keys(params).some(key => !['q', 'section', 'limit', 'filters', 'page_token'].includes(key)) || Object.values(params).some(value => typeof value !== 'string')) fail(400, 'INVALID_QUERY');\n  // Normalize search text only; opaque cursors must remain byte-for-byte intact.\n  const q = (params.q || '').normalize('NFC').trim().replace(/\\s+/gu, ' '), section = params.section || '';\n  if (q.length > 100 || !(params.q || '').isWellFormed() || /[\\u0000-\\u001f\\u007f]/.test(params.q || '') || (q && section) || (!q && !Object.hasOwn(SECTIONS, section))) fail(400, 'INVALID_QUERY');\n  if (section && !Object.hasOwn(SECTIONS, section)) fail(400, 'INVALID_QUERY');\n  const limit = params.limit === undefined ? 24 : Number(params.limit);\n  if (!Number.isInteger(limit) || limit < 1 || limit > 24 || (params.limit !== undefined && !/^\\d{1,2}$/.test(params.limit))) fail(400, 'INVALID_LIMIT');\n  const filters = filtersFor(params.filters), token = params.page_token;\n  if (token !== undefined && !tokenValid(token)) fail(400, 'CURSOR_INVALID');\n  const mode = q ? 'search' : 'discovery', query = q || SECTIONS[section];\n  const contextHash = hash([VERSION, 'channel3', mode, section, query, filters, limit]);\n  const key = 'page#' + hash([VERSION, contextHash, token ?? null]);\n  return {mode, query, filters, limit, token, contextHash, key, ttl: q ? SEARCH_TTL : DISCOVERY_TTL};\n}\nfunction sanitizeProduct(input) {\n  if (!object(input) || typeof input.id !== 'string' || !/^[A-Za-z0-9_-]{1,80}$/.test(input.id) || typeof input.title !== 'string' || !input.title.trim() || input.title.length > 200) return null;\n  const output = {id: input.id, title: input.title, description: cleanString(input.description, 2000)};\n  output.brands = (Array.isArray(input.brands) ? input.brands : []).slice(0, 4).filter(object).map(brand => ({id: cleanString(brand.id, 200), name: cleanString(brand.name, 100)}));\n  const image = input.images?.[0], url = safeUrl(image?.cleaned_url || image?.url, 'cdn.trychannel3.com');\n  output.images = url ? [{url, alt_text: cleanString(image.alt_text, 200)}] : [];\n  const category = object(input.category) ? input.category : {};\n  output.category = {slug: cleanString(category.slug, 100), title: cleanString(category.title, 100), path: (Array.isArray(category.path) ? category.path : []).slice(0, 6).filter(object).map(part => ({slug: cleanString(part.slug, 100), title: cleanString(part.title, 100)}))};\n  output.offers = (Array.isArray(input.offers) ? input.offers : []).slice(0, 8).filter(object).flatMap(offer => {\n    const url = safeUrl(offer.url, 'buy.trychannel3.com'), price = offer.price;\n    if (!url || !object(price) || typeof price.price !== 'number' || !Number.isFinite(price.price) || price.price < 0 || price.price > 1e9 || price.currency !== 'USD') return [];\n    const clean = {url, domain: cleanString(offer.domain, 200), price: {price: price.price, currency: 'USD'}, availability: cleanString(offer.availability, 40), condition: cleanString(offer.condition, 40)};\n    if (typeof price.compare_at_price === 'number' && Number.isFinite(price.compare_at_price) && price.compare_at_price >= 0 && price.compare_at_price <= 1e9) clean.price.compare_at_price = price.compare_at_price;\n    return [clean];\n  });\n  const variants = object(input.variants) ? input.variants : {};\n  output.variants = {\n    options: (Array.isArray(variants.options) ? variants.options : []).slice(0, 4).filter(object).map(option => ({name: cleanString(option.name, 60), values: (Array.isArray(option.values) ? option.values : []).slice(0, 60).filter(object).map(value => ({label: cleanString(value.label, 80), exists: value.exists === true}))})),\n    selected: (Array.isArray(variants.selected) ? variants.selected : []).slice(0, 8).filter(object).map(value => ({name: cleanString(value.name, 60), label: cleanString(value.label, 80)}))\n  };\n  output.key_features = (Array.isArray(input.key_features) ? input.key_features : []).slice(0, 8).filter(value => typeof value === 'string').map(value => value.slice(0, 200));\n  return output;\n}\nfunction sanitizePage(input, request) {\n  if (!object(input) || !Array.isArray(input.products) || input.products.length > request.limit) fail(502, 'UPSTREAM_INVALID');\n  const token = input.next_page_token;\n  if (token !== null && !tokenValid(token)) fail(502, 'UPSTREAM_INVALID');\n  if (token !== null && token === request.token) fail(502, 'UPSTREAM_INVALID');\n  const products = input.products.map(sanitizeProduct).filter(Boolean);\n  return {products, next_page_token: token};\n}\nfunction validateCached(row, request, now) {\n  if (row === undefined || row === null) return null;\n  if (row.kind !== 'page' || row.version !== VERSION || row.contextHash !== request.contextHash || !object(row.payload) || row.payload.provider !== 'channel3' || Object.keys(row.payload).some(key => !['provider', 'data', 'fetchedAt', 'expiresAt'].includes(key))) fail(503, 'CACHE_UNAVAILABLE');\n  const fetched = Date.parse(row.payload.fetchedAt), expires = Date.parse(row.payload.expiresAt);\n  if (!Number.isFinite(fetched) || !Number.isFinite(expires) || fetched > now + 60_000 || expires <= fetched || expires - fetched > request.ttl || row.expiresAtMs !== expires) fail(503, 'CACHE_UNAVAILABLE');\n  let sanitized;try {sanitized = sanitizePage(row.payload.data, request);} catch {fail(503, 'CACHE_UNAVAILABLE');}\n  if (JSON.stringify(sanitized) !== JSON.stringify(row.payload.data) || Buffer.byteLength(JSON.stringify(row.payload)) > MAX_PAGE_BYTES) fail(503, 'CACHE_UNAVAILABLE');\n  return expires > now ? row.payload : null;\n}\nfunction proxyResponse(statusCode, payload) {\n  return {statusCode, headers: {'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': 'https://anox.app', 'X-Content-Type-Options': 'nosniff'}, body: JSON.stringify(payload)};\n}\nfunction createHandler({store, upstream, now = Date.now, sleep = ms => new Promise(resolve => setTimeout(resolve, ms)), metric = () => {}}) {\n  const pending = new Map();\n  const emit = name => {try {metric(name);} catch {}};\n  async function load(request) {\n    let chainExpires = now() + CURSOR_TTL, count = 0;\n    if (request.token !== undefined) {\n      const cursor = await store.get(cursorKey(request.contextHash, request.token));\n      if (!cursor || cursor.kind !== 'cursor' || cursor.contextHash !== request.contextHash || !Number.isSafeInteger(cursor.expiresAtMs) || !Number.isSafeInteger(cursor.count) || cursor.count < 1 || cursor.count >= 500) fail(400, 'CURSOR_INVALID');\n      if (cursor.expiresAtMs <= now()) fail(410, 'CURSOR_EXPIRED');\n      chainExpires = cursor.expiresAtMs; count = cursor.count;\n    }\n    const requireActiveChain = () => {if (now() >= chainExpires) fail(410, 'CURSOR_EXPIRED');};\n    const readPage = async () => {\n      const row = await store.get(request.key);\n      requireActiveChain();\n      return validateCached(row, request, now());\n    };\n    const cached = await readPage();\n    if (cached) {emit('cache_hit'); return cached;}\n    emit('cache_miss');\n    const owner = randomUUID();\n    if (!await store.acquire(request.key, owner, now(), now() + LEASE_MS)) {\n      requireActiveChain();\n      emit('cache_contention');\n      // A waiter never takes over in this invocation: failure needs an explicit retry.\n      const waitUntil = now() + 6000;\n      for (let attempt = 0; attempt < 20 && now() + 1800 <= waitUntil; attempt++) {\n        await sleep(300);\n        if (now() + 1500 > waitUntil) break;\n        const ready = await readPage();\n        if (ready) {emit('cache_hit'); return ready;}\n      }\n      fail(503, 'CACHE_BUSY');\n    }\n    try {\n      // Recheck after the conditional lease; another invocation may have published\n      // between our first read and lease acquisition.\n      const raced = await readPage();\n      if (raced) {emit('cache_hit'); return raced;}\n      const input = {query: request.query, limit: request.limit};\n      if (Object.keys(request.filters).length) input.filters = request.filters;\n      if (request.token !== undefined) input.page_token = request.token;\n      let data, rawCount;\n      try {\n        requireActiveChain();\n        const raw = await upstream(input, {expiresAt: chainExpires}); data = sanitizePage(raw, request); rawCount = raw.products.length;\n        if (!rawCount && data.next_page_token !== null) fail(502, 'UPSTREAM_INVALID');\n      } catch (error) {emit('upstream_failure'); if (error instanceof SafeError && error.status === 410) throw error; fail(502, 'UPSTREAM_UNAVAILABLE');}\n      const fetched = now(), expires = Math.min(fetched + request.ttl, chainExpires);\n      if (expires <= fetched) fail(410, 'CURSOR_EXPIRED');\n      data.products = data.products.slice(0, 500 - count);\n      count += rawCount;\n      if (count >= 500) data.next_page_token = null;\n      const payload = {provider: 'channel3', data, fetchedAt: new Date(fetched).toISOString(), expiresAt: new Date(expires).toISOString()};\n      if (Buffer.byteLength(JSON.stringify(payload)) > MAX_PAGE_BYTES) {emit('upstream_failure'); fail(502, 'UPSTREAM_INVALID');}\n      const page = {kind: 'page', version: VERSION, contextHash: request.contextHash, expiresAtMs: expires, payload};\n      const cursor = data.next_page_token === null ? null : {key: cursorKey(request.contextHash, data.next_page_token), value: {kind: 'cursor', contextHash: request.contextHash, expiresAtMs: chainExpires, count}};\n      await store.publish(request.key, owner, page, cursor, now());\n      return payload;\n    } finally {\n      try {await store.release(request.key, owner);} catch {emit('cache_error');}\n    }\n  }\n  return async function handler(event) {\n    try {\n      const request = parseRequest(event);\n      let work = pending.get(request.key);\n      if (!work) {\n        if (pending.size >= 100) fail(503, 'CACHE_BUSY');\n        work = load(request); pending.set(request.key, work);\n        const done = () => {if (pending.get(request.key) === work) pending.delete(request.key);};\n        work.then(done, done);\n      }\n      return proxyResponse(200, await work);\n    } catch (error) {\n      if (error instanceof SafeError) return proxyResponse(error.status, {error: error.code});\n      emit('cache_error'); return proxyResponse(503, {error: 'CACHE_UNAVAILABLE'});\n    }\n  };\n}\nfunction createDynamoStore({client, commands, table}) {\n  const {GetItemCommand, PutItemCommand, DeleteItemCommand, TransactWriteItemsCommand} = commands;\n  const send = command => client.send(command, {abortSignal: AbortSignal.timeout(1500)});\n  const key = pk => ({pk: {S: pk}});\n  const item = (pk, value) => ({pk: {S: pk}, value: {S: JSON.stringify(value)}, expiresAt: {N: String(Math.ceil(value.expiresAtMs / 1000))}});\n  return {\n    async get(pk) {\n      const result = await send(new GetItemCommand({TableName: table, Key: key(pk), ConsistentRead: true}));\n      if (!result.Item) return undefined;\n      if (typeof result.Item.value?.S !== 'string') throw Error('CACHE_INVALID');\n      return JSON.parse(result.Item.value.S);\n    },\n    async acquire(pk, owner, now, until) {\n      try {\n        await send(new PutItemCommand({TableName: table, Item: {...key('lease#' + pk), owner: {S: owner}, leaseUntil: {N: String(until)}, expiresAt: {N: String(Math.ceil(until / 1000))}},\n          ConditionExpression: 'attribute_not_exists(pk) OR leaseUntil <= :now', ExpressionAttributeValues: {':now': {N: String(now)}}}));\n        return true;\n      } catch (error) {if (error.name === 'ConditionalCheckFailedException') return false; throw error;}\n    },\n    async publish(pk, owner, page, cursor, now) {\n      const writes = [{Put: {TableName: table, Item: item(pk, page)}}];\n      if (cursor) writes.push({Put: {TableName: table, Item: item(cursor.key, cursor.value)}});\n      writes.push({Delete: {TableName: table, Key: key('lease#' + pk), ConditionExpression: '#owner = :owner AND leaseUntil > :now',\n        ExpressionAttributeNames: {'#owner': 'owner'}, ExpressionAttributeValues: {':owner': {S: owner}, ':now': {N: String(now)}}}});\n      await send(new TransactWriteItemsCommand({ClientRequestToken: owner, TransactItems: writes}));\n    },\n    async release(pk, owner) {\n      try {await send(new DeleteItemCommand({TableName: table, Key: key('lease#' + pk), ConditionExpression: '#owner = :owner', ExpressionAttributeNames: {'#owner': 'owner'}, ExpressionAttributeValues: {':owner': {S: owner}}}));}\n      catch (error) {if (error.name !== 'ConditionalCheckFailedException') throw error;}\n    }\n  };\n}\nfunction createUpstream({fetch: transport = globalThis.fetch, getSecret, now = Date.now, timeoutMs = 10_000, metric = () => {}}) {\n  let secret = '', secretUntil = 0, secretPending = null;\n  async function apiKey(signal) {\n    if (secret && secretUntil > now()) return secret;\n    if (!secretPending) {\n      secretPending = (async () => {\n        const raw = await getSecret(signal);\n        let parsed; try {parsed = JSON.parse(raw);} catch {}\n        const value = object(parsed) ? parsed.apiKey || parsed.api_key || parsed.key : raw;\n        if (typeof value !== 'string' || !value.length || value.length > 8192 || /[\\u0000-\\u001f\\u007f]/.test(value)) fail(502, 'UPSTREAM_UNAVAILABLE');\n        secret = value; secretUntil = now() + 300_000; return secret;\n      })();\n      secretPending.then(() => {secretPending = null;}, () => {secretPending = null;});\n    }\n    return secretPending;\n  }\n  return async (input, {expiresAt} = {}) => {\n    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeoutMs);\n    let response;\n    try {\n      const key = await apiKey(controller.signal);\n      controller.signal.throwIfAborted();\n      if (expiresAt !== undefined && now() >= expiresAt) fail(410, 'CURSOR_EXPIRED');\n      try {metric('upstream_request');} catch {}\n      response = await transport('https://api.trychannel3.com/v1/search', {method: 'POST', headers: {'Content-Type': 'application/json', 'x-api-key': key}, body: JSON.stringify(input), signal: controller.signal, redirect: 'error'});\n      if (!response.ok) {\n        await response.body?.cancel();\n        if (input.page_token !== undefined && [400, 404, 410, 422].includes(response.status)) fail(410, 'CURSOR_INVALID');\n        fail(502, 'UPSTREAM_UNAVAILABLE');\n      }\n      if (!/^application\\/(?:[a-z0-9.+-]*\\+)?json(?:\\s*;|$)/i.test(response.headers.get('content-type') || '') || Number(response.headers.get('content-length')) > MAX_UPSTREAM_BYTES) {\n        await response.body?.cancel(); fail(502, 'UPSTREAM_INVALID');\n      }\n      const reader = response.body?.getReader(); if (!reader) fail(502, 'UPSTREAM_INVALID');\n      const decoder = new TextDecoder('utf-8', {fatal: true}); let text = '', bytes = 0;\n      try {\n        for (;;) {\n          const {done, value} = await reader.read(); if (done) break;\n          bytes += value.byteLength; if (bytes > MAX_UPSTREAM_BYTES) fail(502, 'UPSTREAM_INVALID');\n          text += decoder.decode(value, {stream: true});\n        }\n        text += decoder.decode(); return JSON.parse(text);\n      } catch (error) {await reader.cancel().catch(() => {}); throw error;}\n    } catch (error) {if (error instanceof SafeError) throw error; fail(502, 'UPSTREAM_UNAVAILABLE');}\n    finally {clearTimeout(timer); controller.abort();}\n  };\n}\nfunction createMetric({log = line => console.log(line), now = Date.now} = {}) {\n  const names = new Set(['cache_hit', 'cache_miss', 'upstream_request', 'upstream_failure', 'cache_contention', 'cache_error']);\n  return name => {\n    if (!names.has(name)) return;\n    log(JSON.stringify({_aws: {Timestamp: now(), CloudWatchMetrics: [{Namespace: 'AnoX/Catalog', Dimensions: [['Service']], Metrics: [{Name: name, Unit: 'Count'}]}]}, Service: 'Channel3Catalog', event: name, [name]: 1}));\n  };\n}\nlet runtimeHandler;\nasync function handler(event) {\n  if (!runtimeHandler) {\n    // SDK clients are reused by the warm runtime. Secret values are resolved only\n    // inside this deployed application and never included in source or responses.\n    const dynamo = require('@aws-sdk/client-dynamodb');\n    const secrets = require('@aws-sdk/client-secrets-manager');\n    const config = {region: process.env.AWS_REGION || 'us-east-2', maxAttempts: 2, requestHandler: {connectionTimeout: 1000, requestTimeout: 1500}};\n    const client = new dynamo.DynamoDBClient(config), secretClient = new secrets.SecretsManagerClient(config);\n    const table = process.env.CACHE_TABLE, secretId = process.env.CHANNEL3_SECRET_ID;\n    if (!table || !secretId) return proxyResponse(503, {error: 'CACHE_UNAVAILABLE'});\n    const metric = createMetric();\n    runtimeHandler = createHandler({store: createDynamoStore({client, commands: dynamo, table}), metric,\n      upstream: createUpstream({metric, getSecret: async signal => (await secretClient.send(new secrets.GetSecretValueCommand({SecretId: secretId}), {abortSignal: signal})).SecretString})});\n  }\n  return runtimeHandler(event);\n}\nmodule.exports = {handler, createHandler, createUpstream, createDynamoStore, createMetric};\n"
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "FunctionName": {
+      "Description": "Existing catalog Lambda function name.",
+      "Value": {
+        "Ref": "Channel3Function"
+      }
+    },
+    "CacheTableName": {
+      "Description": "Expiring Channel3 cache table; independent from CJ products.",
+      "Value": {
+        "Ref": "CatalogCache"
+      }
+    }
+  }
+}
