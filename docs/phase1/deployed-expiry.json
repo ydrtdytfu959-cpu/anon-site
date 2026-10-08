@@ -1,0 +1,12 @@
+{
+  "started": "2026-10-08T11:41:54.367Z",
+  "completed": "2026-10-08T11:41:59.766Z",
+  "oldFetchedAt": "2026-10-08T04:08:50.309Z",
+  "refreshedFetchedAt": "2026-10-08T11:41:58.814Z",
+  "newExpiresAt": "2026-10-08T11:46:58.814Z",
+  "cacheRefresh": true,
+  "immediateReplayIdentical": true,
+  "malformedCursorStatus": 400,
+  "allowedCorsOrigin": "https://anox.app",
+  "foreignCorsAllowed": false
+}
