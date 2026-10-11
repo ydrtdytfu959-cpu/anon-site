@@ -1,0 +1,67 @@
+# Staged commerce service
+
+This module adds `/commerce` routes. It is not deployed. Merchant checkout, payment creation, cancellation and refunds are unsupported. A configuration flag cannot activate purchasing.
+
+All JSON responses have `schemaVersion: 1`; failures have `{error:{code,message}}`. Customer routes require the existing Cognito JWT authorizer, validated again against configured issuer/client and `sub` in the Lambda. Bodies reject unknown fields, including browser prices. Requests must use JSON. Mutation retries require the same `Idempotency-Key` (16–128 ASCII letters, digits, `_` or `-`).
+
+- `GET /commerce/capabilities`: public `{quote:{enabled:true,limits:{maxLines:10,maxDistinctProducts:5,maxQuantityPerLine:20}},checkout:{enabled:false,blockers:[{code,message}]},orders:{read:true,cancel:false,refund:false},serviceFee:{currency:'USD',amountMinor:500,appliesOn:'successful_order'}}`.
+- `POST /commerce/quotes`: body `{cartRevision,lines:[{provider:'channel3',productId,merchantDomain,condition:'new'|'used'|null,quantity,options:{name:value}}],destination:{country:'DZ'},currency:'USD'}`. `cartRevision` is an opaque 1–80 character ASCII letters/digits/underscore/hyphen string, normally a UUID. HTTP 201 `{schemaVersion:1,quote:{quoteId,cartHash,cartRevision,createdAt,expiresAt,currency:'USD',lines,costs:{components,estimatedTotalMinor:null,verifiedPayableTotalMinor:null,potentialChargesOnArrival},checkout:{enabled:false,blockers}}}`. Timestamps are ISO strings. Replays return HTTP 201 with identical content and `Idempotency-Replayed:true`; concurrent work returns 409 `operation_in_progress`.
+- `POST /commerce/checkout-attempts`: body `{quoteId,cartRevision,cartHash}` plus idempotency header. HTTP 201 `{schemaVersion:1,attempt:{attemptId,quoteId,cartHash,cartRevision,status:'blocked',createdAt,checkout:{enabled:false,blockers}}}`. Ownership, cart binding and expiry checked before persistence. No order/payment created.
+- `GET /commerce/orders`: `{schemaVersion:1,orders:[...],nextCursor:null|string}`. Cursor is an opaque owned-order ID; only this customer's partition is queried.
+- `GET /commerce/orders/{id}`: `{schemaVersion:1,order:{...}}`; unknown and another customer's order both return 404.
+- `POST /commerce/orders/{id}/cancel` and `/refund`: owner checked, then HTTP 409 `operation_unsupported`. No state changed.
+- `POST /commerce/webhooks/stripe`: deliberately disabled in the deployed handler. Signature and durable processing modules exist for a future reviewed integration; no secret, webhook route or payment IAM permission is provisioned.
+
+Cost components have `{code,label,amountMinor:null|safeInteger,currency:'USD',status:'verified'|'estimated'|'unknown'|'conditional',source,note?}`. Product subtotal is a fresh catalog offer snapshot and remains `estimated` until a supported purchasing provider guarantees price/quantity. Fee is `conditional`, exactly 500. All tax/shipping/customs/FX commitments are `unknown`; USD-only currency conversion is `verified` zero with an explicit no-conversion note. The sum of known amounts is not a delivered estimate. Neither total is available while required charges are unknown. Arrival charges are separate unknown components. Lines preserve fresh offer/affiliate metadata and expose `unitPriceMinor`, `lineTotalMinor`, availability and selection checks without claiming a purchase reservation.
+
+Quote limit: 10 lines, five distinct product/options hydrations, three concurrent reads, nine-second read deadline; quantities 1–20. Duplicated product/options reads coalesce across merchants. A failed/expired upstream read returns 503 without a partial quote. Every quote revalidates volatile detail; public callers cannot bypass catalog cache controls. Quote lifetime is at most five minutes and never exceeds the earliest upstream expiry. The foundation cannot guarantee that a browsing price remains purchasable during that period.
+
+Test factory: `createHandler({store,catalog:{freshProduct:async({productId,options},{signal})=>freshEnvelope},now:()=>epochMs,randomId:()=>uuid,logger})`. Runtime dependencies are injected for deterministic offline tests. Production uses DynamoDB transactions/conditional expressions; the test memory adapter is not a production persistence option.
+
+Variant identifiers are ASCII letters/digits/underscore/hyphen, at most 80 characters. Options use the catalog contract: at most eight names, name length 60 and label length 80, no control characters, lone surrogates or prototype keys. Official stock statuses are `InStock`, `OutOfStock` and unknown; any unavailable/unknown selected variant makes the specific offer unavailable/unknown. Commission rates must be fractional values 0–1. Only the documented `https://buy.trychannel3.com` host is accepted for Channel3 attribution URLs. This records attribution opportunity, not earned revenue.
+
+Order responses use `totalMinor`, `currency`, `status`, `payment.status`, `createdAt`, `updatedAt`, optional `merchantOrderReference`, `fulfillment:{status,tracking:[{carrier,trackingNumber,url}]}`, and `capabilities`. Tracking URLs are omitted unless a future trusted fulfillment writer stores `verified:true`; arbitrary stored URLs do not establish tracking provenance. No order creation route is exposed. Internal order transitions require expected-version CAS plus durable audit. Confirmation requires both a merchant order reference and verified successful payment; a redirect cannot provide either.
+
+The disconnected webhook module verifies raw bytes with HMAC-SHA256, constant-time comparison and a five-minute replay window. Processing requires a pre-existing immutable payment binding and matching active order payment ID, attempt, exact amount, currency, account and livemode. A transaction atomically fences current order version/payment identity, checks the immutable binding, records the event receipt and audit, and updates payment state. Fulfillment version changes do not invalidate the binding. Reordered events cannot downgrade successful/refunded principal; refunds are monotonic and capped. Payment success alone does not confirm a merchant order or recognize service-fee/affiliate revenue. These are local foundation tests, not evidence that a Stripe integration is operational. Sources: [Stripe webhook signature verification](https://docs.stripe.com/webhooks#verify-manually), [Stripe payment intent object](https://docs.stripe.com/api/payment_intents/object), [Stripe charge object](https://docs.stripe.com/api/charges/object).
+
+## Build and verification
+
+```sh
+node backend/commerce/build-template.cjs
+node backend/commerce/build-template.cjs --check
+node --test tests/commerce-money.cjs tests/commerce-service.cjs tests/commerce-persistence.cjs tests/commerce-webhooks.cjs tests/commerce-runtime.cjs tests/commerce-template.cjs tests/commerce-api-settings.cjs
+cfn-lint backend/commerce/cloudformation.json
+cfn-guard validate -d backend/commerce/cloudformation.json -r backend/commerce/commerce.guard
+```
+
+The inline Lambda bundle is generated from the canonical modules. AWS SDK v3 clients come from the Node 24 Lambda runtime; no Stripe SDK/API client or secret value is included. DynamoDB operations have 1.5-second total abort deadlines; catalog invocations share the nine-second quote deadline and one transport attempt. Three catalog reads may still finish on the remote Lambda after caller cancellation; no additional queued read is started once aborted. This is the bounded cancellation limitation of synchronous Lambda invocation.
+
+Verified on 2026-10-11: all 49 focused backend/runtime/infrastructure tests passed with zero skipped; generated template parity, JavaScript syntax, `cfn-lint` and all CloudFormation Guard rules passed. Runtime tests execute the generated bundle, exercise transport cancellation, and reject failed, absent, malformed and oversized catalog responses without persistence writes. These use injected AWS SDK transports; they do not claim that new routes or conditional transactions were exercised in AWS. The generated template is 67,028 bytes and therefore requires the reviewed S3 TemplateURL deployment path.
+
+State uses one new DynamoDB table keyed by hashed Cognito subject and record type. Quotes and idempotency records have a 24-hour cleanup TTL; quote authority expires at the shorter provider expiry regardless of delayed TTL deletion. Completed attempts, audit, order and webhook receipt records are retained. Table deletion protection, retention policies, encryption and point-in-time recovery are staged. Define a lawful customer-data and audit retention policy before production use. Audit contains event/resource identifiers and states, not tokens, payment secrets, addresses or full provider payloads.
+
+## Deployment prerequisites and staged API settings
+
+Do not deploy without the user's explicit approval. This stack adds seven new namespaced routes and a separate function/table; it does not import, replace or mutate the existing API, authorizer, order tables, Stripe configuration or shipping system. Use an approved stack name of at most 55 characters because the Lambda name adds `-commerce`.
+
+1. Immediately before deployment, verify the existing API `zmumi2wruk`, route inventory, stage, JWT authorizer, catalog function ARN and available concurrency in account `427064007352`, region `us-east-2`. Read-only AWS metadata on 2026-10-11 confirmed JWT authorizer `qcopg9`, issuer `https://cognito-idp.us-east-2.amazonaws.com/us-east-2_gUci3YuMm`, audience `63738r9gpr126qpgp1a5cubchi`, and Authorization-header identity source. CORS allowed only `https://anox.app`, GET/POST/PUT/OPTIONS, content-type/authorization, no credentials, and MaxAge 3600. The existing `AnoX-Orders` table was ACTIVE, on-demand, with `orderId` as its hash key; it is not reused or changed. Issuer/authorizer parameters deliberately remain explicit so an operator must check deployment context. Route/stage inventories and available concurrency still require verification.
+2. Deploy the reviewed catalog private hydration contract first. Confirm a bounded synthetic/read-only request in an authorized staging environment, including offer/variant freshness. Never use a public query flag for fresh commerce hydration.
+3. Build, lint, guard and inspect a nonexecuting change set. For templates above 51,200 bytes, use an approved private S3 TemplateURL (up to 1 MiB), then inspect IAM and retained resources. No S3 upload/change set/deployment was performed by this work.
+4. Capture API/stage metadata without secrets and prepare an incremental CORS/throttle change locally. The helper preserves existing origins, methods and unrelated route settings and fails on unexpected origin drift. Review the generated update and rollback inputs before any approved execution.
+
+```sh
+aws apigatewayv2 get-api --api-id zmumi2wruk --region us-east-2 --query '{ApiId:ApiId,CorsConfiguration:CorsConfiguration}' > api-before.json
+aws apigatewayv2 get-stage --api-id zmumi2wruk --stage-name '$default' --region us-east-2 --query '{StageName:StageName,RouteSettings:RouteSettings}' > stage-before.json
+node backend/commerce/stage-api-settings.cjs api-before.json stage-before.json staged-commerce-api
+# Only after independent review and explicit deployment approval:
+aws apigatewayv2 update-api --region us-east-2 --cli-input-json file://staged-commerce-api/apiUpdate.json
+aws apigatewayv2 update-stage --region us-east-2 --cli-input-json file://staged-commerce-api/stageUpdate.json
+```
+
+API Gateway HTTP API CORS must allow `Idempotency-Key`; Lambda response headers cannot override API-level preflight. The staged change adds that header and exposes replay/retry response headers while preserving `https://anox.app`, existing methods (including PUT) and other policy fields. Route throttles supplement reserved concurrency and the catalog's shared upstream budget; they are not customer billing or exact quotas. Alarms have no notifications unless an existing authorized SNS topic is supplied. Review table write consumption and catalog detail budget before raising limits.
+
+After an approved staging deployment, verify actual unauthorized/foreign-owner rejection, Cognito id-token claims, CORS preflight, concurrent conditional writes, expired quote rejection, no duplicate audit/attempt records, scoped IAM and alarms. Perform an adversarial smoke against the real catalog contract and ensure checkout remains disabled. No real payment, merchant order, fulfillment or fee collection is appropriate for this foundation.
+
+## Rollback
+
+Redeploy the previously approved frontend/backend artifact and remove the separate commerce routes/function stack only after review; the state table and logs are retained and the table is deletion-protected. Do not destroy or import the existing order/payment/shipping resources. Restore reviewed CORS policy from `apiRollback.json` only after confirming no later authorized feature depends on the added headers. `stageRollback.json` captures previous route settings; compare live configuration before applying to avoid overwriting newer changes. Removing this stack's routes makes leftover namespaced throttle settings inactive. Retained commerce data requires a separately approved retention/cleanup decision. Never remove idempotency or webhook receipts as an incident workaround.

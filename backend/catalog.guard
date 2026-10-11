@@ -1,4 +1,4 @@
-# Phase 1 guardrails, supplementing least-privilege assertions in backend-template tests.
+# Catalog/detail guardrails, supplementing least-privilege template assertions.
 let tables = Resources.*[ Type == 'AWS::DynamoDB::Table' ]
 rule catalog_cache_is_expiring_and_encrypted when %tables !empty {
   %tables {
@@ -16,6 +16,14 @@ rule runtime_scope {
   Resources.Channel3Role.Properties.Policies.*.PolicyDocument.Statement.* {
     Effect == 'Allow'
     Resource is_struct
-    Action[*] IN ['secretsmanager:GetSecretValue', 'dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:DeleteItem', 'logs:CreateLogStream', 'logs:PutLogEvents']
+    Action[*] IN ['secretsmanager:GetSecretValue', 'dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:DeleteItem', 'dynamodb:UpdateItem', 'logs:CreateLogStream', 'logs:PutLogEvents']
   }
+}
+rule detail_route_scope {
+  Resources.DetailRoute.Properties.RouteKey == 'GET /catalog/channel3/products/{id}'
+  Resources.DetailRoute.Properties.AuthorizationType == 'NONE'
+  Resources.DetailPermission.Properties.Principal == 'apigateway.amazonaws.com'
+  Resources.DetailPermission.Properties.SourceAccount is_struct
+  Resources.DetailPermission.Properties.SourceArn is_struct
+  Resources.DetailIntegration.Properties.PayloadFormatVersion == '2.0'
 }

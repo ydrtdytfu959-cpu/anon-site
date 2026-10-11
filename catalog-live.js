@@ -344,5 +344,106 @@
     }
   }
 
-  return Object.freeze({ provider, nikeProvider: provider, channel3Provider, API_BASE, CHANNEL3_API_BASE, IMAGE_HOSTS, buildCatalogUrl, buildChannel3Url, getProduct, normalizeNikeProduct, normalizeChannel3Product, parseCatalogPage, parseChannel3Page, fetchPage, fetchChannel3Page });
+  const detailIdentity = value => typeof value === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(value);
+  const record = value => value !== null && typeof value === "object" && !Array.isArray(value);
+  function detailSelection(input = {}) {
+    if (!record(input) || Object.keys(input).length > 8) throw catalogError("catalog_options");
+    const output = {};
+    for (const name of Object.keys(input).sort()) {
+      const value = input[name];
+      if (!name.trim() || name.length > 60 || ["__proto__", "constructor", "prototype"].includes(name) || typeof value !== "string" || !value.trim() || value.length > 80 || /[\u0000-\u001f\u007f-\u009f]/.test(name + value)) throw catalogError("catalog_options");
+      try {encodeURIComponent(name); encodeURIComponent(value);} catch {throw catalogError("catalog_options");}
+      output[name] = value;
+    }
+    return output;
+  }
+  function buildChannel3DetailUrl(productId, options = {}) {
+    if (!detailIdentity(productId)) throw catalogError("catalog_identity");
+    const params = new URLSearchParams();
+    for (const [name, label] of Object.entries(detailSelection(options))) params.set("option_" + name, label);
+    return API_BASE + "/channel3/products/" + productId + (params.size ? "?" + params.toString() : "");
+  }
+  function detailList(value, max) {
+    if (value === null || value === undefined) return [];
+    if (!Array.isArray(value) || value.length > max) throw catalogError("catalog_payload");
+    return value;
+  }
+  function detailString(value, max, required = false) {
+    if (value === null || value === undefined) {if (required) throw catalogError("catalog_payload"); return null;}
+    if (typeof value !== "string" || value.length > max || required && !value.trim() || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value)) throw catalogError("catalog_payload");
+    try {encodeURIComponent(value);} catch {throw catalogError("catalog_payload");}
+    return value;
+  }
+  function detailUrl(value, hostname) {
+    if (typeof value !== "string" || value.length > 2048) return "";
+    const url = safeHttpsUrl(value);
+    return url && new URL(url).hostname === hostname ? url : "";
+  }
+  const detailAvailability = value => value === "InStock" ? "in_stock" : value === "OutOfStock" ? "out_of_stock" : "unknown";
+  function detailCents(value) {
+    if (typeof value !== "number" || value < 0 || value > 1e6 || !/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(String(value))) return null;
+    const [whole, decimal = ""] = String(value).split(".");
+    return Number(BigInt(whole) * 100n + BigInt(decimal.padEnd(2, "0")));
+  }
+  function detailMeasurements(value) {
+    if (!record(value)) return null;
+    return Object.fromEntries(["length", "width", "height", "weight"].map(name => {
+      const field = value[name], units = name === "weight" ? ["mg", "g", "kg", "oz", "lb"] : ["mm", "cm", "m", "in", "ft"];
+      return [name, record(field) && typeof field.number === "number" && Number.isFinite(field.number) && field.number > 0 && field.number <= 1e9 && units.includes(field.unit) ? {number:field.number, unit:field.unit} : null];
+    }));
+  }
+  function parseChannel3Detail(payload, productId, {options = {}} = {}) {
+    const requested = detailSelection(options), raw = payload?.data?.product;
+    if (!detailIdentity(productId) || !record(payload) || payload.provider !== "channel3" || !record(raw) || raw.id !== productId || !["fresh", "presentation_only"].includes(payload.status)) throw catalogError("catalog_payload");
+    const fresh = payload.status === "fresh", fetchedAt = normalizedDate(payload.fetchedAt), expiresAt = normalizedDate(payload.expiresAt), time = Date.now();
+    if (!fetchedAt || !expiresAt || Date.parse(fetchedAt) > time + 60000 || Date.parse(expiresAt) <= Date.parse(fetchedAt) || Date.parse(expiresAt) - Date.parse(fetchedAt) > (fresh ? 30000 : 3600000) || payload.error !== (fresh ? null : "DETAIL_REFRESH_UNAVAILABLE")) throw catalogError("catalog_payload");
+    if (Date.parse(expiresAt) <= time) throw catalogError("catalog_expired");
+    const title = detailString(raw.title, 200, true), names = new Set();
+    if (raw.variants != null && !record(raw.variants)) throw catalogError("catalog_payload");
+    const variantOptions = detailList(raw.variants?.options, 8).map(option => {
+      if (!record(option) || typeof option.name !== "string" || names.has(option.name)) throw catalogError("catalog_payload");
+      detailSelection({[option.name]:"value"}); names.add(option.name); const labels = new Set();
+      return {name:option.name, values:detailList(option.values, 120).map(value => {
+        if (!record(value) || labels.has(value.label) || typeof value.exists !== "boolean") throw catalogError("catalog_payload");
+        detailSelection({[option.name]:value.label}); labels.add(value.label);
+        return {label:value.label, exists:value.exists, availability:fresh ? detailAvailability(value.available) : "unknown", thumbnailUrl:detailUrl(value.thumbnail_url, "cdn.trychannel3.com") || null, productId:detailIdentity(value.product_id) ? value.product_id : null};
+      })};
+    });
+    const selectedNames = new Set(), selected = detailList(raw.variants?.selected, 8).map(value => {
+      const option = record(value) && variantOptions.find(option => option.name === value.name);
+      if (!option || selectedNames.has(value.name) || !option.values.some(entry => entry.label === value.label)) throw catalogError("catalog_payload");
+      selectedNames.add(value.name); return {name:value.name, label:value.label};
+    });
+    const effective = new Map(selected.map(value => [value.name, value.label]));
+    const selectionMismatch = Object.entries(requested).filter(([name, label]) => effective.get(name) !== label).map(([name, requested]) => ({name, requested, effective:effective.get(name) ?? null}));
+    if (JSON.stringify(selectionMismatch) !== JSON.stringify(payload.selectionMismatch)) throw catalogError("catalog_selection_mismatch");
+    const attributes = raw.structured_attributes ?? {};
+    if (!record(attributes) || Object.keys(attributes).length > 64) throw catalogError("catalog_payload");
+    const structuredAttributes = {};
+    for (const [name, values] of Object.entries(attributes)) {
+      if (!name.trim() || name.length > 80 || ["__proto__", "constructor", "prototype"].includes(name)) throw catalogError("catalog_payload");
+      structuredAttributes[name] = detailList(values, 64).map(value => detailString(value, 1000, true));
+    }
+    const offers = detailList(raw.offers, 64).filter(record).flatMap(offer => {
+      const url = detailUrl(offer.url, "buy.trychannel3.com"), merchantDomain = typeof offer.domain === "string" ? offer.domain.toLowerCase() : "";
+      if (!fresh || !url || merchantDomain.length > 253 || !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(merchantDomain)) return [];
+      const currency = offer.price?.currency === "USD" ? "USD" : null;
+      return [{merchantDomain, url, priceCents:currency ? detailCents(offer.price.price) : null, compareAtPriceCents:currency ? detailCents(offer.price.compare_at_price) : null, currency,
+        availability:detailAvailability(offer.availability), condition:["new", "used"].includes(offer.condition) ? offer.condition : null,
+        maxCommissionRate:typeof offer.max_commission_rate === "number" && offer.max_commission_rate >= 0 && offer.max_commission_rate <= 1 ? offer.max_commission_rate : null, dimensions:detailMeasurements(offer.dimensions)}];
+    });
+    const category = record(raw.category) ? {slug:detailString(raw.category.slug, 100), title:detailString(raw.category.title, 100), path:detailList(raw.category.path, 16).filter(record).map(part => ({slug:detailString(part.slug, 100), title:detailString(part.title, 100)}))} : null;
+    return {schema:"anox.product-detail/1", provider:"channel3", id:productId, slug:productId, title, description:detailString(raw.description, 60000),
+      brands:detailList(raw.brands, 16).filter(record).map(brand => ({id:detailString(brand.id, 200, true), name:detailString(brand.name, 100, true)})),
+      images:detailList(raw.images, 64).filter(record).flatMap(image => {const url = detailUrl(image.url, "cdn.trychannel3.com"); return url ? [{url, altText:detailString(image.alt_text, 500) || title, isMainImage:image.is_main_image === true, shotType:detailString(image.shot_type, 40)}] : [];}),
+      category, gender:["male", "female"].includes(raw.gender) ? raw.gender : null, age:["newborn", "infant", "toddler", "kids", "adult"].includes(raw.age) ? raw.age : null,
+      materials:detailList(raw.materials, 64).map(value => detailString(value, 2000, true)), keyFeatures:detailList(raw.key_features, 64).map(value => detailString(value, 2000, true)), structuredAttributes,
+      offers, variants:{options:variantOptions, selected}, stock:null, purchasable:false, freshness:{status:payload.status, fetchedAt, expiresAt}, selectionMismatch, error:payload.error};
+  }
+  async function getChannel3Product(productId, {options = {}, signal} = {}) {
+    const selected = detailSelection(options);
+    return parseChannel3Detail(await readJson(buildChannel3DetailUrl(productId, selected), signal, channel3Provider.timeoutMs), productId, {options:selected});
+  }
+
+  return Object.freeze({ provider, nikeProvider: provider, channel3Provider, API_BASE, CHANNEL3_API_BASE, IMAGE_HOSTS, buildCatalogUrl, buildChannel3Url, getProduct, normalizeNikeProduct, normalizeChannel3Product, parseCatalogPage, parseChannel3Page, fetchPage, fetchChannel3Page, buildChannel3DetailUrl, parseChannel3Detail, getChannel3Product });
 });

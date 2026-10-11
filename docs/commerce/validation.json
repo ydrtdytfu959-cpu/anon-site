@@ -1,0 +1,64 @@
+{
+  "date": "2026-10-11",
+  "node": {
+    "command": "npm test",
+    "tests": 194,
+    "passed": 194,
+    "failed": 0,
+    "skipped": 0,
+    "scope": "Node24, injected dependencies and real generated bundles; not deployed commerce APIs"
+  },
+  "build": {
+    "command": "npm run check",
+    "catalogTemplateParity": true,
+    "commerceTemplateParity": true,
+    "canonicalBrowserSources": true,
+    "inlineJavaScriptSyntax": true,
+    "cspHash": true
+  },
+  "browser": {
+    "command": "ENGINES=chromium,firefox npm run test:browser",
+    "catalogGroups": 16,
+    "commerceGroups": 36,
+    "commerceViewports": [
+      "1440x960",
+      "390x844"
+    ],
+    "engines": [
+      "Chromium",
+      "Firefox"
+    ],
+    "embeddedTestsPerEngine": 135,
+    "pageErrors": 0,
+    "cspViolations": 0,
+    "unexpectedNetworkRequests": 0,
+    "scope": "Complete HTML/CSP, intercepted fixtures, actual commerce handler with MemoryStore; no live financial operations"
+  },
+  "cloudFormation": {
+    "cfnLint": [
+      "backend/cloudformation.json",
+      "backend/commerce/cloudformation.json"
+    ],
+    "cfnGuard": [
+      "backend/catalog.guard",
+      "backend/commerce/commerce.guard"
+    ],
+    "result": "pass",
+    "catalogBytes": 52520,
+    "commerceBytes": 67028,
+    "deployment": "none"
+  },
+  "releaseTests": {
+    "tests": 11,
+    "passed": 11,
+    "scope": "real temporary Git repositories; immutable revision, deterministic ZIP/HTML, safe inventory, exclusive destination, extracted-source build reproduction"
+  },
+  "liveEvidence": {
+    "phase1": "See phase1-completion.md and docs/phase1/validation.md;69 unique products over3 cursor pages, cache replay and invalid-cursor handling, real browser24\u219247cards",
+    "metadata": "aws-metadata.json; four successful read-only calls",
+    "newDetailAndCommerceEndpoints": "not deployed, no live endpoint claim",
+    "stripe": "local signature/state fixtures only; no financial sandbox/live test"
+  },
+  "review": "Independent catalog/backend/frontend/release reviews completed; repaired findings documented in engineering-report.md",
+  "gitDiffCheck": "pass"
+}

@@ -112,11 +112,11 @@ async function run(engine) {
     await page.goto('https://anox.app/?debug=1#debug');
     await page.waitForFunction(()=>/\d+\/\d+ PASS/.test(document.querySelector('#main')?.textContent||''),null,{timeout:60000});
     const rows=await page.locator('#main tbody tr').evaluateAll(nodes=>nodes.map(n=>({status:n.cells[0].textContent,name:n.cells[1].textContent})));
-    // Verified against untouched 9b81ec5: this legacy check expects a data: favicon,
-    // but production deliberately uses /favicon.svg?v=3. Phase 1 leaves it unchanged.
-    assert.deepEqual(rows.filter(r=>r.status!=='PASS'),[{status:'FAIL',name:'Browser: embedded favicon avoids implicit network requests · Assertion failed'}]);
+    // The legacy favicon assertion now covers the actual intentional same-origin
+    // asset. No failures are exempted in this broader commerce validation.
+    assert.deepEqual(rows.filter(r=>r.status!=='PASS'),[]);
     assert.ok(rows.length>100);assert.deepEqual(errors,[]);
-    add(`existing self-tests: ${rows.length-1}/${rows.length}, one verified pre-existing favicon expectation`);
+    add(`existing self-tests: ${rows.length}/${rows.length}`);
     await context.close();
     console.log(`${engine}: ${checks.filter(c=>c.engine===engine).length} browser groups passed`);
   } finally { await browser.close(); }

@@ -1,0 +1,759 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Staged AnoX commerce quotes, blocked checkout attempts and owned order foundation. No merchant orders, payments or webhook route.",
+  "Parameters": {
+    "ExistingHttpApiId": {
+      "Type": "String",
+      "Default": "zmumi2wruk",
+      "AllowedPattern": "^[a-z0-9]{10}$",
+      "Description": "Existing HTTP API; verify in us-east-2 before deployment. This stack owns only its new /commerce routes."
+    },
+    "ExistingAuthorizerId": {
+      "Type": "String",
+      "AllowedPattern": "^[a-z0-9]{1,32}$",
+      "Description": "Existing Cognito JWT authorizer ID; read and verify issuer/audience before deployment."
+    },
+    "CognitoIssuer": {
+      "Type": "String",
+      "AllowedPattern": "^https://cognito-idp\\.us-east-2\\.amazonaws\\.com/us-east-2_[A-Za-z0-9]+$",
+      "Description": "Verified existing Cognito issuer URL; deliberately no guessed default."
+    },
+    "CognitoClientId": {
+      "Type": "String",
+      "Default": "63738r9gpr126qpgp1a5cubchi",
+      "AllowedPattern": "^[a-z0-9]{1,128}$",
+      "Description": "Existing frontend Cognito app client; must match the JWT authorizer audience."
+    },
+    "CatalogFunctionArn": {
+      "Type": "String",
+      "Default": "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Channel3-Catalog",
+      "AllowedPattern": "^arn:aws:lambda:us-east-2:427064007352:function:AnoX-Channel3-Catalog(?::[A-Za-z0-9_-]+)?$",
+      "Description": "Existing catalog Lambda with the reviewed IAM-only commerce.product handler deployed first."
+    },
+    "ReservedConcurrency": {
+      "Type": "Number",
+      "Default": 2,
+      "MinValue": 1,
+      "MaxValue": 5,
+      "Description": "Bounds downstream pressure; account concurrency quota must be checked."
+    },
+    "ExistingAlarmTopicArn": {
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "^(|arn:aws:sns:us-east-2:427064007352:[A-Za-z0-9_-]{1,256})$",
+      "Description": "Optional existing authorized SNS alarm topic. Empty creates alarms without notifications."
+    }
+  },
+  "Conditions": {
+    "HasAlarmTopic": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "ExistingAlarmTopicArn"
+            },
+            ""
+          ]
+        }
+      ]
+    }
+  },
+  "Resources": {
+    "CommerceTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "BillingMode": "PAY_PER_REQUEST",
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "pk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "sk",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "pk",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "sk",
+            "KeyType": "RANGE"
+          }
+        ],
+        "SSESpecification": {
+          "SSEEnabled": true
+        },
+        "PointInTimeRecoverySpecification": {
+          "PointInTimeRecoveryEnabled": true
+        },
+        "DeletionProtectionEnabled": true,
+        "TimeToLiveSpecification": {
+          "AttributeName": "ttl",
+          "Enabled": true
+        },
+        "Tags": [
+          {
+            "Key": "Service",
+            "Value": "AnoX-Commerce"
+          }
+        ]
+      }
+    },
+    "CommerceLogs": {
+      "Type": "AWS::Logs::LogGroup",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/lambda/${AWS::StackName}-commerce"
+        },
+        "RetentionInDays": 90
+      }
+    },
+    "CommerceRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "CommerceRuntime",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:Query",
+                    "dynamodb:ConditionCheckItem"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "CommerceTable",
+                      "Arn"
+                    ]
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "lambda:InvokeFunction"
+                  ],
+                  "Resource": {
+                    "Ref": "CatalogFunctionArn"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}-commerce:*"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "CommerceFunction": {
+      "Type": "AWS::Lambda::Function",
+      "DependsOn": [
+        "CommerceLogs"
+      ],
+      "Properties": {
+        "FunctionName": {
+          "Fn::Sub": "${AWS::StackName}-commerce"
+        },
+        "Runtime": "nodejs24.x",
+        "Handler": "index.handler",
+        "Timeout": 18,
+        "MemorySize": 256,
+        "ReservedConcurrentExecutions": {
+          "Ref": "ReservedConcurrency"
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "CommerceRole",
+            "Arn"
+          ]
+        },
+        "Environment": {
+          "Variables": {
+            "COMMERCE_TABLE": {
+              "Ref": "CommerceTable"
+            },
+            "CATALOG_FUNCTION_ARN": {
+              "Ref": "CatalogFunctionArn"
+            },
+            "COGNITO_ISSUER": {
+              "Ref": "CognitoIssuer"
+            },
+            "COGNITO_CLIENT_ID": {
+              "Ref": "CognitoClientId"
+            },
+            "ALLOWED_ORIGIN": "https://anox.app"
+          }
+        },
+        "Code": {
+          "ZipFile": "'use strict';\nconst externalRequire=require;\nconst factories={\n\"./errors.js\":function(module,exports,require){\n'use strict';\nclass CommerceError extends Error {\n  constructor(code, message, statusCode = 400) { super(message); this.name = 'CommerceError'; this.code = code; this.statusCode = statusCode; }\n}\nconst fail = (code, message, statusCode = 400) => { throw new CommerceError(code, message, statusCode); };\nmodule.exports = { CommerceError, fail };\n\n},\n\"./money.js\":function(module,exports,require){\n'use strict';\nconst { fail } = require('./errors.js');\nfunction checked(value) {\n  if (!Number.isSafeInteger(value) || value < 0) fail('invalid_money', 'Money must be a nonnegative safe integer in minor units.', 422);\n  return value;\n}\nfunction decimalToMinor(value) {\n  if (typeof value !== 'string' && typeof value !== 'number') fail('invalid_money', 'A decimal price is required.', 422);\n  const source = String(value);\n  if (!/^(?:0|[1-9]\\d{0,6})(?:\\.\\d{1,2})?$/.test(source)) fail('invalid_money', 'Price must be an exact decimal with at most two fractional digits.', 422);\n  const [whole, fraction = ''] = source.split('.');\n  const minor = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'));\n  if (minor > 100000000n) fail('invalid_money', 'Price exceeds the supported limit.', 422);\n  return checked(Number(minor));\n}\nfunction addMinor(values) {\n  let total = 0n; for (const value of values) total += BigInt(checked(value));\n  if (total > BigInt(Number.MAX_SAFE_INTEGER)) fail('invalid_money', 'Amount exceeds the supported limit.', 422);\n  return Number(total);\n}\nfunction multiplyMinor(amount, quantity) { checked(quantity); return addMinor([checked(Number(BigInt(checked(amount)) * BigInt(quantity)))]); }\nmodule.exports = { decimalToMinor, addMinor, multiplyMinor, checked };\n\n},\n\"./validation.js\":function(module,exports,require){\n'use strict';\nconst crypto = require('node:crypto');\nconst { fail } = require('./errors.js');\nconst LIMITS = Object.freeze({ maxLines: 10, maxDistinctProducts: 5, maxQuantityPerLine: 20 });\nconst ID = /^[A-Za-z0-9_-]{1,80}$/;\nconst forbidden = new Set(['__proto__', 'constructor', 'prototype']);\nfunction object(value, allowed, required = allowed) {\n  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) fail('invalid_request', 'Expected a plain JSON object.');\n  if (Object.keys(value).some(key => forbidden.has(key) || !allowed.includes(key)) || required.some(key => !Object.hasOwn(value, key))) fail('invalid_request', 'Missing or unsupported request fields.');\n  return value;\n}\nfunction text(value, max = 160) { return typeof value === 'string' && value.length > 0 && value.length <= max && !/[\\u0000-\\u001f\\u007f-\\u009f\\ud800-\\udfff]/u.test(value); }\nfunction canonical(value) {\n  if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';\n  if (value && typeof value === 'object') return '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}';\n  return JSON.stringify(value);\n}\nconst hash = value => crypto.createHash('sha256').update(typeof value === 'string' ? value : canonical(value)).digest('hex');\nconst productKey = line => canonical({ productId: line.productId, options: line.options });\nfunction quoteInput(input) {\n  object(input, ['cartRevision', 'lines', 'destination', 'currency']);\n  if (!ID.test(input.cartRevision || '') || typeof input.cartRevision !== 'string') fail('invalid_request', 'An opaque cart revision is required.');\n  if (input.currency !== 'USD') fail('unsupported_currency', 'Only USD quotes are currently supported.', 422);\n  object(input.destination, ['country']); if (input.destination.country !== 'DZ') fail('unsupported_destination', 'Only Algeria quotes are currently supported.', 422);\n  if (!Array.isArray(input.lines) || input.lines.length < 1 || input.lines.length > LIMITS.maxLines) fail('quote_too_large', 'A quote requires one to ten cart lines.', 422);\n  const lines = input.lines.map(line => {\n    object(line, ['provider', 'productId', 'merchantDomain', 'condition', 'quantity', 'options']);\n    if (line.provider !== 'channel3') fail('unsupported_provider', 'This catalog provider is not supported.', 422);\n    if (typeof line.productId !== 'string' || !ID.test(line.productId)) fail('invalid_request', 'Invalid product identifier.');\n    if (typeof line.merchantDomain !== 'string' || line.merchantDomain.length > 253 || !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/.test(line.merchantDomain)) fail('invalid_request', 'Invalid merchant domain.');\n    if (line.condition !== null && line.condition !== 'new' && line.condition !== 'used') fail('invalid_request', 'Invalid product condition.');\n    if (!Number.isInteger(line.quantity) || line.quantity < 1 || line.quantity > LIMITS.maxQuantityPerLine) fail('invalid_request', 'Quantity must be between one and twenty.');\n    if (!line.options || typeof line.options !== 'object' || Array.isArray(line.options) || Object.getPrototypeOf(line.options) !== Object.prototype || Object.keys(line.options).length > 8) fail('invalid_request', 'Invalid variant options.');\n    for (const [name, value] of Object.entries(line.options)) if (forbidden.has(name) || !text(name, 60) || !text(value, 80)) fail('invalid_request', 'Invalid variant selection.');\n    return { provider: 'channel3', productId: line.productId, merchantDomain: line.merchantDomain, condition: line.condition, quantity: line.quantity, options: Object.fromEntries(Object.entries(line.options).sort(([a], [b]) => a.localeCompare(b))) };\n  });\n  if (new Set(lines.map(productKey)).size > LIMITS.maxDistinctProducts) fail('quote_too_large', 'A quote supports at most five distinct product selections.', 422);\n  const identities = lines.map(({ quantity, ...identity }) => canonical(identity));\n  if (new Set(identities).size !== identities.length) fail('duplicate_line', 'Combine identical selections into a single cart line.', 422);\n  return { cartRevision: input.cartRevision, lines, destination: { country: 'DZ' }, currency: 'USD' };\n}\nfunction attemptInput(input) {\n  object(input, ['quoteId', 'cartRevision', 'cartHash']);\n  if (typeof input.quoteId !== 'string' || !ID.test(input.quoteId) || typeof input.cartRevision !== 'string' || !ID.test(input.cartRevision) || typeof input.cartHash !== 'string' || !/^[a-f0-9]{64}$/.test(input.cartHash)) fail('invalid_request', 'Invalid quote or cart binding.');\n  return input;\n}\nfunction idempotencyKey(headers) {\n  const key = headers['idempotency-key']; if (typeof key !== 'string' || !/^[A-Za-z0-9_-]{16,128}$/.test(key)) fail('idempotency_key_required', 'Use a stable 16–128 character Idempotency-Key for retries.'); return key;\n}\nmodule.exports = { LIMITS, ID, object, text, canonical, hash, productKey, quoteInput, attemptInput, idempotencyKey };\n\n},\n\"./providers.js\":function(module,exports,require){\n'use strict';\nconst { fail } = require('./errors.js');\n// Implementations must establish merchant participation and operational guarantees.\n// Configuration alone cannot supply those guarantees or enable payment collection.\nclass CheckoutProvider {\n  capabilities() { return { checkout: false, cancellation: false, refund: false, fulfillment: false }; }\n  async createOrder() { fail('operation_unsupported', 'Merchant purchasing is not supported by this provider.', 409); }\n  async cancelOrder() { fail('operation_unsupported', 'Merchant cancellation is not supported by this provider.', 409); }\n  async refundOrder() { fail('operation_unsupported', 'Merchant refunds are not supported by this provider.', 409); }\n}\nclass Channel3CheckoutProvider extends CheckoutProvider {\n  get id() { return 'channel3'; }\n  blockers() { return [{ code: 'merchant_checkout_unavailable', message: 'Channel3 catalog access does not establish an authorized merchant purchasing integration.' }, { code: 'payment_arrangement_unverified', message: 'A supported merchant payment arrangement and successful-order fee collection have not been established.' }]; }\n}\nconst channel3 = Object.freeze(new Channel3CheckoutProvider());\nconst checkout = () => ({ enabled: false, blockers: channel3.blockers() });\nmodule.exports = { CheckoutProvider, Channel3CheckoutProvider, checkout };\n\n},\n\"./quote.js\":function(module,exports,require){\n'use strict';\nconst { fail } = require('./errors.js');\nconst { decimalToMinor, multiplyMinor, addMinor } = require('./money.js');\nconst { hash, productKey, text, canonical } = require('./validation.js');\nconst { checkout } = require('./providers.js');\nconst SAFE_TITLE = 240;\nfunction safeUrl(value) {\n  try { const u = new URL(value); return typeof value === 'string' && value.length <= 2048 && u.protocol === 'https:' && !u.username && !u.password ? u.href : null; } catch { return null; }\n}\nfunction offerUrl(value) {\n  const url = safeUrl(value); if (!url) return null;\n  const parsed = new URL(url); return parsed.hostname === 'buy.trychannel3.com' && !parsed.port ? url : null;\n}\nasync function hydrate(lines, catalog, timeoutMs) {\n  const unique = [...new Map(lines.map(line => [productKey(line), { productId: line.productId, options: line.options }])).entries()];\n  const result = new Map(), controller = new AbortController(); let cursor = 0, timer;\n  const deadline = new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(Object.assign(new Error('Fresh product deadline exceeded.'), { code: 'catalog_unavailable', statusCode: 503 })); }, timeoutMs); });\n  const worker = async () => {\n    while (!controller.signal.aborted) {\n      const entry = unique[cursor++]; if (!entry) return;\n      const value = await catalog.freshProduct(entry[1], { signal: controller.signal });\n      if (controller.signal.aborted) return; result.set(entry[0], value);\n    }\n  };\n  try { await Promise.race([Promise.all(Array.from({ length: Math.min(3, unique.length) }, worker)), deadline]); }\n  catch { controller.abort(); fail('catalog_unavailable', 'Fresh product validation is temporarily unavailable. Please retry.', 503); }\n  finally { clearTimeout(timer); }\n  if (result.size !== unique.length) fail('catalog_unavailable', 'Fresh product validation did not complete.', 503);\n  return result;\n}\nfunction validateLine(line, envelope, now) {\n  const fetchedAt = Date.parse(envelope?.fetchedAt), expiresAt = Date.parse(envelope?.expiresAt);\n  if (envelope?.provider !== 'channel3' || envelope?.status !== 'fresh' || envelope.error != null || !Number.isFinite(fetchedAt) || !Number.isFinite(expiresAt) || fetchedAt > now + 10000 || fetchedAt < now - 30000 || expiresAt <= now || expiresAt > fetchedAt + 300000) fail('catalog_unavailable', 'A fresh product snapshot could not be validated.', 503);\n  const product = envelope?.data?.product;\n  if (!product || product.id !== line.productId) fail('product_changed', 'The provider returned a different product.', 422);\n  if (!Array.isArray(envelope.selectionMismatch) || envelope.selectionMismatch.length) fail('variant_changed', 'The provider could not retain the selected variant.', 422);\n  const options = product.variants?.options || [], selected = product.variants?.selected || [];\n  if (!Array.isArray(options) || !Array.isArray(selected) || options.length > 8 || selected.length > 8 || new Set(options.map(x => x.name)).size !== options.length || new Set(selected.map(x => x.name)).size !== selected.length) fail('variant_invalid', 'Product variant information is incomplete.', 422);\n  if (options.length !== Object.keys(line.options).length) fail('variant_required', 'Select every required product variant.', 422);\n  let variantUnavailable = false, variantUnknown = false;\n  for (const [name, label] of Object.entries(line.options)) {\n    const definition = options.find(option => option.name === name), effective = selected.find(option => option.name === name);\n    const values = Array.isArray(definition?.values) ? definition.values.filter(value => value.label === label) : [];\n    if (values.length !== 1 || values[0].exists !== true || effective?.label !== label || (values[0].product_id != null && values[0].product_id !== line.productId)) fail('variant_changed', 'The selected variant cannot be confirmed for this product.', 422);\n    if (values[0].available === 'OutOfStock') variantUnavailable = true;\n    else if (values[0].available !== 'InStock') variantUnknown = true;\n  }\n  if (selected.some(value => !Object.hasOwn(line.options, value.name))) fail('variant_changed', 'The provider selected an unrequested variant.', 422);\n  const matching = Array.isArray(product.offers) ? product.offers.filter(offer => offer.domain === line.merchantDomain && (offer.condition ?? null) === line.condition) : [];\n  if (!matching.length || matching.length > 20) fail('offer_unavailable', 'The selected merchant offer is unavailable.', 422);\n  const normalized = matching.map(offer => {\n    if (offer.price?.currency !== 'USD') fail('offer_price_unavailable', 'The selected offer has no supported USD price.', 422);\n    return { unitPriceMinor: decimalToMinor(offer.price.price), availability: variantUnavailable || offer.availability === 'OutOfStock' ? 'OutOfStock' : variantUnknown ? 'unknown' : offer.availability === 'InStock' ? 'InStock' : 'unknown', url: offerUrl(offer.url), maxCommissionRate: typeof offer.max_commission_rate === 'number' && Number.isFinite(offer.max_commission_rate) && offer.max_commission_rate >= 0 && offer.max_commission_rate <= 1 ? offer.max_commission_rate : null };\n  });\n  if (new Set(normalized.map(canonical)).size !== 1) fail('offer_ambiguous', 'This merchant has multiple indistinguishable offers. A unique offer is required.', 422);\n  const offer = normalized[0];\n  return { expiresAt, value: { ...line, title: text(product.title, 2000) ? Array.from(product.title).slice(0, SAFE_TITLE).join('') : 'Product', unitPriceMinor: offer.unitPriceMinor, lineTotalMinor: multiplyMinor(offer.unitPriceMinor, line.quantity), currency: 'USD', availability: offer.availability, validatedAt: new Date(fetchedAt).toISOString(), offer: { domain: line.merchantDomain, url: offer.url, maxCommissionRate: offer.maxCommissionRate }, selection: { valid: true } } };\n}\nfunction component(code, label, amountMinor, status, source, note) { return { code, label, amountMinor, currency: 'USD', status, source, ...(note ? { note } : {}) }; }\nasync function buildQuote({ input, catalog, now, randomId, hydrationTimeoutMs = 9000 }) {\n  const products = await hydrate(input.lines, catalog, hydrationTimeoutMs);\n  // Read time after hydration so a slow request cannot extend a provider snapshot.\n  const current = now(), validated = input.lines.map(line => validateLine(line, products.get(productKey(line)), current));\n  const lines = validated.map(x => x.value), subtotal = addMinor(lines.map(line => line.lineTotalMinor));\n  const customs = component('customs_import', 'Customs duties and import taxes', null, 'unknown', null, 'Import classification and responsibility for arrival charges are not established.');\n  const components = [component('products', 'Products', subtotal, 'estimated', 'channel3', 'Fresh catalog prices are not a merchant purchase reservation or quantity guarantee.'), component('us_sales_tax', 'U.S. sales tax', null, 'unknown', null), component('us_shipping', 'Domestic U.S. shipping', null, 'unknown', null), component('international_shipping', 'International shipping to Algeria', null, 'unknown', null), customs, component('currency_conversion', 'Currency conversion', 0, 'verified', 'quote_currency', 'This quote is denominated in USD; no currency conversion is performed.'), component('anox_service_fee', 'AnoX service fee', 500, 'conditional', 'anox', 'Exactly $5 per successfully completed order. Nothing is collected for a blocked attempt.')];\n  const capability = checkout();\n  capability.blockers.push({ code: 'landed_cost_unverified', message: 'Verified U.S. tax, shipping, and Algeria import charges are unavailable.' }, { code: 'quantity_unreserved', message: 'Catalog availability does not reserve the requested quantity.' });\n  for (const line of lines) if (line.availability !== 'InStock') capability.blockers.push({ code: line.availability === 'OutOfStock' ? 'availability_unavailable' : 'availability_unknown', message: line.availability === 'OutOfStock' ? 'A selected product is unavailable.' : 'Availability for a selected product is unknown.' });\n  return { quoteId: randomId(), cartHash: hash({ lines: input.lines, destination: input.destination, currency: input.currency }), cartRevision: input.cartRevision, createdAt: new Date(current).toISOString(), expiresAt: new Date(Math.min(current + 300000, ...validated.map(x => x.expiresAt))).toISOString(), currency: 'USD', destination: input.destination, lines, costs: { components, estimatedTotalMinor: null, verifiedPayableTotalMinor: null, potentialChargesOnArrival: [customs] }, checkout: capability };\n}\nmodule.exports = { buildQuote, safeUrl, validateLine };\n\n},\n\"./orders.js\":function(module,exports,require){\n'use strict';\nconst { fail } = require('./errors.js');\nconst { safeUrl } = require('./quote.js');\nconst { ID, text } = require('./validation.js');\nconst ORDER_STATES = Object.freeze(['pending', 'confirmed', 'fulfilling', 'shipped', 'delivered', 'canceled', 'failed']);\nconst PAYMENT_STATES = Object.freeze(['pending', 'processing', 'succeeded', 'failed', 'canceled', 'partially_refunded', 'refunded']);\nconst FULFILLMENT_STATES = Object.freeze(['unfulfilled', 'processing', 'shipped', 'delivered', 'returned', 'unknown']);\nfunction safeText(value, limit = 200) { return text(value, limit) ? value : null; }\nfunction validDate(value) { return typeof value === 'string' && /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value; }\nfunction publicOrder(order) {\n  if (!order || typeof order.orderId !== 'string' || !ID.test(order.orderId) || !validDate(order.createdAt) || (order.updatedAt !== undefined && !validDate(order.updatedAt)) || !ORDER_STATES.includes(order.status) || order.currency !== 'USD' || !Number.isSafeInteger(order.totalMinor) || order.totalMinor < 0 || !PAYMENT_STATES.includes(order.payment?.status)) fail('order_unavailable', 'This order record is unavailable.', 503);\n  return { orderId: order.orderId, status: order.status, currency: order.currency, totalMinor: order.totalMinor, createdAt: order.createdAt, updatedAt: order.updatedAt || order.createdAt, merchantOrderReference: safeText(order.merchantOrderReference), payment: { status: order.payment.status }, fulfillment: { status: FULFILLMENT_STATES.includes(order.fulfillment?.status) ? order.fulfillment.status : 'unknown', tracking: Array.isArray(order.fulfillment?.tracking) ? order.fulfillment.tracking.slice(0, 20).filter(item => item && typeof item === 'object').map(item => ({ carrier: safeText(item.carrier, 80), trackingNumber: safeText(item.trackingNumber, 160), url: item.verified === true ? safeUrl(item.url) : null })) : [] }, capabilities: { cancel: false, refund: false } };\n}\nconst transitions = { pending: ['confirmed', 'canceled', 'failed'], confirmed: ['fulfilling', 'canceled'], fulfilling: ['shipped'], shipped: ['delivered'], delivered: [], canceled: [], failed: [] };\nfunction transitionOrder(order, nextStatus, expectedVersion, at) {\n  if (!Number.isSafeInteger(expectedVersion) || order.version !== expectedVersion) fail('state_conflict', 'The order changed; read current state before retrying.', 409);\n  if (!transitions[order.status]?.includes(nextStatus)) fail('invalid_transition', 'This order transition is not permitted.', 409);\n  if (nextStatus === 'confirmed' && (!order.merchantOrderReference || order.payment?.status !== 'succeeded')) fail('confirmation_unverified', 'Merchant acceptance and verified payment are required for confirmation.', 409);\n  return { ...order, status: nextStatus, version: order.version + 1, updatedAt: at };\n}\nmodule.exports = { publicOrder, transitionOrder, ORDER_STATES, PAYMENT_STATES, FULFILLMENT_STATES };\n\n},\n\"./index.js\":function(module,exports,require){\n'use strict';\nconst crypto = require('node:crypto');\nconst { CommerceError, fail } = require('./errors.js');\nconst { LIMITS, ID, hash, quoteInput, attemptInput, idempotencyKey, object } = require('./validation.js');\nconst { checkout } = require('./providers.js');\nconst { buildQuote } = require('./quote.js');\nconst { publicOrder } = require('./orders.js');\nfunction createHandler({ store, catalog, config = {}, now = Date.now, randomId = crypto.randomUUID, hydrationTimeoutMs = 9000, logger = console }) {\n  const settings = { allowedOrigin: 'https://anox.app', ...config };\n  function owner(event) {\n    const claims = event.requestContext?.authorizer?.jwt?.claims;\n    if (!settings.issuer || !settings.clientId || !claims || typeof claims.sub !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(claims.sub) || claims.iss !== settings.issuer || claims.token_use !== 'id' || claims.aud !== settings.clientId || !Number.isFinite(Number(claims.exp)) || Number(claims.exp) * 1000 <= now()) fail('unauthorized', 'Sign in to access commerce information.', 401);\n    return claims.sub;\n  }\n  function parseBody(event, headers) {\n    if (!/^application\\/json(?:\\s*;.*)?$/i.test(headers['content-type'] || '')) fail('invalid_content_type', 'Use application/json.', 415);\n    if (typeof event.body !== 'string' || event.body.length > 45000) fail('invalid_request', 'Request body is missing or too large.', 413);\n    let body = event.body;\n    if (event.isBase64Encoded) { if (!/^[A-Za-z0-9+/]*={0,2}$/.test(body)) fail('invalid_request', 'Invalid encoded request.'); body = Buffer.from(body, 'base64').toString('utf8'); }\n    if (Buffer.byteLength(body) > 32000) fail('invalid_request', 'Request body is too large.', 413);\n    try { return JSON.parse(body); } catch { fail('invalid_request', 'Malformed JSON request.'); }\n  }\n  async function operation({ customer, kind, key, input, build }) {\n    const requestHash = hash(input), current = now();\n    const begun = await store.begin({ owner: customer, kind, key, hash: requestHash, now: current, leaseMs: 30000 });\n    if (begun.status === 'complete') return { payload: begun.result, replayed: true };\n    try {\n      const value = await build();\n      const result = { schemaVersion: 1, [kind === 'quote' ? 'quote' : 'attempt']: value };\n      await store.complete({ owner: customer, kind, key, token: begun.token, result, record: { kind, id: kind === 'quote' ? value.quoteId : value.attemptId, data: value, ...(kind === 'quote' ? { ttl: Math.floor(now() / 1000) + 86400 } : {}) }, audit: { eventId: randomId(), type: kind === 'quote' ? 'quote.created' : 'checkout.blocked', resourceId: kind === 'quote' ? value.quoteId : value.attemptId, at: new Date(now()).toISOString() }, now: now() });\n      return { payload: result, replayed: false };\n    } catch (error) { await store.release({ owner: customer, kind, key, token: begun.token }).catch(() => {}); throw error; }\n  }\n  return async function handler(event) {\n    const headers = Object.fromEntries(Object.entries(event?.headers || {}).map(([name, value]) => [name.toLowerCase(), value]));\n    const origin = headers.origin, responseHeaders = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', Vary: 'Origin' };\n    if (!origin || origin === settings.allowedOrigin) { responseHeaders['Access-Control-Allow-Origin'] = settings.allowedOrigin; responseHeaders['Access-Control-Allow-Headers'] = 'Content-Type,Authorization,Idempotency-Key'; responseHeaders['Access-Control-Allow-Methods'] = 'GET,POST,OPTIONS'; responseHeaders['Access-Control-Expose-Headers'] = 'Idempotency-Replayed,Retry-After'; }\n    const respond = (statusCode, payload, additional = {}) => ({ statusCode, headers: { ...responseHeaders, ...additional }, body: JSON.stringify(payload) });\n    try {\n      if (origin && origin !== settings.allowedOrigin) fail('origin_not_allowed', 'This origin is not allowed.', 403);\n      const method = event?.requestContext?.http?.method, path = event?.rawPath;\n      if (event?.version !== '2.0' || typeof path !== 'string' || !path.startsWith('/commerce/')) fail('not_found', 'Route not found.', 404);\n      if (method === 'OPTIONS') return respond(204, null);\n      if (method === 'GET' && path === '/commerce/capabilities') return respond(200, { schemaVersion: 1, quote: { enabled: true, limits: LIMITS }, checkout: checkout(), orders: { read: true, cancel: false, refund: false }, serviceFee: { currency: 'USD', amountMinor: 500, appliesOn: 'successful_order' } });\n      if (path === '/commerce/webhooks/stripe') fail('webhook_disabled', 'Payment webhooks are not activated for this unsupported checkout integration.', 409);\n      const customer = owner(event);\n      if (method === 'POST' && path === '/commerce/quotes') {\n        const input = quoteInput(parseBody(event, headers)), key = idempotencyKey(headers);\n        const result = await operation({ customer, kind: 'quote', key, input, build: () => buildQuote({ input, catalog, now, randomId, hydrationTimeoutMs }) });\n        return respond(201, result.payload, result.replayed ? { 'Idempotency-Replayed': 'true' } : {});\n      }\n      if (method === 'POST' && path === '/commerce/checkout-attempts') {\n        const input = attemptInput(parseBody(event, headers)), key = idempotencyKey(headers);\n        const result = await operation({ customer, kind: 'attempt', key, input, build: async () => {\n          const quote = await store.get(customer, 'quote', input.quoteId); if (!quote) fail('quote_not_found', 'Quote not found.', 404);\n          if (quote.cartRevision !== input.cartRevision || quote.cartHash !== input.cartHash) fail('cart_changed', 'The quote does not match the reviewed cart.', 409);\n          if (!Number.isFinite(Date.parse(quote.expiresAt)) || Date.parse(quote.expiresAt) <= now()) fail('quote_expired', 'The quote expired. Request a fresh quote.', 409);\n          return { attemptId: randomId(), quoteId: quote.quoteId, cartHash: quote.cartHash, cartRevision: quote.cartRevision, status: 'blocked', createdAt: new Date(now()).toISOString(), checkout: quote.checkout };\n        } }); return respond(201, result.payload, result.replayed ? { 'Idempotency-Replayed': 'true' } : {});\n      }\n      if (method === 'GET' && path === '/commerce/orders') {\n        const query = event.queryStringParameters || {}; object(query, ['cursor'], []);\n        if (query.cursor !== undefined && (typeof query.cursor !== 'string' || !ID.test(query.cursor))) fail('invalid_request', 'Invalid order cursor.');\n        const page = await store.listOrders(customer, query.cursor || null, 20);\n        return respond(200, { schemaVersion: 1, orders: page.orders.map(publicOrder), nextCursor: page.nextCursor });\n      }\n      const match = path.match(/^\\/commerce\\/orders\\/([A-Za-z0-9_-]{1,80})(?:\\/(cancel|refund))?$/);\n      if (match && ((method === 'GET' && !match[2]) || (method === 'POST' && match[2]))) {\n        const order = await store.get(customer, 'order', match[1]); if (!order) fail('order_not_found', 'Order not found.', 404);\n        if (match[2]) { object(parseBody(event, headers), []); fail('operation_unsupported', 'This merchant integration does not support ' + (match[2] === 'cancel' ? 'cancellation.' : 'refunds.'), 409); }\n        return respond(200, { schemaVersion: 1, order: publicOrder(order) });\n      }\n      fail('not_found', 'Route not found.', 404);\n    } catch (error) {\n      const known = error instanceof CommerceError;\n      const statusCode = known ? error.statusCode : 503, code = known ? error.code : 'service_unavailable';\n      logger.error?.(JSON.stringify({ service: 'commerce', outcome: code, statusCode }));\n      return respond(statusCode, { schemaVersion: 1, error: { code, message: known ? error.message : 'Commerce is temporarily unavailable. Please retry.' } }, statusCode === 503 || code === 'operation_in_progress' ? { 'Retry-After': '2' } : {});\n    }\n  };\n}\nmodule.exports = { createHandler };\n\n},\n\"./store.js\":function(module,exports,require){\n'use strict';\nconst crypto = require('node:crypto');\nconst { hash } = require('./validation.js');\nconst { fail } = require('./errors.js');\nfunction createDynamoStore({ send, tableName }) {\n  if (!tableName || typeof send !== 'function') throw Error('Commerce persistence is not configured.');\n  const partition = owner => 'CUSTOMER#' + hash(owner);\n  const keyFor = (owner, kind, id) => ({ pk: partition(owner), sk: kind.toUpperCase() + '#' + id });\n  const operationKey = (owner, kind, key) => ({ pk: partition(owner), sk: 'IDEM#' + kind + '#' + hash(key) });\n  const putUnique = Item => ({ Put: { TableName: tableName, Item, ConditionExpression: 'attribute_not_exists(pk) AND attribute_not_exists(sk)' } });\n  const getItem = async Key => (await send('Get', { TableName: tableName, Key, ConsistentRead: true })).Item;\n  const conditional = error => error.name === 'ConditionalCheckFailedException' || error.name === 'TransactionCanceledException';\n  async function begin({ owner, kind, key, hash: requestHash, now, leaseMs }) {\n    const Key = operationKey(owner, kind, key), previous = await getItem(Key);\n    // An expired record still present is not ignored. TTL is cleanup, not authority.\n    if (previous && previous.requestHash !== requestHash) fail('idempotency_conflict', 'This key was already used for different input.', 409);\n    if (previous?.status === 'complete') return { status: 'complete', result: previous.result };\n    if (previous?.leaseUntil > now) fail('operation_in_progress', 'This operation is already running. Retry with the same key.', 409);\n    const token = crypto.randomUUID(), Item = { ...Key, requestHash, status: 'working', token, leaseUntil: now + leaseMs, ttl: Math.floor(now / 1000) + 86400 };\n    const condition = previous ? { ConditionExpression: 'token = :previous AND leaseUntil <= :now AND requestHash = :hash AND #status = :working', ExpressionAttributeNames: { '#status': 'status' }, ExpressionAttributeValues: { ':previous': previous.token, ':now': now, ':hash': requestHash, ':working': 'working' } } : { ConditionExpression: 'attribute_not_exists(pk) AND attribute_not_exists(sk)' };\n    try { await send('Put', { TableName: tableName, Item, ...condition }); }\n    catch (error) {\n      if (!conditional(error)) throw error;\n      const winner = await getItem(Key);\n      if (winner?.requestHash !== requestHash) fail('idempotency_conflict', 'This key was already used for different input.', 409);\n      if (winner?.status === 'complete') return { status: 'complete', result: winner.result };\n      fail('operation_in_progress', 'This operation is already running. Retry with the same key.', 409);\n    }\n    return { status: 'acquired', token };\n  }\n  async function complete({ owner, kind, key, token, result, record, audit, now }) {\n    const TransactItems = [{ Update: { TableName: tableName, Key: operationKey(owner, kind, key), UpdateExpression: 'SET #status = :complete, #result = :result, ttl = :ttl', ConditionExpression: 'token = :token AND #status = :working AND leaseUntil > :now', ExpressionAttributeNames: { '#status': 'status', '#result': 'result' }, ExpressionAttributeValues: { ':complete': 'complete', ':working': 'working', ':result': result, ':token': token, ':now': now, ':ttl': Math.floor(now / 1000) + 86400 } } }];\n    if (record) TransactItems.push(putUnique({ ...keyFor(owner, record.kind, record.id), data: record.data, ...(record.ttl ? { ttl: record.ttl } : {}) }));\n    if (audit) TransactItems.push(putUnique({ pk: partition(owner), sk: 'AUDIT#' + audit.at + '#' + audit.eventId, data: audit }));\n    try { await send('TransactWrite', { TransactItems, ClientRequestToken: token }); }\n    catch (error) { if (conditional(error)) fail('operation_conflict', 'The operation changed before it could be committed. Retry with the same key.', 409); throw error; }\n  }\n  async function release({ owner, kind, key, token }) {\n    try { await send('Update', { TableName: tableName, Key: operationKey(owner, kind, key), UpdateExpression: 'SET leaseUntil = :zero', ConditionExpression: 'token = :token AND #status = :working', ExpressionAttributeNames: { '#status': 'status' }, ExpressionAttributeValues: { ':zero': 0, ':token': token, ':working': 'working' } }); }\n    catch (error) { if (!conditional(error)) throw error; }\n  }\n  async function get(owner, kind, id) { return (await getItem(keyFor(owner, kind, id)))?.data; }\n  async function listOrders(owner, cursor, limit) {\n    const pk = partition(owner), result = await send('Query', { TableName: tableName, KeyConditionExpression: 'pk = :pk AND begins_with(sk, :prefix)', ExpressionAttributeValues: { ':pk': pk, ':prefix': 'ORDER#' }, ConsistentRead: true, Limit: limit, ...(cursor ? { ExclusiveStartKey: { pk, sk: 'ORDER#' + cursor } } : {}) });\n    return { orders: (result.Items || []).map(item => item.data), nextCursor: result.LastEvaluatedKey?.sk?.slice('ORDER#'.length) || null };\n  }\n  async function transition({ owner, orderId, expectedVersion, next, audit }) {\n    if (!Number.isSafeInteger(expectedVersion) || next.version !== expectedVersion + 1 || next.orderId !== orderId) fail('state_conflict', 'Invalid order transition version.', 409);\n    const changes = [{ Put: { TableName: tableName, Item: { ...keyFor(owner, 'order', orderId), data: next }, ConditionExpression: '#data.#version = :expected', ExpressionAttributeNames: { '#data': 'data', '#version': 'version' }, ExpressionAttributeValues: { ':expected': expectedVersion } } }, putUnique({ pk: partition(owner), sk: 'AUDIT#' + audit.at + '#' + audit.eventId, data: audit })];\n    try { await send('TransactWrite', { TransactItems: changes }); } catch (error) { if (conditional(error)) fail('state_conflict', 'The order changed before the update.', 409); throw error; }\n  }\n  async function getPaymentBinding(id) { return (await getItem({ pk: 'PAYMENT#' + hash(id), sk: 'BINDING' }))?.data; }\n  async function hasWebhook(id) { return Boolean(await getItem({ pk: 'STRIPE#' + hash(id), sk: 'RECEIPT' })); }\n  async function applyWebhook({ eventId, binding, expectedOrderVersion, payment, audit }) {\n    if (!Number.isSafeInteger(expectedOrderVersion) || expectedOrderVersion < 1) fail('state_conflict', 'Invalid order version.', 409);\n    const receipt = { pk: 'STRIPE#' + hash(eventId), sk: 'RECEIPT', data: { eventId, orderId: binding.orderId, at: audit.at } };\n    const identity = ['paymentId', 'attemptId', 'currency', 'account', 'livemode'];\n    const names = Object.fromEntries(identity.map(field => ['#' + field, field]));\n    const values = Object.fromEntries(identity.map(field => [':' + field, binding[field]]));\n    const TransactItems = [putUnique(receipt), { Update: { TableName: tableName, Key: keyFor(binding.owner, 'order', binding.orderId), UpdateExpression: 'SET #data.#payment = :payment, #data.#version = :next, #data.#updatedAt = :at', ConditionExpression: '#data.#version = :expected AND #data.#payment.#amountMinor = :amount AND ' + identity.map(field => '#data.#payment.#' + field + ' = :' + field).join(' AND '), ExpressionAttributeNames: { '#data': 'data', '#payment': 'payment', '#version': 'version', '#updatedAt': 'updatedAt', '#amountMinor': 'amountMinor', ...names }, ExpressionAttributeValues: { ':payment': payment, ':next': expectedOrderVersion + 1, ':expected': expectedOrderVersion, ':at': audit.at, ':amount': binding.expectedAmountMinor, ...values } } }, { ConditionCheck: { TableName: tableName, Key: { pk: 'PAYMENT#' + hash(binding.paymentId), sk: 'BINDING' }, ConditionExpression: '#data.#owner = :owner AND #data.#orderId = :orderId AND #data.#expectedAmountMinor = :amount AND ' + identity.map(field => '#data.#' + field + ' = :' + field).join(' AND '), ExpressionAttributeNames: { '#data': 'data', '#owner': 'owner', '#orderId': 'orderId', '#expectedAmountMinor': 'expectedAmountMinor', ...names }, ExpressionAttributeValues: { ':owner': binding.owner, ':orderId': binding.orderId, ':amount': binding.expectedAmountMinor, ...values } } }, putUnique({ pk: partition(binding.owner), sk: 'AUDIT#' + audit.at + '#' + audit.eventId, data: audit })];\n    try { await send('TransactWrite', { TransactItems }); return { duplicate: false }; }\n    catch (error) { if (conditional(error)) { if (await hasWebhook(eventId)) return { duplicate: true }; fail('state_conflict', 'Concurrent payment update; retry the signed event.', 409); } throw error; }\n  }\n  return { begin, complete, release, get, listOrders, transition, getPaymentBinding, hasWebhook, applyWebhook };\n}\nmodule.exports = { createDynamoStore };\n\n},\n\"./webhooks.js\":function(module,exports,require){\n'use strict';\nconst crypto = require('node:crypto');\nconst { fail } = require('./errors.js');\n// Pure foundation only: no active HTTP route, secret retrieval or payment APIs.\nfunction verifyStripeSignature({ rawBody, signature, secret, now = Date.now(), toleranceSeconds = 300 }) {\n  if (!Buffer.isBuffer(rawBody) || rawBody.length > 256000 || typeof signature !== 'string' || signature.length > 4096 || typeof secret !== 'string' || secret.length < 16) fail('invalid_signature', 'Webhook signature verification failed.', 400);\n  const fields = signature.split(',').map(value => value.trim().split('='));\n  const timestamps = fields.filter(([key]) => key === 't'), signatures = fields.filter(([key]) => key === 'v1').map(([, value]) => value);\n  if (timestamps.length !== 1 || !/^\\d{10,12}$/.test(timestamps[0][1] || '') || !Number.isSafeInteger(toleranceSeconds) || toleranceSeconds < 1 || toleranceSeconds > 300) fail('invalid_signature', 'Webhook signature verification failed.', 400);\n  const timestamp = Number(timestamps[0][1]);\n  if (Math.abs(now / 1000 - timestamp) > toleranceSeconds) fail('invalid_signature', 'Webhook signature has expired.', 400);\n  const expected = crypto.createHmac('sha256', secret).update(timestamps[0][1] + '.').update(rawBody).digest();\n  if (!signatures.some(value => /^[0-9a-f]{64}$/i.test(value || '') && crypto.timingSafeEqual(expected, Buffer.from(value, 'hex')))) fail('invalid_signature', 'Webhook signature verification failed.', 400);\n  try { return JSON.parse(rawBody.toString('utf8')); } catch { fail('invalid_webhook', 'Webhook body must be JSON.', 400); }\n}\nasync function processStripeEvent({ event, store, now = Date.now() }) {\n  if (!event || typeof event.id !== 'string' || !/^evt_[A-Za-z0-9]{1,160}$/.test(event.id) || event.object !== 'event' || typeof event.livemode !== 'boolean' || !Number.isSafeInteger(event.created)) fail('invalid_webhook', 'Invalid payment event.', 400);\n  const supported = ['payment_intent.succeeded', 'payment_intent.processing', 'payment_intent.payment_failed', 'payment_intent.canceled', 'charge.refunded'];\n  if (!supported.includes(event.type)) return { ignored: true };\n  const payment = event.data?.object, refund = event.type === 'charge.refunded', paymentId = refund ? payment?.payment_intent : payment?.id;\n  if (!payment || typeof paymentId !== 'string' || !/^pi_[A-Za-z0-9]{1,160}$/.test(paymentId) || payment.object !== (refund ? 'charge' : 'payment_intent')) fail('invalid_webhook', 'Invalid payment object.', 400);\n  const binding = await store.getPaymentBinding(paymentId);\n  if (!binding) fail('payment_binding_missing', 'No expected payment is bound to this event.', 409);\n  const expected = binding.expectedAmountMinor;\n  if (binding.paymentId !== paymentId || !Number.isSafeInteger(expected) || expected < 0 || payment.amount !== expected || payment.currency !== binding.currency || (event.account ?? null) !== binding.account || event.livemode !== binding.livemode || payment.livemode !== binding.livemode || payment.metadata?.anox_attempt_id !== binding.attemptId || payment.metadata?.anox_order_id !== binding.orderId || (event.type === 'payment_intent.succeeded' && payment.amount_received !== expected)) fail('payment_binding_mismatch', 'Payment event does not match the expected order, amount or account.', 409);\n  // Validate even repeat deliveries so mismatched payloads never receive success.\n  if (await store.hasWebhook(event.id)) return { duplicate: true };\n  const order = await store.get(binding.owner, 'order', binding.orderId);\n  if (!order || !Number.isSafeInteger(order.version) || order.version < 1) fail('state_conflict', 'The expected order payment state changed.', 409);\n  if (order.payment?.amountMinor !== expected || ['paymentId', 'attemptId', 'currency', 'account', 'livemode'].some(field => order.payment?.[field] !== binding[field])) fail('payment_binding_mismatch', 'This payment is not the active payment for the order.', 409);\n  const current = order.payment, next = { ...current };\n  if (refund) {\n    if (!Number.isSafeInteger(payment.amount_refunded) || payment.amount_refunded < 0 || payment.amount_refunded > expected || !['succeeded', 'partially_refunded', 'refunded'].includes(current.status)) fail('refund_unverified', 'Refund principal or payment state is invalid.', 409);\n    next.refundedMinor = Math.max(current.refundedMinor || 0, payment.amount_refunded);\n    next.status = next.refundedMinor === expected ? 'refunded' : next.refundedMinor > 0 ? 'partially_refunded' : 'succeeded';\n  } else if (!['succeeded', 'partially_refunded', 'refunded', 'canceled'].includes(current.status)) {\n    const status = { 'payment_intent.succeeded': 'succeeded', 'payment_intent.processing': 'processing', 'payment_intent.payment_failed': 'failed', 'payment_intent.canceled': 'canceled' }[event.type];\n    // Failure may later be retried on the same PaymentIntent; event time prevents\n    // older processing/failure deliveries from reversing the more recent state.\n    if (status === 'succeeded' || event.created >= (current.lastEventCreated || 0)) { next.status = status; next.lastEventCreated = event.created; }\n  }\n  return store.applyWebhook({ eventId: event.id, binding, expectedOrderVersion: order.version, payment: next, audit: { eventId: event.id, type: 'stripe.' + event.type, resourceId: binding.orderId, at: new Date(now).toISOString(), previousPaymentStatus: current.status, paymentStatus: next.status } });\n}\nmodule.exports = { verifyStripeSignature, processStripeEvent };\n\n},\n\"./runtime.js\":function(module,exports,require){\n'use strict';\nconst { createHandler } = require('./index.js');\nconst { createDynamoStore } = require('./store.js');\nfunction loadSdk() {\n  return { ...require('@aws-sdk/client-dynamodb'), ...require('@aws-sdk/lib-dynamodb'), ...require('@aws-sdk/client-lambda') };\n}\nfunction createRuntime({ env = process.env, sdk, logger = console } = {}) {\n  const region = env.AWS_REGION || 'us-east-2';\n  if (!/^[a-z]{2}-[a-z]+-\\d$/.test(region) || !/^[A-Za-z0-9_.-]{3,255}$/.test(env.COMMERCE_TABLE || '') || !/^arn:aws:lambda:[a-z0-9-]+:\\d{12}:function:[A-Za-z0-9_-]+(?::[A-Za-z0-9_-]+)?$/.test(env.CATALOG_FUNCTION_ARN || '') || !/^https:\\/\\/cognito-idp\\.[a-z0-9-]+\\.amazonaws\\.com\\/[a-z0-9-]+_[A-Za-z0-9]+$/.test(env.COGNITO_ISSUER || '') || !/^[A-Za-z0-9_-]{1,128}$/.test(env.COGNITO_CLIENT_ID || '') || (env.ALLOWED_ORIGIN && env.ALLOWED_ORIGIN !== 'https://anox.app')) throw Error('Commerce runtime configuration is incomplete.');\n  sdk ||= loadSdk();\n  const database = sdk.DynamoDBDocumentClient.from(new sdk.DynamoDBClient({ region, maxAttempts: 2, requestHandler: { connectionTimeout: 500, requestTimeout: 1500 } }), { marshallOptions: { removeUndefinedValues: false } });\n  const lambda = new sdk.LambdaClient({ region, maxAttempts: 1, requestHandler: { connectionTimeout: 500, requestTimeout: 9000 } });\n  const commands = { Get: sdk.GetCommand, Put: sdk.PutCommand, Update: sdk.UpdateCommand, Query: sdk.QueryCommand, TransactWrite: sdk.TransactWriteCommand };\n  const store = createDynamoStore({ tableName: env.COMMERCE_TABLE, send: (operation, input) => {\n    const Command = commands[operation]; if (!Command) throw Error('Unsupported persistence operation.');\n    return database.send(new Command(input), { abortSignal: AbortSignal.timeout(1500) });\n  } });\n  const catalog = { freshProduct: async ({ productId, options }, { signal }) => {\n    const response = await lambda.send(new sdk.InvokeCommand({ FunctionName: env.CATALOG_FUNCTION_ARN, InvocationType: 'RequestResponse', Payload: Buffer.from(JSON.stringify({ operation: 'commerce.product', productId, options })) }), { abortSignal: signal });\n    if (response.FunctionError || !response.Payload || response.Payload.byteLength > 512000) throw Error('Fresh catalog response unavailable.');\n    return JSON.parse(Buffer.from(response.Payload).toString('utf8'));\n  } };\n  return { store, catalog, handler: createHandler({ store, catalog, logger, config: { issuer: env.COGNITO_ISSUER, clientId: env.COGNITO_CLIENT_ID, allowedOrigin: env.ALLOWED_ORIGIN || 'https://anox.app' } }) };\n}\nlet runtime;\nasync function handler(event) {\n  try { runtime ||= createRuntime(); return await runtime.handler(event); }\n  catch { console.error(JSON.stringify({ service: 'commerce', outcome: 'runtime_unavailable', statusCode: 503 })); return { statusCode: 503, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }, body: JSON.stringify({ schemaVersion: 1, error: { code: 'service_unavailable', message: 'Commerce is temporarily unavailable.' } }) }; }\n}\nmodule.exports = { createRuntime, handler };\n\n}\n};\nconst loaded=Object.create(null);\nfunction load(name){if(!Object.hasOwn(factories,name))return externalRequire(name);if(loaded[name])return loaded[name].exports;const module={exports:{}};loaded[name]=module;factories[name](module,module.exports,load);return module.exports;}\nexports.handler=load('./runtime.js').handler;\n"
+        }
+      }
+    },
+    "CommerceIntegration": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "ExistingHttpApiId"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationMethod": "POST",
+        "PayloadFormatVersion": "2.0",
+        "TimeoutInMillis": 20000,
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "CommerceFunction",
+            "Arn"
+          ]
+        }
+      }
+    },
+    "CommerceFailureMetric": {
+      "Type": "AWS::Logs::MetricFilter",
+      "Properties": {
+        "LogGroupName": {
+          "Ref": "CommerceLogs"
+        },
+        "FilterPattern": "?catalog_unavailable ?service_unavailable ?runtime_unavailable",
+        "MetricTransformations": [
+          {
+            "MetricNamespace": "AnoX/Commerce",
+            "MetricName": "ServiceUnavailable",
+            "MetricValue": "1",
+            "DefaultValue": 0
+          }
+        ]
+      }
+    },
+    "CommerceFailureAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "The commerce handler is returning unavailable responses. No customer data is included.",
+        "Namespace": "AnoX/Commerce",
+        "MetricName": "ServiceUnavailable",
+        "Statistic": "Sum",
+        "Period": 300,
+        "EvaluationPeriods": 1,
+        "Threshold": 3,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "notBreaching",
+        "AlarmActions": {
+          "Fn::If": [
+            "HasAlarmTopic",
+            [
+              {
+                "Ref": "ExistingAlarmTopicArn"
+              }
+            ],
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      }
+    },
+    "CommerceRuntimeErrorAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "An unhandled commerce Lambda error occurred.",
+        "Namespace": "AWS/Lambda",
+        "MetricName": "Errors",
+        "Dimensions": [
+          {
+            "Name": "FunctionName",
+            "Value": {
+              "Ref": "CommerceFunction"
+            }
+          }
+        ],
+        "Statistic": "Sum",
+        "Period": 300,
+        "EvaluationPeriods": 1,
+        "Threshold": 1,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "notBreaching",
+        "AlarmActions": {
+          "Fn::If": [
+            "HasAlarmTopic",
+            [
+              {
+                "Ref": "ExistingAlarmTopicArn"
+              }
+            ],
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      }
+    },
+    "CommerceThrottleAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "Commerce reserved concurrency is exhausted.",
+        "Namespace": "AWS/Lambda",
+        "MetricName": "Throttles",
+        "Dimensions": [
+          {
+            "Name": "FunctionName",
+            "Value": {
+              "Ref": "CommerceFunction"
+            }
+          }
+        ],
+        "Statistic": "Sum",
+        "Period": 300,
+        "EvaluationPeriods": 1,
+        "Threshold": 1,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "notBreaching",
+        "AlarmActions": {
+          "Fn::If": [
+            "HasAlarmTopic",
+            [
+              {
+                "Ref": "ExistingAlarmTopicArn"
+              }
+            ],
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      }
+    },
+    "CommerceDurationAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "Commerce p99 duration approaches its 18-second runtime limit.",
+        "Namespace": "AWS/Lambda",
+        "MetricName": "Duration",
+        "Dimensions": [
+          {
+            "Name": "FunctionName",
+            "Value": {
+              "Ref": "CommerceFunction"
+            }
+          }
+        ],
+        "ExtendedStatistic": "p99",
+        "Period": 300,
+        "EvaluationPeriods": 1,
+        "Threshold": 14000,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "notBreaching",
+        "AlarmActions": {
+          "Fn::If": [
+            "HasAlarmTopic",
+            [
+              {
+                "Ref": "ExistingAlarmTopicArn"
+              }
+            ],
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      }
+    },
+    "CommerceWriteUsageAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "Commerce write consumption reaches 10,000 capacity units per hour. This is a usage alert, not a provider invoice.",
+        "Namespace": "AWS/DynamoDB",
+        "MetricName": "ConsumedWriteCapacityUnits",
+        "Dimensions": [
+          {
+            "Name": "TableName",
+            "Value": {
+              "Ref": "CommerceTable"
+            }
+          }
+        ],
+        "Statistic": "Sum",
+        "Period": 3600,
+        "EvaluationPeriods": 1,
+        "Threshold": 10000,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "notBreaching",
+        "AlarmActions": {
+          "Fn::If": [
+            "HasAlarmTopic",
+            [
+              {
+                "Ref": "ExistingAlarmTopicArn"
+              }
+            ],
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      }
+    },
+    "CommerceTableThrottleAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "Commerce DynamoDB requests were throttled.",
+        "Namespace": "AWS/DynamoDB",
+        "MetricName": "WriteThrottleEvents",
+        "Dimensions": [
+          {
+            "Name": "TableName",
+            "Value": {
+              "Ref": "CommerceTable"
+            }
+          }
+        ],
+        "Statistic": "Sum",
+        "Period": 300,
+        "EvaluationPeriods": 1,
+        "Threshold": 1,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "notBreaching",
+        "AlarmActions": {
+          "Fn::If": [
+            "HasAlarmTopic",
+            [
+              {
+                "Ref": "ExistingAlarmTopicArn"
+              }
+            ],
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      }
+    },
+    "CapabilitiesRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "ExistingHttpApiId"
+        },
+        "RouteKey": "GET /commerce/capabilities",
+        "AuthorizationType": "NONE",
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "CommerceIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "CapabilitiesPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "CommerceFunction"
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ExistingHttpApiId}/*/GET/commerce/capabilities"
+        }
+      }
+    },
+    "QuotesRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "ExistingHttpApiId"
+        },
+        "RouteKey": "POST /commerce/quotes",
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "ExistingAuthorizerId"
+        },
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "CommerceIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "QuotesPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "CommerceFunction"
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ExistingHttpApiId}/*/POST/commerce/quotes"
+        }
+      }
+    },
+    "AttemptsRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "ExistingHttpApiId"
+        },
+        "RouteKey": "POST /commerce/checkout-attempts",
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "ExistingAuthorizerId"
+        },
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "CommerceIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "AttemptsPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "CommerceFunction"
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ExistingHttpApiId}/*/POST/commerce/checkout-attempts"
+        }
+      }
+    },
+    "OrdersRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "ExistingHttpApiId"
+        },
+        "RouteKey": "GET /commerce/orders",
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "ExistingAuthorizerId"
+        },
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "CommerceIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "OrdersPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "CommerceFunction"
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ExistingHttpApiId}/*/GET/commerce/orders"
+        }
+      }
+    },
+    "OrderRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "ExistingHttpApiId"
+        },
+        "RouteKey": "GET /commerce/orders/{orderId}",
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "ExistingAuthorizerId"
+        },
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "CommerceIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "OrderPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "CommerceFunction"
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ExistingHttpApiId}/*/GET/commerce/orders/*"
+        }
+      }
+    },
+    "CancelRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "ExistingHttpApiId"
+        },
+        "RouteKey": "POST /commerce/orders/{orderId}/cancel",
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "ExistingAuthorizerId"
+        },
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "CommerceIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "CancelPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "CommerceFunction"
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ExistingHttpApiId}/*/POST/commerce/orders/*/cancel"
+        }
+      }
+    },
+    "RefundRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "ExistingHttpApiId"
+        },
+        "RouteKey": "POST /commerce/orders/{orderId}/refund",
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "ExistingAuthorizerId"
+        },
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "CommerceIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "RefundPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "CommerceFunction"
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ExistingHttpApiId}/*/POST/commerce/orders/*/refund"
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "CommerceFunctionArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "CommerceFunction",
+          "Arn"
+        ]
+      }
+    },
+    "CommerceTableName": {
+      "Value": {
+        "Ref": "CommerceTable"
+      }
+    },
+    "CommerceLogGroup": {
+      "Value": {
+        "Ref": "CommerceLogs"
+      }
+    }
+  }
+}

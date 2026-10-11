@@ -1,0 +1,68 @@
+{
+  "verifiedOn": "2026-10-11",
+  "region": "us-east-2",
+  "account": "427064007352",
+  "readOnly": true,
+  "successfulApiCalls": [
+    "sts:GetCallerIdentity",
+    "apigatewayv2:GetApi",
+    "apigatewayv2:GetAuthorizers",
+    "dynamodb:DescribeTable"
+  ],
+  "api": {
+    "ApiId": "zmumi2wruk",
+    "ApiEndpoint": "https://zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+    "CorsConfiguration": {
+      "AllowCredentials": false,
+      "AllowHeaders": [
+        "content-type",
+        "authorization"
+      ],
+      "AllowMethods": [
+        "GET",
+        "POST",
+        "PUT",
+        "OPTIONS"
+      ],
+      "AllowOrigins": [
+        "https://anox.app"
+      ],
+      "MaxAge": 3600
+    }
+  },
+  "authorizer": {
+    "AuthorizerId": "qcopg9",
+    "AuthorizerType": "JWT",
+    "IdentitySource": [
+      "$request.header.Authorization"
+    ],
+    "JwtConfiguration": {
+      "Audience": [
+        "63738r9gpr126qpgp1a5cubchi"
+      ],
+      "Issuer": "https://cognito-idp.us-east-2.amazonaws.com/us-east-2_gUci3YuMm"
+    }
+  },
+  "existingOrderTable": {
+    "TableName": "AnoX-Orders",
+    "TableStatus": "ACTIVE",
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+      {
+        "AttributeName": "orderId",
+        "KeyType": "HASH"
+      }
+    ],
+    "Attributes": [
+      "createdAt",
+      "orderId",
+      "userId"
+    ]
+  },
+  "limitations": [
+    "No secret values retrieved.",
+    "No infrastructure or account changes.",
+    "Existing route/stage inventory, quotas and all effective IAM policies were not exhaustively re-audited.",
+    "New endpoints remain undeployed."
+  ]
+}

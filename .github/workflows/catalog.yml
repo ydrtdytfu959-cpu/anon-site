@@ -1,4 +1,4 @@
-name: Catalog validation
+name: Catalog and commerce validation
 on:
   pull_request:
   push:
