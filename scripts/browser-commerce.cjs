@@ -16,7 +16,12 @@ function detail(id,options={}){
   const d=fixture.product({id,title:'Fixture product '+id,description:'A full, real source description.\n'+('Detailed product information. '.repeat(120)),
     variants:{options:[{name:'Color',values:[{label:'Navy Blue',exists:true,available:'InStock'},{label:'Red',exists:true,available:'InStock'}]},{name:'Size',values:[{label:'M',exists:true,available:'InStock'},{label:'L',exists:true,available:'InStock'},{label:'Sold out',exists:true,available:'OutOfStock'}]}],selected:[{name:'Color',label:color},{name:'Size',label:id==='relaxed'?'M':size}]}});
   if(id==='incomplete'){d.images=[];d.description=null;d.variants={options:[],selected:[]};d.offers=[];d.materials=[];d.key_features=[];d.structured_attributes={};}
+  if(id==='image-failure')d.images[0].url='https://cdn.trychannel3.com/fail0.jpg';
   if(id==='other-merchant')d.offers[0].domain='replacement.example';
+  if(id==='two-merchants')d.offers.push({...d.offers[0],domain:'second.example',url:'https://buy.trychannel3.com/second',price:{price:104.95,currency:'USD'}});
+  if(id==='ambiguous')d.offers.push({...d.offers[0],url:'https://buy.trychannel3.com/other',price:{price:104.95,currency:'USD'}});
+  if(id==='unknown-variant')d.variants.options[1].values[0].available=null;
+  if(id==='variant-source')d.variants.options[0].values[1].product_id='variant-target';
   return fixture.envelope({selectionMismatch:id==='relaxed'&&size!=='M'?[{name:'Size',requested:size,effective:'M'}]:[]},d);
 }
 const ownedOrder={orderId:'owned-order',createdAt:'2026-10-09T12:00:00.000Z',status:'pending',totalMinor:29985,currency:'USD',payment:{status:'pending'},fulfillment:{status:'unfulfilled'},capabilities:{cancel:false,refund:false}};
@@ -25,8 +30,8 @@ async function run(engine,mobile=false){
  try{
   const context=await browser.newContext({viewport:mobile?{width:390,height:844}:{width:1440,height:960},isMobile:engine==='firefox'?false:mobile,hasTouch:mobile,reducedMotion:'reduce'});
   const store=new MemoryStore();store.seed('customer-a','order',ownedOrder.orderId,ownedOrder);
-  const handleCommerce=createHandler({store,catalog:{freshProduct:async({productId,options})=>detail(productId,options)},config,now:Date.now,logger:{error(){}}});
-  const calls=[],errors=[],unexpected=[];let releaseSlow,slowGate=new Promise(r=>releaseSlow=r),failOnce=true,slowQuote=false,releaseQuote,quoteGate;
+  const handleCommerce=createHandler({store,catalog:{freshProduct:async({productId,options})=>{const value=detail(productId,options);value.data.product.offers.forEach(offer=>{offer.price.price=104.95;});return value;}},config,now:Date.now,logger:{error(){}}});
+  const calls=[],errors=[],unexpected=[];let releaseSlow,slowGate=new Promise(r=>releaseSlow=r),failOnce=true,slowQuote=false,releaseQuote,quoteGate,capabilityAbsentOnce=true;
   await context.addInitScript(()=>{
    window.__commerceCsp=[];window.addEventListener('securitypolicyviolation',e=>window.__commerceCsp.push(e.violatedDirective));
    if(location.hostname==='anox.app'&&!sessionStorage.getItem('fixture-session-initialized')){sessionStorage.setItem('fixture-session-initialized','yes');sessionStorage.setItem('anox:auth:v1',JSON.stringify({idToken:'fixture-token',accessToken:'fixture-access',refreshToken:'fixture-refresh',expiresAt:Date.now()+3600000}));}
@@ -47,7 +52,7 @@ async function run(engine,mobile=false){
    if(url.pathname.startsWith('/commerce/')){
     const body=request.method()==='POST'?request.postDataJSON():undefined;
     const type=url.pathname==='/commerce/quotes'?'quote':url.pathname==='/commerce/capabilities'?'capabilities':url.pathname==='/commerce/orders'?'orders':'order';
-    calls.push({type,body,headers:request.headers()});if(type==='quote'&&slowQuote)await quoteGate;
+    calls.push({type,body,headers:request.headers()});if(type==='capabilities'&&capabilityAbsentOnce){capabilityAbsentOnce=false;return send({message:'Not Found'},404);}if(type==='quote'&&slowQuote)await quoteGate;
     const event=backendEvent(request.method(),url.pathname,body,{headers:request.headers(),queryStringParameters:Object.fromEntries(url.searchParams)});
     event.requestContext.authorizer.jwt.claims.exp=String(Math.floor(Date.now()/1000)+3600);
     if(!request.headers().authorization)delete event.requestContext.authorizer;
@@ -71,6 +76,7 @@ async function run(engine,mobile=false){
   await page.locator('[data-commerce-option="Size"]').selectOption('L');await ready();assert.deepEqual(calls.filter(c=>c.type==='detail').at(-1).options,{Color:'Navy Blue',Size:'L'});
   await page.locator('[data-commerce-quantity]').fill('2');await page.locator('[data-commerce-quantity]').blur();await page.locator('[data-commerce-add]').click();
   await nav('cart');await page.locator('[data-commerce-cart-quantity]').waitFor();assert.equal(await page.locator('[data-commerce-cart-quantity]').inputValue(),'2');
+  await page.locator('[data-commerce-capabilities-retry]').waitFor();assert.equal(await page.locator('[data-commerce-quote]').isDisabled(),true);assert.equal(calls.filter(c=>c.type==='quote').length,0);assert.match(await page.locator('#main').textContent(),/cost verification service is unavailable/);await page.locator('[data-commerce-capabilities-retry]').click();await page.waitForFunction(()=>document.querySelector('[data-commerce-quote]')?.disabled===false);record('absent staged capabilities endpoint keeps quote/payment unavailable and never falls back to legacy checkout');
   const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('anox:selection-cart:v1')));assert.equal(saved.lines[0].options.Size,'L');assert.equal(saved.lines[0].display.stock,null);assert.equal(saved.lines[0].offerUrl,'https://buy.trychannel3.com/tracked?a=1');
   record('direct PDP hydration, full gallery, keyboard/swipe, real option refresh and safe saved metadata');
   await page.reload();await page.locator('[data-commerce-cart-quantity]').waitFor();assert.equal(await page.locator('[data-commerce-cart-quantity]').inputValue(),'2');
@@ -78,6 +84,7 @@ async function run(engine,mobile=false){
   await page.locator('[data-commerce-edit]').click();await ready();assert.equal(await page.locator('[data-commerce-option="Size"]').inputValue(),'L');await page.locator('[data-commerce-option="Size"]').selectOption('M');await ready();await page.locator('[data-commerce-add]').click();await page.locator('[data-commerce-cart-quantity]').waitFor();
   await page.locator('[data-commerce-quote]').click();await page.locator('#commerce-cost-title').waitFor();
   const cost=await page.locator('.commerce-cost').textContent();assert.match(cost,/Estimated TotalUnavailable/);assert.match(cost,/Verified Payable TotalUnavailable/);assert.match(cost,/\$5\.00/);assert.match(cost,/Potential Charges on Arrival/);assert.equal(await page.locator('[data-commerce-checkout]').isDisabled(),true);
+  assert.equal(await page.locator('[data-commerce-quote-line]').count(),1);assert.match(await page.locator('[data-commerce-quote-line]').textContent(),/Fresh unit price.*\$104\.95/);assert.match(await page.locator('[data-commerce-price-change]').textContent(),/Saved unit price.*\$99\.95.*Fresh unit price.*\$104\.95/);assert.match(await page.locator('[data-commerce-quote-line]').textContent(),/Line subtotal.*\$314\.85/);
   const request=calls.filter(c=>c.type==='quote').at(-1);assert.equal(request.body.lines[0].quantity,3);assert.equal(request.body.lines[0].options.Size,'M');assert.equal(request.body.lines[0].priceCents,undefined);assert.match(request.headers['idempotency-key'],/^[A-Za-z0-9_-]{16,128}$/);
   record('cart restores, edits, requests authenticated server quote and leaves unknown costs and payment unavailable');
   const second=await context.newPage();await second.goto('https://anox.app/#cart');await second.locator('[data-commerce-cart-quantity]').waitFor();assert.equal(await second.locator('[data-commerce-cart-quantity]').inputValue(),'3');
@@ -88,6 +95,12 @@ async function run(engine,mobile=false){
   await nav('product/channel3/relaxed?option_Size=L');await ready();assert.equal(await page.locator('[data-commerce-add]').isDisabled(),true);await page.locator('[data-commerce-accept-options]').click();await ready();assert.equal(await page.locator('[data-commerce-option="Size"]').inputValue(),'M');assert.equal(await page.locator('[data-commerce-add]').isEnabled(),true);
   await nav('product/channel3/other-merchant?merchant=example.com&condition=new');await ready();assert.equal(await page.locator('[data-commerce-add]').isDisabled(),true);assert.match(await page.locator('#commerce-merchant').textContent(),/Requested offer unavailable/);await page.locator('#commerce-merchant').selectOption('0');assert.equal(await page.locator('[data-commerce-add]').isEnabled(),true);
   record('relaxed options and missing requested merchant require deliberate acceptance');
+  await nav('product/channel3/two-merchants');await ready();const merchantCalls=calls.filter(c=>c.type==='detail').length;await page.locator('#commerce-merchant').selectOption('1');assert.equal(calls.filter(c=>c.type==='detail').length,merchantCalls,'selecting a fresh offer must not spend another detail call');assert.match(await page.locator('#commerce-merchant option:checked').textContent(),/second.example/);await page.reload();await ready();assert.match(await page.locator('#commerce-merchant option:checked').textContent(),/second.example/,'merchant selection survives refresh');
+  await nav('product/channel3/variant-source');await ready();await page.locator('[data-commerce-add]').click();await nav('cart');await page.locator('[data-commerce-edit="1"]').waitFor();await page.locator('[data-commerce-edit="1"]').click();await ready();await page.locator('[data-commerce-option="Color"]').selectOption('Red');await ready();assert.match(page.url(),/product\/channel3\/variant-target/,'provider product_id controls the selected variant identity');assert.equal(calls.filter(c=>c.type==='detail').at(-1).id,'variant-target');assert.equal(await page.locator('[data-commerce-option="Color"]').inputValue(),'Red','clicked variant label survives product identity navigation');assert.equal(await page.locator('[data-commerce-option="Size"]').inputValue(),'M');await page.locator('[data-commerce-add]').click();await page.locator('[data-commerce-edit="1"]').waitFor();assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('anox:selection-cart:v1')).lines.map(line=>line.productId)),['shoe_1','variant-target']);
+  await nav('product/channel3/ambiguous');await ready();assert.equal(await page.locator('[data-commerce-add]').isDisabled(),true,'indistinguishable merchant offers must not silently select the first');
+  await nav('product/channel3/unknown-variant');await ready();assert.doesNotMatch(await page.locator('#main').textContent(),/Source reports available/,'unknown selected variant cannot inherit merchant-level availability');assert.match(await page.locator('#main').textContent(),/Availability unconfirmed/);
+  record('merchant reload, distinct variant identity, ambiguous offers and unknown selected availability remain explicit');
+  await page.route('https://cdn.trychannel3.com/fail0.jpg',route=>route.abort(),{times:1});await nav('product/channel3/image-failure');await ready();await page.locator('.commerce-gallery-stage .commerce-image-empty').waitFor();await page.locator('.commerce-thumbs [data-commerce-gallery="0"]').click();await page.waitForFunction(()=>document.querySelector('.commerce-main-image')?.naturalWidth>0);record('failed gallery image recovers on explicit thumbnail retry without another product request');
   await nav('product/channel3/incomplete');await ready();assert.equal(await page.locator('.commerce-main-image').count(),0);assert.equal(await page.locator('[data-commerce-add]').isDisabled(),true);
   await nav('product/channel3/failure');await page.locator('[data-commerce-detail-retry]').waitFor();await page.locator('[data-commerce-detail-retry]').click();await ready();
   const slow=page.waitForRequest(r=>r.url().includes('/products/slow'));await nav('product/channel3/slow');await slow;await nav('product/channel3/fast');await ready();releaseSlow();await page.waitForTimeout(80);assert.match(await page.locator('#main h1').textContent(),/fast/);

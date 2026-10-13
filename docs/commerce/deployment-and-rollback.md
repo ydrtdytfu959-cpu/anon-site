@@ -1,5 +1,7 @@
 # Deployment and rollback boundary
 
+Historical baseline plan. Use the [critical remediation runbook](../remediation/deployment-and-rollback.md) for the current branch. Budget counters are retained financial-control state, not disposable cache: restoring or resetting them requires disabling upstream calls and reconciling already consumed credits. The current runbook also records the regional concurrency blocker, explicit monthly allocations, private TemplateURL prerequisites and updated template sizes.
+
 This change is staged for review. It has **not** deployed infrastructure, activated payments, changed live payment configuration, created merchant orders, or merged a branch. Obtain the user's explicit deployment approval after reviewing the final commit, generated templates, test report and this runbook.
 
 ## Prerequisites

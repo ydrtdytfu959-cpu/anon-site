@@ -35,3 +35,11 @@ test('commerce option validation rejects lone surrogates and C1 controls before 
  for(const options of [{Size:'\ud800'},{Size:'\udfff'},{'\u0085Size':'M'},{Size:'M\u009f'}])await assert.rejects(auth.api('/commerce/quotes',{method:'POST',body:JSON.stringify({...body,lines:[{...body.lines[0],options}]}),idempotencyKey:'test-key-123456789'}),{code:'INVALID_BODY'});
  assert.equal(count,0);
 });
+
+test('authenticated commerce transport rejects undeployed read contracts and server quote overlimits before network',async()=>{
+ let count=0;const auth=client(async()=>{count++;return Response.json({});});
+ for(const path of ['/commerce/quotes/q1','/commerce/checkout-attempts/a1','/checkout','/checkout-auth','/webhook','/payments','/payment'])await assert.rejects(auth.api(path),{code:'INVALID_PATH'});
+ for(const path of ['/checkout','/checkout-auth','/webhook','/payments','/payment'])await assert.rejects(auth.api(path,{method:'POST',body:'{}'}),{code:'INVALID_PATH'});
+ for(const lines of [Array.from({length:11},(_,i)=>({...body.lines[0],merchantDomain:'merchant'+i+'.example'})),Array.from({length:6},(_,i)=>({...body.lines[0],productId:'prod'+i}))])await assert.rejects(auth.api('/commerce/quotes',{method:'POST',body:JSON.stringify({...body,lines}),idempotencyKey:'test-key-123456789'}),{code:'INVALID_BODY'});
+ assert.equal(count,0);
+});

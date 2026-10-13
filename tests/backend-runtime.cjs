@@ -68,8 +68,8 @@ test('actual upstream request metric counts HTTP attempts but not secret failure
   const bad=api.createUpstream({metric:name=>metrics.push(name),getSecret:async()=>{throw Error('secret unavailable');},fetch:async()=>{calls++;return json({products:[],next_page_token:null});}});
   await assert.rejects(bad({query:'shoe',limit:24}));assert.equal(metrics.length,0);assert.equal(calls,0);
   const good=api.createUpstream({metric:name=>metrics.push(name),getSecret:async()=>'fake',fetch:async()=>{calls++;return json({products:[],next_page_token:null});}});
-  await good({query:'shoe',limit:24});assert.deepEqual(metrics,['upstream_request','paid_search_request']);assert.equal(calls,1);
-  await good.detail({productId:'shoe_1'});assert.deepEqual(metrics,['upstream_request','paid_search_request','upstream_request','free_detail_request']);assert.equal(calls,2);
+  await good({query:'shoe',limit:24});assert.deepEqual(metrics,['upstream_request','search_credit_request']);assert.equal(calls,1);
+  await good.detail({productId:'shoe_1'});assert.deepEqual(metrics,['upstream_request','search_credit_request','upstream_request','product_detail_request']);assert.equal(calls,2);
 });
 test('cursor expiring during runtime secret access cannot initiate HTTP or count a request',async()=>{
   let time=10,calls=0;const metrics=[];

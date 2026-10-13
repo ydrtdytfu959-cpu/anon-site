@@ -25,6 +25,14 @@ test('detail route is explicit and budget permissions and notification alarms ar
   assert.equal(r.DetailIntegration.Properties.PayloadFormatVersion,'2.0');assert.deepEqual(r.DetailIntegration.Properties.IntegrationUri,{'Fn::GetAtt':['Channel3Function','Arn']});
   assert.match(r.DetailPermission.Properties.SourceArn['Fn::Sub'],/\/GET\/catalog\/channel3\/products\/\*$/);assert.equal(r.DetailPermission.Properties.Principal,'apigateway.amazonaws.com');
   const db=r.Channel3Role.Properties.Policies[0].PolicyDocument.Statement.find(s=>s.Action.includes('dynamodb:GetItem'));assert.ok(db.Action.includes('dynamodb:UpdateItem'));assert.ok(!db.Action.includes('dynamodb:Scan'));
-  assert.deepEqual(r.Channel3Function.Properties.Environment.Variables.PAID_DAILY_LIMIT,{Ref:'PaidDailyLimit'});
+  assert.deepEqual(r.Channel3Function.Properties.Environment.Variables.SEARCH_DAILY_LIMIT,{Ref:'SearchDailyLimit'});
   for(const name of ['PaidUsageAlarm','DetailUsageAlarm','BudgetDeniedAlarm','UpstreamFailureAlarm']){assert.equal(r[name].Type,'AWS::CloudWatch::Alarm');assert.equal(r[name].Properties.Namespace,'AnoX/Catalog');assert.ok(r[name].Properties.AlarmActions['Fn::If']);}
+});
+
+test('paid usage requires explicit allocation and defaults cannot create a new upstream budget',()=>{
+  const {Parameters:p,Resources:r}=buildTemplate(source);
+  assert.equal(p.BudgetMonth.Default,'');assert.equal(p.PaidUsageEnabled.Default,'false');
+  for(const name of ['FreeSearchMonthlyCredits','PaidSearchMonthlyCredits','SearchDailyLimit','DetailMonthlyLimit','DetailDailyLimit'])assert.equal(p[name].Default,0);
+  assert.equal(p.FreeSearchMonthlyCredits.MaxValue,1000);assert.equal(r.CatalogCache.Properties.DeletionProtectionEnabled,true);assert.equal(r.CatalogCache.Properties.PointInTimeRecoverySpecification.PointInTimeRecoveryEnabled,true);
+  assert.equal(r.PaidUsageAlarm.Properties.MetricName,'search_credit_request');assert.equal(r.DetailUsageAlarm.Properties.MetricName,'product_detail_request');
 });

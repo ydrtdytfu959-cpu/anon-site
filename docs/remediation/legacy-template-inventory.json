@@ -1,0 +1,121 @@
+{
+  "observedOn": "2026-10-12",
+  "status": "success",
+  "api_calls": [
+    {
+      "service": "cloudformation",
+      "operation": "GetTemplate",
+      "status": "success",
+      "n_items": {
+        "StagesAvailable": 2
+      }
+    },
+    {
+      "service": "cloudformation",
+      "operation": "GetTemplate",
+      "status": "success",
+      "n_items": {
+        "StagesAvailable": 2
+      }
+    },
+    {
+      "service": "cloudformation",
+      "operation": "GetTemplate",
+      "status": "success",
+      "n_items": {
+        "StagesAvailable": 2
+      }
+    },
+    {
+      "service": "cloudformation",
+      "operation": "GetTemplate",
+      "status": "success",
+      "n_items": {
+        "StagesAvailable": 2
+      }
+    },
+    {
+      "service": "cloudformation",
+      "operation": "GetTemplate",
+      "status": "success",
+      "n_items": {
+        "StagesAvailable": 2
+      }
+    },
+    {
+      "service": "cloudformation",
+      "operation": "GetTemplate",
+      "status": "success",
+      "n_items": {
+        "StagesAvailable": 2
+      }
+    },
+    {
+      "service": "cloudformation",
+      "operation": "GetTemplate",
+      "status": "success",
+      "n_items": {
+        "StagesAvailable": 2
+      }
+    }
+  ],
+  "resources": {
+    "AnoX-Checkout-Core": {
+      "CheckoutCoreFunction": {
+        "functionName": "AnoX-Checkout-Core",
+        "handler": "index.handler",
+        "sourceKind": "CloudFormation processed template; not proof of no manual Lambda drift",
+        "sourceBytes": 12314
+      }
+    },
+    "AnoX-Checkout-Auth": {
+      "CheckoutAuthFunction": {
+        "functionName": "AnoX-Checkout-Auth",
+        "handler": "index.handler",
+        "sourceKind": "CloudFormation processed template; not proof of no manual Lambda drift",
+        "sourceBytes": 3615
+      }
+    },
+    "AnoX-Payment-Webhook": {
+      "PaymentWebhookFunction": {
+        "functionName": "AnoX-Payment-Webhook",
+        "handler": "index.handler",
+        "sourceKind": "CloudFormation processed template; not proof of no manual Lambda drift",
+        "sourceBytes": 11997
+      }
+    },
+    "AnoX-Payment-Read-API": {
+      "Function": {
+        "functionName": "AnoX-Payment-Read",
+        "handler": "index.handler",
+        "sourceKind": "CloudFormation processed template; not proof of no manual Lambda drift",
+        "sourceBytes": 2018
+      }
+    },
+    "AnoX-Account-API": {
+      "AccountFunction": {
+        "functionName": null,
+        "handler": "index.handler",
+        "sourceKind": "CloudFormation processed template; not proof of no manual Lambda drift",
+        "sourceBytes": 5265
+      }
+    },
+    "AnoX-Shipping-Core": {
+      "ShippingFunction": {
+        "functionName": "AnoX-Shipping-Core",
+        "handler": "index.handler",
+        "sourceKind": "CloudFormation processed template; not proof of no manual Lambda drift",
+        "sourceBytes": 26382
+      }
+    },
+    "AnoX-Channel3-Catalog": {
+      "Channel3Function": {
+        "functionName": "AnoX-Channel3-Catalog",
+        "handler": "index.handler",
+        "sourceKind": "CloudFormation processed template; not proof of no manual Lambda drift",
+        "sourceBytes": 20343
+      }
+    }
+  },
+  "limitations": "Processed CloudFormation source reviewed. Lambda CodeSha256 recorded separately. No presigned code-download URLs or secret values retrieved; manual code drift is not excluded."
+}

@@ -100,7 +100,7 @@
   function componentShape(c){return object(c)&&identifier(c.code,100)&&bounded(c.label,200)&&c.currency==='USD'&&['verified','estimated','unknown','conditional'].includes(c.status)&&(c.status==='unknown'?c.amountMinor===null:integer(c.amountMinor,0,1e12))&&(bounded(c.source,300)||c.status==='unknown'&&c.source===null)&&(c.note===undefined||typeof c.note==='string'&&c.note.length<=1000);}
   function quoteShape(envelope,revision,now,expectedLines){
     const q=envelope?.quote,costs=q?.costs,invalid=()=>{throw fail('invalid_quote');};
-    if(!object(envelope)||envelope.schemaVersion!==1||!object(q)||!identifier(q.quoteId)||!identifier(q.cartHash)||q.cartRevision!==revision||!identifier(q.cartRevision,80)||q.currency!=='USD'||!iso(q.createdAt)||!iso(q.expiresAt)||Date.parse(q.createdAt)>now+5000||Date.parse(q.expiresAt)<=now||Date.parse(q.expiresAt)<=Date.parse(q.createdAt)||Date.parse(q.expiresAt)-Date.parse(q.createdAt)>300000)invalid();
+    if(!object(envelope)||envelope.schemaVersion!==1||!object(q)||!identifier(q.quoteId)||!identifier(q.cartHash)||q.cartRevision!==revision||!identifier(q.cartRevision,80)||q.currency!=='USD'||!iso(q.createdAt)||!iso(q.expiresAt)||Date.parse(q.createdAt)>now+5000||Date.parse(q.expiresAt)<=now||Date.parse(q.expiresAt)<=Date.parse(q.createdAt)||Date.parse(q.expiresAt)-Date.parse(q.createdAt)>30000)invalid();
     if(!object(costs)||!Array.isArray(costs.components)||!costs.components.length||costs.components.length>30||!costs.components.every(componentShape)||new Set(costs.components.map(c=>c.code)).size!==costs.components.length||!Array.isArray(costs.potentialChargesOnArrival)||costs.potentialChargesOnArrival.length>20||!costs.potentialChargesOnArrival.every(componentShape))invalid();
     const fee=costs.components.filter(c=>c.code==='anox_service_fee');
     if(fee.length!==1||fee[0].amountMinor!==500||fee[0].status!=='conditional'||costs.estimatedTotalMinor!==null||costs.verifiedPayableTotalMinor!==null||!object(q.checkout)||q.checkout.enabled!==false||!blockersShape(q.checkout.blockers))invalid();
@@ -109,9 +109,12 @@
     if(!Array.isArray(q.lines)||!q.lines.length||q.lines.length>10||expectedLines&&q.lines.length!==expectedLines.length)invalid();
     q.lines.forEach((line,i)=>{
       let normalized;try{normalized=selection(line);}catch{invalid();}
-      if(line.currency!=='USD'||!bounded(line.title,500)||!integer(line.unitPriceMinor,0,1e12)||!integer(line.lineTotalMinor,0,1e12)||line.lineTotalMinor!==line.unitPriceMinor*line.quantity||!['InStock','OutOfStock','unknown'].includes(line.availability)||!iso(line.validatedAt)||Date.parse(line.validatedAt)>now+60000||!object(line.selection)||line.selection.valid!==true||!object(line.offer)||line.offer.domain!==line.merchantDomain||!https(line.offer.url,['buy.trychannel3.com'])||!(line.offer.maxCommissionRate===null||typeof line.offer.maxCommissionRate==='number'&&Number.isFinite(line.offer.maxCommissionRate)&&line.offer.maxCommissionRate>=0&&line.offer.maxCommissionRate<=1))invalid();
+      if(line.currency!=='USD'||!bounded(line.title,500)||!integer(line.unitPriceMinor,0,1e12)||!integer(line.lineTotalMinor,0,1e12)||line.lineTotalMinor!==line.unitPriceMinor*line.quantity||!['InStock','OutOfStock','unknown'].includes(line.availability)||!iso(line.validatedAt)||Date.parse(line.validatedAt)>now+10000||Date.parse(q.expiresAt)>Date.parse(line.validatedAt)+30000||!object(line.selection)||line.selection.valid!==true||!object(line.offer)||line.offer.domain!==line.merchantDomain||!https(line.offer.url,['buy.trychannel3.com'])||!(line.offer.maxCommissionRate===null||typeof line.offer.maxCommissionRate==='number'&&Number.isFinite(line.offer.maxCommissionRate)&&line.offer.maxCommissionRate>=0&&line.offer.maxCommissionRate<=1))invalid();
       if(expectedLines&&(lineKey(normalized)!==lineKey(expectedLines[i])||line.quantity!==expectedLines[i].quantity))invalid();
     });
+    const products=costs.components.find(c=>c.code==='products');
+    const subtotal=q.lines.reduce((sum,line)=>sum+BigInt(line.lineTotalMinor),0n);
+    if(!products||products.status!=='estimated'||BigInt(products.amountMinor??-1)!==subtotal)invalid();
     return freeze(copy(q));
   }
   function capabilitiesShape(value){

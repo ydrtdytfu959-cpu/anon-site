@@ -44,7 +44,7 @@ test('uncoordinated or denied persistence remains explicit session-only storage'
   await denied.add(item());assert.equal(denied.state.lines.length,1);assert.equal(denied.state.persistent,false);
 });
 
-function quoted(revision='rev-one',now=Date.now()) { return {schemaVersion:1,quote:{quoteId:'quote-1',cartRevision:revision,cartHash:'abc123',currency:'USD',createdAt:new Date(now).toISOString(),expiresAt:new Date(now+300000).toISOString(),lines:[{provider:'channel3',productId:'real-product',merchantDomain:'merchant.example',condition:null,quantity:2,options:{Color:'Blue',Size:'M'},title:'Actual product',unitPriceMinor:12345,lineTotalMinor:24690,currency:'USD',availability:'InStock',validatedAt:new Date(now).toISOString(),offer:{domain:'merchant.example',url:'https://buy.trychannel3.com/real',maxCommissionRate:0.02},selection:{valid:true}}],costs:{components:[{code:'products',label:'Product price',status:'estimated',amountMinor:24690,currency:'USD',source:'catalog'},{code:'anox_service_fee',label:'AnoX service fee',status:'conditional',amountMinor:500,currency:'USD',source:'anox'},{code:'international_shipping',label:'International shipping',status:'unknown',amountMinor:null,currency:'USD',source:'unavailable'}],estimatedTotalMinor:null,verifiedPayableTotalMinor:null,potentialChargesOnArrival:[{code:'customs_duties',label:'Customs duties',status:'unknown',amountMinor:null,currency:'USD',source:'unavailable'}]},checkout:{enabled:false,blockers:[{code:'MERCHANT_CHECKOUT_UNAVAILABLE',message:'No authorized merchant purchasing integration is connected.'}]}}}; }
+function quoted(revision='rev-one',now=Date.now()) { return {schemaVersion:1,quote:{quoteId:'quote-1',cartRevision:revision,cartHash:'abc123',currency:'USD',createdAt:new Date(now).toISOString(),expiresAt:new Date(now+30000).toISOString(),lines:[{provider:'channel3',productId:'real-product',merchantDomain:'merchant.example',condition:null,quantity:2,options:{Color:'Blue',Size:'M'},title:'Actual product',unitPriceMinor:12345,lineTotalMinor:24690,currency:'USD',availability:'InStock',validatedAt:new Date(now).toISOString(),offer:{domain:'merchant.example',url:'https://buy.trychannel3.com/real',maxCommissionRate:0.02},selection:{valid:true}}],costs:{components:[{code:'products',label:'Product price',status:'estimated',amountMinor:24690,currency:'USD',source:'catalog'},{code:'anox_service_fee',label:'AnoX service fee',status:'conditional',amountMinor:500,currency:'USD',source:'anox'},{code:'international_shipping',label:'International shipping',status:'unknown',amountMinor:null,currency:'USD',source:'unavailable'}],estimatedTotalMinor:null,verifiedPayableTotalMinor:null,potentialChargesOnArrival:[{code:'customs_duties',label:'Customs duties',status:'unknown',amountMinor:null,currency:'USD',source:'unavailable'}]},checkout:{enabled:false,blockers:[{code:'MERCHANT_CHECKOUT_UNAVAILABLE',message:'No authorized merchant purchasing integration is connected.'}]}}}; }
 test('quote requests exclude browser price metadata, coalesce and reuse the key on uncertain retry',async()=>{
   assert.equal(typeof lib.createClient,'function');
   const calls=[],auth={api:async(path,options)=>{calls.push({path,options});if(calls.length===1)throw Error('network');return quoted();}},client=lib.createClient({auth});
@@ -120,4 +120,18 @@ test('explicit erase cancels queued edits so an earlier pending add cannot resto
  const storage=memory(),cart=lib.createCart({storage,locks:locks()});
  const pending=cart.add(item()),rejected=assert.rejects(pending,{code:'cart_changed'});await cart.forget();await rejected;
  assert.equal(storage.getItem(cart.key),null);assert.equal(cart.state.lines.length,0);
+});
+
+test('quote response product subtotal must equal the exact sum of its server line amounts',()=>{
+ const cart={revision:'rev-one',lines:[lib.selection(item())]};
+ for(const mutate of [q=>q.costs.components[0].amountMinor++,q=>q.costs.components.shift(),q=>q.costs.components[0].status='verified']){
+  const response=quoted();mutate(response.quote);assert.throws(()=>lib.quoteShape(response,cart.revision,Date.now(),cart.lines),{code:'invalid_quote'});
+ }
+});
+
+ test('quote response cannot outlive thirty-second product evidence or reuse stale line evidence',()=>{
+ const now=Date.now(),cart={revision:'rev-one',lines:[lib.selection(item())]};
+ for(const mutate of [q=>q.expiresAt=new Date(now+30001).toISOString(),q=>q.lines[0].validatedAt=new Date(now-30001).toISOString(),q=>q.lines[0].validatedAt=new Date(now+10001).toISOString()]){
+  const response=quoted(cart.revision,now);mutate(response.quote);assert.throws(()=>lib.quoteShape(response,cart.revision,now,cart.lines),{code:'invalid_quote'});
+ }
 });

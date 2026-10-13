@@ -4,7 +4,7 @@ The deployable page is the complete root `index.html`. The canonical browser mod
 
 The Channel3 Lambda source and generated CloudFormation template are in [`backend/`](backend/README.md). The separate, staged commerce service is in [`backend/commerce/`](backend/commerce/README.md). `npm run build` generates both templates, so deployed copies cannot silently diverge from their sources. No build or test command deploys AWS changes.
 
-Product details, saved cart selections and server quotes are implemented for review. Merchant purchasing, financial collection and guaranteed delivered totals remain unavailable until supported integrations and commercial approvals exist. The new backend routes have not been deployed. See the [engineering report](docs/commerce/engineering-report.md), [integration prerequisites](docs/commerce/integration-readiness.md) and [deployment/rollback runbook](docs/commerce/deployment-and-rollback.md).
+Product details, saved cart selections and server quotes are implemented for review. Merchant purchasing, financial collection and guaranteed delivered totals remain unavailable until supported integrations and commercial approvals exist. The new backend routes have not been deployed. The current [release assessment and issue register](docs/remediation/release-assessment.md), [validation](docs/remediation/validation.md), [cost policy](docs/remediation/channel3-cost.md), [checkout and shipping feasibility](docs/remediation/checkout-and-shipping-feasibility.md) and [deployment/rollback runbook](docs/remediation/deployment-and-rollback.md) supersede the historical implementation reports in `docs/commerce/`.
 
 With Node 24:
 

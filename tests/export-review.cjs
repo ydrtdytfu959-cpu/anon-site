@@ -27,6 +27,10 @@ function fixture(t){
   write('package-lock.json','{"name":"fixture","lockfileVersion":3}\n');
   write('tests/fixtures/non-ascii é.json','{"example":"fixture"}\n');
   write('docs/commerce/review.md','# Review\n');
+  write('docs/remediation/evidence.json','{"scope":"fixture"}\n');
+  write('docs/phase1/validation.md','# Historical validation\n');
+  write('README.md','# Source build instructions\n');
+  write('.github/workflows/catalog.yml','name: fixture\n');
   write('unrelated.txt','must not be archived\n');
   write('.gitignore','.private-local\n');
   git('init','-q','-b','feat/export-fixture');
@@ -49,11 +53,14 @@ test('review export preserves committed bytes, excludes local/unrelated files an
   assert.deepEqual(fs.readFileSync(path.join(first,'index.html')),fs.readFileSync(path.join(f.root,'index.html')));
   const manifest=JSON.parse(fs.readFileSync(path.join(first,'manifest.json'))),entries=zipContents(first);
   assert.equal(manifest.commit,f.git('rev-parse','HEAD'));
+  assert.equal(manifest.sourceTree,f.git('rev-parse','HEAD^{tree}'));
+  assert.equal(manifest.reproduce.node,process.version);
   assert.equal(manifest.branch,'feat/export-fixture');
-  assert.deepEqual(entries.map(item=>item.name),['auth.js','backend/index.js','catalog-live.js','commerce-client.js','docs/commerce/review.md','favicon.svg','package-lock.json','package.json','scripts/export-review.cjs','tests/fixtures/non-ascii é.json']);
+  assert.deepEqual(entries.map(item=>item.name),['.github/workflows/catalog.yml','README.md','auth.js','backend/index.js','catalog-live.js','commerce-client.js','docs/commerce/review.md','docs/phase1/validation.md','docs/remediation/evidence.json','favicon.svg','package-lock.json','package.json','scripts/export-review.cjs','tests/fixtures/non-ascii é.json']);
   assert.deepEqual([...manifest.files].sort(),entries.map(item=>item.name));
   for(const entry of entries){assert.deepEqual(Buffer.from(entry.data,'base64'),fs.readFileSync(path.join(f.root,entry.name)));assert.deepEqual(entry.timestamp,[1980,1,1,0,0,0]);assert.equal(entry.mode,0o100644);}
   for(const name of ['index.html','backend-infrastructure.zip'])assert.equal(manifest.sha256[name],createHash('sha256').update(fs.readFileSync(path.join(first,name))).digest('hex'));
+  for(const name of ['index.html',...manifest.files])assert.equal(manifest.sourceSha256[name],createHash('sha256').update(fs.readFileSync(path.join(f.root,name))).digest('hex'));
   assert.equal(manifest.htmlBytes,fs.statSync(path.join(first,'index.html')).size);
   assert.equal(fs.readdirSync(first).length,4,'temporary staging files must be removed');
 });
@@ -96,7 +103,7 @@ test('an output directory created concurrently is not overwritten',t=>{
 });
 
 test('tracked private files or symlinks in the selected release inventory fail closed',async t=>{
-  for(const filename of ['backend/.env.production','backend/credentials.json','scripts/private-key.pem','tests/.aws/config','backend/link.js'])await t.test(filename,t=>{
+  for(const filename of ['backend/.env.production','backend/credentials.json','scripts/private-key.pem','tests/.aws/config','docs/remediation/.env','docs/credentials.json','backend/link.js'])await t.test(filename,t=>{
     const f=fixture(t),destination=path.join(f.temporary,'private release');
     if(filename==='backend/link.js')fs.symlinkSync('../.private-local',path.join(f.root,filename));else f.write(filename,'private fixture content');
     f.commit();const result=f.run(destination);

@@ -151,3 +151,79 @@ test('corrupt persisted order ids timestamps and tracking data are unavailable i
     assert.equal((await handler(event('GET', '/commerce/orders/order_123456'))).statusCode, 503);
   }
 });
+test('an overlong upstream expiry cannot extend volatile quote data beyond thirty seconds', async () => {
+  const { handler } = setup({ catalog: { freshProduct: async input => {
+    const snapshot = freshProduct(input); snapshot.expiresAt = new Date(FIXED_NOW + 300000).toISOString(); return snapshot;
+  } } });
+  const response = await handler(event('POST', '/commerce/quotes', requestBody()));
+  assert.equal(response.statusCode, 201);
+  assert.equal(Date.parse(json(response).quote.expiresAt), FIXED_NOW + 30000);
+});
+test('a snapshot at the thirty-second freshness boundary cannot create a quote', async () => {
+  const { handler, store } = setup({ catalog: { freshProduct: async input => {
+    const snapshot = freshProduct(input); snapshot.fetchedAt = new Date(FIXED_NOW - 30000).toISOString(); return snapshot;
+  } } });
+  const response = await handler(event('POST', '/commerce/quotes', requestBody()));
+  assert.equal(response.statusCode, 503); assert.equal(store.audits.length, 0);
+});
+test('all private routes reject wrong JWT authority and expired identity before persistence', async () => {
+  let accessed = false;
+  const store = new Proxy({}, { get() { accessed = true; throw new Error('Customer persistence must not be accessed'); } });
+  const { handler } = setup({ store });
+  const routes = [['POST', '/commerce/quotes', requestBody()], ['POST', '/commerce/checkout-attempts', {}], ['GET', '/commerce/orders'], ['GET', '/commerce/orders/order1'], ['POST', '/commerce/orders/order1/cancel', {}], ['POST', '/commerce/orders/order1/refund', {}]];
+  const mutations = [claims => { claims.iss = 'https://other.example'; }, claims => { claims.aud = 'other-client'; }, claims => { claims.sub = ''; }, claims => { claims.sub = 'x#OTHER'; }, claims => { claims.exp = String(FIXED_NOW / 1000); }, claims => { claims.token_use = 'access'; }, claims => { delete claims.exp; }];
+  for (const [method, path, body] of routes) for (const mutate of mutations) {
+    const input = event(method, path, body); mutate(input.requestContext.authorizer.jwt.claims);
+    assert.equal((await handler(input)).statusCode, 401);
+  }
+  assert.equal(accessed, false);
+});
+test('maximum ten-line cart has one conditional fee, exact quantities and only five distinct hydrations', async () => {
+  let calls = 0;
+  const { handler } = setup({ catalog: { freshProduct: async input => {
+    calls++; const snapshot = freshProduct(input), first = snapshot.data.product.offers[0];
+    first.price.price = '0.29'; snapshot.data.product.offers.push({ ...structuredClone(first), domain: 'second.example' }); return snapshot;
+  } } });
+  const body = requestBody(), original = body.lines[0];
+  body.lines = Array.from({ length: 10 }, (_, index) => ({ ...structuredClone(original), productId: 'product' + Math.floor(index / 2), merchantDomain: index % 2 ? 'second.example' : 'merchant.example', quantity: index + 1 }));
+  const response = await handler(event('POST', '/commerce/quotes', body)); assert.equal(response.statusCode, 201);
+  const quote = json(response).quote; assert.equal(calls, 5);
+  assert.deepEqual(quote.lines.map(line => line.lineTotalMinor), [29, 58, 87, 116, 145, 174, 203, 232, 261, 290]);
+  assert.equal(quote.costs.components.find(component => component.code === 'products').amountMinor, 1595);
+  assert.equal(quote.costs.components.filter(component => component.code === 'anox_service_fee').length, 1);
+  assert.equal(quote.costs.components.find(component => component.code === 'anox_service_fee').amountMinor, 500);
+  assert.equal(quote.costs.estimatedTotalMinor, null); assert.equal(quote.costs.verifiedPayableTotalMinor, null);
+});
+test('six distinct selections are rejected without paid or detail work', async () => {
+  const { handler, calls } = setup(), body = requestBody();
+  body.lines = Array.from({ length: 6 }, (_, index) => ({ ...structuredClone(body.lines[0]), productId: 'product' + index }));
+  const response = await handler(event('POST', '/commerce/quotes', body));
+  assert.equal(response.statusCode, 422); assert.equal(json(response).error.code, 'quote_too_large'); assert.equal(calls(), 0);
+});
+test('ambiguous successful persistence can be replayed without another hydration or duplicate audit', async () => {
+  const store = new MemoryStore(), complete = store.complete.bind(store); let lostReply = true;
+  store.complete = async input => { await complete(input); if (lostReply) { lostReply = false; throw new Error('Transport lost committed transaction reply'); } };
+  const { handler, calls } = setup({ store });
+  assert.equal((await handler(event('POST', '/commerce/quotes', requestBody()))).statusCode, 503);
+  const replay = await handler(event('POST', '/commerce/quotes', requestBody()));
+  assert.equal(replay.statusCode, 201); assert.equal(replay.headers['Idempotency-Replayed'], 'true');
+  assert.equal(calls(), 1); assert.equal(store.audits.length, 1); assert.equal(store.records.size, 1);
+});
+test('blocked attempts replay exactly and reject a modified request under the same key', async () => {
+  const { handler, store } = setup(); const quote = json(await handler(event('POST', '/commerce/quotes', requestBody()))).quote;
+  const body = { quoteId: quote.quoteId, cartRevision: quote.cartRevision, cartHash: quote.cartHash };
+  const first = await handler(event('POST', '/commerce/checkout-attempts', body));
+  const replay = await handler(event('POST', '/commerce/checkout-attempts', body));
+  assert.equal(replay.body, first.body); assert.equal(replay.headers['Idempotency-Replayed'], 'true');
+  const modified = await handler(event('POST', '/commerce/checkout-attempts', { ...body, cartRevision: 'changed_revision' }));
+  assert.equal(modified.statusCode, 409); assert.equal(json(modified).error.code, 'idempotency_conflict');
+  assert.equal(store.audits.filter(audit => audit.type === 'checkout.blocked').length, 1);
+  assert.equal([...store.records.keys()].filter(key => ['order', 'payment'].includes(JSON.parse(key)[1])).length, 0);
+});
+test('permitted upstream clock skew does not grant more than thirty seconds from quote creation', async () => {
+  const { handler } = setup({ catalog: { freshProduct: async input => {
+    const snapshot = freshProduct(input); snapshot.fetchedAt = new Date(FIXED_NOW + 10000).toISOString(); snapshot.expiresAt = new Date(FIXED_NOW + 40000).toISOString(); return snapshot;
+  } } });
+  const response = await handler(event('POST', '/commerce/quotes', requestBody()));
+  assert.equal(response.statusCode, 201); assert.equal(Date.parse(json(response).quote.expiresAt), FIXED_NOW + 30000);
+});

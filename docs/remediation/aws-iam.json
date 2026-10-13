@@ -1,0 +1,899 @@
+{
+  "observedOn": "2026-10-12",
+  "scope": "Read-only role policies for nine existing functions; no secret values or policy changes",
+  "status": "success",
+  "stdout": "",
+  "stderr": null,
+  "return_value": {
+    "functions": [
+      {
+        "FunctionName": "AnoX-Account-API-AccountFunction-FIlyvPfCeFEL",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Account-API-AccountRole-EHhv6Ykrc5Mj"
+      },
+      {
+        "FunctionName": "AnoX-Shipping-Core",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Shipping-Core-ShippingRole-e2i1Kde1jVrI"
+      },
+      {
+        "FunctionName": "AnoX-Checkout-Core",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Checkout-Core-CheckoutCoreRole-3Y6uuyRMDyNL"
+      },
+      {
+        "FunctionName": "AnoX-Channel3-Catalog",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Channel3-Catalog-Channel3Role-3AzyNIuhdUvo"
+      },
+      {
+        "FunctionName": "AnoX-Payment-Read",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Payment-Read-Role"
+      },
+      {
+        "FunctionName": "AnoX-Checkout-Auth",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Checkout-Auth-CheckoutAuthRole-7yyJ62h9keRU"
+      },
+      {
+        "FunctionName": "AnoX-Payment-Webhook",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Payment-Webhook-Role"
+      },
+      {
+        "FunctionName": "AnoX-Catalog-API",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Catalog-API-Role"
+      },
+      {
+        "FunctionName": "AnoX-Smart-Catalog",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Smart-Catalog-Role"
+      }
+    ],
+    "roles": [
+      {
+        "name": "AnoX-Account-API-AccountRole-EHhv6Ykrc5Mj",
+        "role": {
+          "Arn": "arn:aws:iam::427064007352:role/AnoX-Account-API-AccountRole-EHhv6Ykrc5Mj",
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "lambda.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "PermissionsBoundary": null
+        },
+        "inlineNames": [
+          "AnoXAccountDataAccess"
+        ],
+        "attached": [
+          {
+            "PolicyName": "AWSLambdaBasicExecutionRole",
+            "PolicyArn": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+          }
+        ],
+        "inlinePolicies": [
+          {
+            "name": "AnoXAccountDataAccess",
+            "document": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem"
+                  ],
+                  "Resource": "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Users",
+                  "Effect": "Allow"
+                },
+                {
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:Query"
+                  ],
+                  "Resource": [
+                    "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Orders",
+                    "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Orders/index/UserOrdersByCreatedAt"
+                  ],
+                  "Effect": "Allow"
+                },
+                {
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:Query"
+                  ],
+                  "Resource": [
+                    "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Shipments",
+                    "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Shipments/index/OrderIdIndex",
+                    "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-TrackingEvents"
+                  ],
+                  "Effect": "Allow"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "AnoX-Catalog-API-Role",
+        "role": {
+          "Arn": "arn:aws:iam::427064007352:role/AnoX-Catalog-API-Role",
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "lambda.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "PermissionsBoundary": null
+        },
+        "inlineNames": [
+          "CatalogTable",
+          "ReadChannel3Secret",
+          "ReadCJSecret"
+        ],
+        "attached": [
+          {
+            "PolicyName": "AWSLambdaBasicExecutionRole",
+            "PolicyArn": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+          }
+        ],
+        "inlinePolicies": [
+          {
+            "name": "CatalogTable",
+            "document": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:BatchWriteItem"
+                  ],
+                  "Resource": "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Products",
+                  "Effect": "Allow"
+                }
+              ]
+            }
+          },
+          {
+            "name": "ReadChannel3Secret",
+            "document": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "secretsmanager:GetSecretValue"
+                  ],
+                  "Resource": "arn:aws:secretsmanager:us-east-2:427064007352:secret:AnoX/Channel3/Production-22Xm3D"
+                }
+              ]
+            }
+          },
+          {
+            "name": "ReadCJSecret",
+            "document": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Action": [
+                    "secretsmanager:GetSecretValue"
+                  ],
+                  "Resource": "arn:aws:secretsmanager:us-east-2:427064007352:secret:AnoX/CJ/Production-N5donP",
+                  "Effect": "Allow"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "AnoX-Channel3-Catalog-Channel3Role-3AzyNIuhdUvo",
+        "role": {
+          "Arn": "arn:aws:iam::427064007352:role/AnoX-Channel3-Catalog-Channel3Role-3AzyNIuhdUvo",
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "lambda.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "PermissionsBoundary": null
+        },
+        "inlineNames": [
+          "Channel3CatalogRuntime"
+        ],
+        "attached": [],
+        "inlinePolicies": [
+          {
+            "name": "Channel3CatalogRuntime",
+            "document": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Action": [
+                    "secretsmanager:GetSecretValue"
+                  ],
+                  "Resource": "arn:aws:secretsmanager:us-east-2:427064007352:secret:AnoX/Channel3/Production-22Xm3D",
+                  "Effect": "Allow"
+                },
+                {
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:DeleteItem"
+                  ],
+                  "Resource": "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Channel3-Catalog-CatalogCache-GGLNCMZC7CSK",
+                  "Effect": "Allow"
+                },
+                {
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "arn:aws:logs:us-east-2:427064007352:log-group:/aws/lambda/AnoX-Channel3-Catalog:*",
+                  "Effect": "Allow"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "AnoX-Checkout-Auth-CheckoutAuthRole-7yyJ62h9keRU",
+        "role": {
+          "Arn": "arn:aws:iam::427064007352:role/AnoX-Checkout-Auth-CheckoutAuthRole-7yyJ62h9keRU",
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "lambda.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "PermissionsBoundary": null
+        },
+        "inlineNames": [
+          "CheckoutAuthAccess"
+        ],
+        "attached": [
+          {
+            "PolicyName": "AWSLambdaBasicExecutionRole",
+            "PolicyArn": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+          }
+        ],
+        "inlinePolicies": [
+          {
+            "name": "CheckoutAuthAccess",
+            "document": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Action": [
+                    "lambda:InvokeFunction"
+                  ],
+                  "Resource": [
+                    "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Checkout-Core"
+                  ],
+                  "Effect": "Allow"
+                },
+                {
+                  "Action": [
+                    "dynamodb:UpdateItem"
+                  ],
+                  "Resource": [
+                    "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Orders"
+                  ],
+                  "Effect": "Allow"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "AnoX-Checkout-Core-CheckoutCoreRole-3Y6uuyRMDyNL",
+        "role": {
+          "Arn": "arn:aws:iam::427064007352:role/AnoX-Checkout-Core-CheckoutCoreRole-3Y6uuyRMDyNL",
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "lambda.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "PermissionsBoundary": null
+        },
+        "inlineNames": [
+          "CheckoutCoreAccess"
+        ],
+        "attached": [
+          {
+            "PolicyName": "AWSLambdaBasicExecutionRole",
+            "PolicyArn": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+          }
+        ],
+        "inlinePolicies": [
+          {
+            "name": "CheckoutCoreAccess",
+            "document": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Action": [
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem"
+                  ],
+                  "Resource": [
+                    "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Orders"
+                  ],
+                  "Effect": "Allow"
+                },
+                {
+                  "Action": [
+                    "secretsmanager:GetSecretValue"
+                  ],
+                  "Resource": [
+                    "arn:aws:secretsmanager:us-east-2:427064007352:secret:AnoX/Stripe/Sandbox-tiqa3i"
+                  ],
+                  "Effect": "Allow"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "AnoX-Payment-Read-Role",
+        "role": {
+          "Arn": "arn:aws:iam::427064007352:role/AnoX-Payment-Read-Role",
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "lambda.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "PermissionsBoundary": null
+        },
+        "inlineNames": [
+          "AnoXPaymentReadData"
+        ],
+        "attached": [
+          {
+            "PolicyName": "AWSLambdaBasicExecutionRole",
+            "PolicyArn": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+          }
+        ],
+        "inlinePolicies": [
+          {
+            "name": "AnoXPaymentReadData",
+            "document": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Action": [
+                    "dynamodb:GetItem"
+                  ],
+                  "Resource": [
+                    "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Orders"
+                  ],
+                  "Effect": "Allow"
+                },
+                {
+                  "Action": [
+                    "dynamodb:Query"
+                  ],
+                  "Resource": [
+                    "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Payments",
+                    "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Payments/index/OrderIdIndex"
+                  ],
+                  "Effect": "Allow"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "AnoX-Payment-Webhook-Role",
+        "role": {
+          "Arn": "arn:aws:iam::427064007352:role/AnoX-Payment-Webhook-Role",
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "lambda.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "PermissionsBoundary": null
+        },
+        "inlineNames": [
+          "AnoXPaymentWebhookData"
+        ],
+        "attached": [
+          {
+            "PolicyName": "AWSLambdaBasicExecutionRole",
+            "PolicyArn": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+          }
+        ],
+        "inlinePolicies": [
+          {
+            "name": "AnoXPaymentWebhookData",
+            "document": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:TransactWriteItems"
+                  ],
+                  "Resource": [
+                    "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Orders",
+                    "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Payments"
+                  ],
+                  "Effect": "Allow"
+                },
+                {
+                  "Action": [
+                    "secretsmanager:GetSecretValue"
+                  ],
+                  "Resource": [
+                    "arn:aws:secretsmanager:us-east-2:427064007352:secret:AnoX/Stripe/Sandbox-tiqa3i"
+                  ],
+                  "Effect": "Allow"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "AnoX-Shipping-Core-ShippingRole-e2i1Kde1jVrI",
+        "role": {
+          "Arn": "arn:aws:iam::427064007352:role/AnoX-Shipping-Core-ShippingRole-e2i1Kde1jVrI",
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "lambda.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "PermissionsBoundary": null
+        },
+        "inlineNames": [
+          "ShippingCoreAccess"
+        ],
+        "attached": [
+          {
+            "PolicyName": "AWSLambdaBasicExecutionRole",
+            "PolicyArn": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+          }
+        ],
+        "inlinePolicies": [
+          {
+            "name": "ShippingCoreAccess",
+            "document": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Action": [
+                    "dynamodb:GetItem"
+                  ],
+                  "Resource": [
+                    "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Orders"
+                  ],
+                  "Effect": "Allow"
+                },
+                {
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:Query"
+                  ],
+                  "Resource": [
+                    "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Shipments",
+                    "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Shipments/index/OrderIdIndex"
+                  ],
+                  "Effect": "Allow"
+                },
+                {
+                  "Action": [
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:Query"
+                  ],
+                  "Resource": [
+                    "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-TrackingEvents"
+                  ],
+                  "Effect": "Allow"
+                },
+                {
+                  "Action": [
+                    "secretsmanager:GetSecretValue"
+                  ],
+                  "Resource": [
+                    "arn:aws:secretsmanager:us-east-2:427064007352:secret:AnoX/EasyPost/Sandbox-NEoHbR"
+                  ],
+                  "Effect": "Allow"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "AnoX-Smart-Catalog-Role",
+        "role": {
+          "Arn": "arn:aws:iam::427064007352:role/AnoX-Smart-Catalog-Role",
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "lambda.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "PermissionsBoundary": null
+        },
+        "inlineNames": [
+          "InvokeAnoXAIAndCatalog"
+        ],
+        "attached": [
+          {
+            "PolicyName": "AWSLambdaBasicExecutionRole",
+            "PolicyArn": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+          }
+        ],
+        "inlinePolicies": [
+          {
+            "name": "InvokeAnoXAIAndCatalog",
+            "document": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "lambda:InvokeFunction"
+                  ],
+                  "Resource": [
+                    "arn:aws:lambda:us-east-2:427064007352:function:AnoX-AI-Intent",
+                    "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Catalog-API"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "managedPolicies": [
+      {
+        "arn": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+        "version": "v1",
+        "document": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Resource": "*"
+            }
+          ]
+        }
+      }
+    ],
+    "limitations": "Resource policies, SCPs and caller session policies are not an exhaustive effective-access proof."
+  },
+  "warning": null,
+  "api_calls": [
+    {
+      "service": "lambda",
+      "operation": "ListFunctions",
+      "status": "success",
+      "n_items": {
+        "Functions": 12
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 3
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetPolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetPolicyVersion",
+      "status": "success"
+    }
+  ]
+}

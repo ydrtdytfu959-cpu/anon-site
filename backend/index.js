@@ -382,15 +382,33 @@ function createHandler({store, upstream, upstreamDetail = upstream?.detail, now 
     }
   };
 }
-function createBudget({store, now = Date.now, paidDailyLimit = 1000, detailDailyLimit = 5000, perSecondLimit = 5}) {
-  for (const limit of [paidDailyLimit, detailDailyLimit]) if (!Number.isSafeInteger(limit) || limit < 0 || limit > 10000) throw Error('INVALID_BUDGET_CONFIG');
-  if (!Number.isSafeInteger(perSecondLimit) || perSecondLimit < 1 || perSecondLimit > 10 || typeof store?.reserve !== 'function') throw Error('INVALID_BUDGET_CONFIG');
+function createBudget({store, now = Date.now, budgetMonth = '', freeSearchMonthlyCredits = 0, paidSearchMonthlyCredits = 0, paidUsageEnabled = false,
+  searchDailyLimit = 0, detailMonthlyLimit = 0, detailDailyLimit = 0, totalDailyLimit = 1000, perSecondLimit = 5}) {
+  const bounded = (value, max) => Number.isSafeInteger(value) && value >= 0 && value <= max;
+  if (typeof budgetMonth !== 'string' || (budgetMonth !== '' && !/^20[0-9]{2}-(?:0[1-9]|1[0-2])$/.test(budgetMonth)) ||
+    !bounded(freeSearchMonthlyCredits, 1000) || !bounded(paidSearchMonthlyCredits, 1000000) || typeof paidUsageEnabled !== 'boolean' ||
+    (paidSearchMonthlyCredits > 0 && !paidUsageEnabled) || !bounded(detailMonthlyLimit, 310000) ||
+    ![searchDailyLimit, detailDailyLimit, totalDailyLimit].every(limit => bounded(limit, 10000)) ||
+    !bounded(perSecondLimit, 10) || perSecondLimit < 1 || typeof store?.reserve !== 'function') throw Error('INVALID_BUDGET_CONFIG');
   return async kind => {
-    if (!['paid', 'detail'].includes(kind)) fail(503, 'UPSTREAM_BUDGET_UNAVAILABLE');
-    const time = now(), day = new Date(time).toISOString().slice(0, 10), second = Math.floor(time / 1000);
+    if (!['search', 'detail'].includes(kind)) fail(503, 'UPSTREAM_BUDGET_UNAVAILABLE');
+    const time = now(), day = new Date(time).toISOString().slice(0, 10), month = day.slice(0, 7), second = Math.floor(time / 1000);
+    // Allocation is a reviewed application budget, never an inferred provider balance.
+    // Requiring renewal prevents silently assuming a new free allowance at rollover.
+    if (!budgetMonth || budgetMonth !== month) fail(503, 'UPSTREAM_BUDGET_UNAVAILABLE');
+    const monthlyLimit = kind === 'search' ? freeSearchMonthlyCredits + paidSearchMonthlyCredits : detailMonthlyLimit;
+    const dailyLimit = kind === 'search' ? searchDailyLimit : detailDailyLimit;
+    if (!monthlyLimit || !dailyLimit || !totalDailyLimit) fail(429, 'UPSTREAM_BUDGET_EXCEEDED');
+    const dayExpiry = Math.floor(Date.parse(day + 'T00:00:00.000Z') / 1000) + 172800;
+    // Period-only identities do not reset when limits or other settings change.
+    const monthExpiry = Math.floor(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5)), 1) / 1000) + 90 * 86400;
     try {
-      await store.reserve({dailyKey:`budget#${day}#${kind}`, rateKey:`rate#${second}`, dailyLimit:kind === 'paid' ? paidDailyLimit : detailDailyLimit, rateLimit:perSecondLimit,
-        expiresAt:Math.floor(Date.parse(day + 'T00:00:00.000Z') / 1000) + 172800, rateExpiresAt:second + 120});
+      await store.reserve({counters:[
+        {key:`budget#month#${month}#${kind}`, limit:monthlyLimit, expiresAt:monthExpiry},
+        {key:`budget#${day}#${kind}`, limit:dailyLimit, expiresAt:dayExpiry},
+        {key:`budget#${day}#all`, limit:totalDailyLimit, expiresAt:dayExpiry},
+        {key:`rate#${second}`, limit:perSecondLimit, expiresAt:second + 120, rate:true}
+      ]});
       return {validUntil:(second + 1) * 1000};
     } catch (error) {
       if (error instanceof SafeError) throw error;
@@ -425,15 +443,15 @@ function createDynamoStore({client, commands, table}) {
         ExpressionAttributeNames: {'#owner': 'owner'}, ExpressionAttributeValues: {':owner': {S: owner}, ':now': {N: String(now)}}}});
       await send(new TransactWriteItemsCommand({ClientRequestToken: owner, TransactItems: writes}));
     },
-    async reserve({dailyKey, rateKey, dailyLimit, rateLimit, expiresAt, rateExpiresAt = expiresAt}) {
-      const counter = (pk, limit, expires) => ({Update:{TableName:table, Key:key(pk), UpdateExpression:'SET expiresAt = :expires ADD #used :one',
-        ConditionExpression:':limit > :zero AND (attribute_not_exists(#used) OR #used < :limit)', ExpressionAttributeNames:{'#used':'used'},
-        ExpressionAttributeValues:{':expires':{N:String(expires)}, ':one':{N:'1'}, ':zero':{N:'0'}, ':limit':{N:String(limit)}}}});
-      try {await send(new TransactWriteItemsCommand({ClientRequestToken:randomUUID(), TransactItems:[counter(dailyKey, dailyLimit, expiresAt), counter(rateKey, rateLimit, rateExpiresAt)]}));}
+    async reserve({counters}) {
+      const counter = ({key:pk, limit, expiresAt}) => ({Update:{TableName:table, Key:key(pk), UpdateExpression:'SET expiresAt = :expires ADD #used :one',
+        ConditionExpression:':limit > :zero AND (attribute_not_exists(#used) OR (attribute_type(#used, :number) AND #used >= :zero AND #used < :limit))', ExpressionAttributeNames:{'#used':'used'},
+        ExpressionAttributeValues:{':expires':{N:String(expiresAt)}, ':one':{N:'1'}, ':zero':{N:'0'}, ':number':{S:'N'}, ':limit':{N:String(limit)}}}});
+      try {await send(new TransactWriteItemsCommand({ClientRequestToken:randomUUID(), TransactItems:counters.map(counter)}));}
       catch (error) {
         if (error.name === 'TransactionCanceledException') {
-          if (error.CancellationReasons?.[0]?.Code === 'ConditionalCheckFailed') fail(429, 'UPSTREAM_BUDGET_EXCEEDED');
-          if (error.CancellationReasons?.[1]?.Code === 'ConditionalCheckFailed') fail(429, 'UPSTREAM_RATE_LIMITED');
+          const rejected = error.CancellationReasons?.findIndex(row => row?.Code === 'ConditionalCheckFailed');
+          if (rejected >= 0 && rejected < counters.length) fail(429, counters[rejected].rate ? 'UPSTREAM_RATE_LIMITED' : 'UPSTREAM_BUDGET_EXCEEDED');
         }
         fail(503, 'UPSTREAM_BUDGET_UNAVAILABLE');
       }
@@ -468,7 +486,7 @@ function createUpstream({fetch: transport = globalThis.fetch, getSecret, reserve
       controller.signal.throwIfAborted();
       if (expiresAt !== undefined && now() >= expiresAt) fail(410, 'CURSOR_EXPIRED');
       try {
-        const reservation = await reserve(detail ? 'detail' : 'paid');
+        const reservation = await reserve(detail ? 'detail' : 'search');
         if (reservation?.validUntil !== undefined && now() >= reservation.validUntil) fail(429, 'UPSTREAM_RATE_LIMITED');
       }
       catch (error) {
@@ -485,7 +503,7 @@ function createUpstream({fetch: transport = globalThis.fetch, getSecret, reserve
         for (const [name, value] of Object.entries(input.options)) params.set('option_' + name, value);
         url = 'https://api.trychannel3.com/v1/products/' + encodeURIComponent(input.productId) + '?' + params.toString();
       } else init.body = JSON.stringify(input);
-      try {metric('upstream_request'); metric(detail ? 'free_detail_request' : 'paid_search_request');} catch {}
+      try {metric('upstream_request'); metric(detail ? 'product_detail_request' : 'search_credit_request');} catch {}
       response = await transport(url, init);
       if (!response.ok) {
         await response.body?.cancel();
@@ -517,7 +535,7 @@ function createUpstream({fetch: transport = globalThis.fetch, getSecret, reserve
   return search;
 }
 function createMetric({log = line => console.log(line), now = Date.now} = {}) {
-  const names = new Set(['cache_hit', 'cache_miss', 'upstream_request', 'upstream_failure', 'cache_contention', 'cache_error', 'paid_search_request', 'free_detail_request', 'detail_fresh', 'detail_coalesced', 'presentation_fallback', 'budget_exceeded', 'rate_limited', 'budget_error']);
+  const names = new Set(['cache_hit', 'cache_miss', 'upstream_request', 'upstream_failure', 'cache_contention', 'cache_error', 'search_credit_request', 'product_detail_request', 'detail_fresh', 'detail_coalesced', 'presentation_fallback', 'budget_exceeded', 'rate_limited', 'budget_error']);
   return name => {
     if (!names.has(name)) return;
     log(JSON.stringify({_aws: {Timestamp: now(), CloudWatchMetrics: [{Namespace: 'AnoX/Catalog', Dimensions: [['Service']], Metrics: [{Name: name, Unit: 'Count'}]}]}, Service: 'Channel3Catalog', event: name, [name]: 1}));
@@ -536,8 +554,19 @@ async function handler(event) {
     if (!table || !secretId) return proxyResponse(503, {error: 'CACHE_UNAVAILABLE'});
     const metric = createMetric(), store = createDynamoStore({client, commands:dynamo, table});
     let reserve;
-    try {reserve = createBudget({store, paidDailyLimit:Number(process.env.PAID_DAILY_LIMIT ?? 1000), detailDailyLimit:Number(process.env.DETAIL_DAILY_LIMIT ?? 5000), perSecondLimit:Number(process.env.UPSTREAM_PER_SECOND_LIMIT ?? 5)});}
-    catch {return proxyResponse(503, {error:'UPSTREAM_BUDGET_UNAVAILABLE'});}
+    try {
+      if (!['true', 'false'].includes(process.env.PAID_USAGE_ENABLED ?? 'false')) throw Error('INVALID_BUDGET_CONFIG');
+      const number = (name, fallback = 0) => {
+        const raw = process.env[name];
+        if (raw === undefined) return fallback;
+        if (!/^(?:0|[1-9][0-9]*)$/.test(raw)) throw Error('INVALID_BUDGET_CONFIG');
+        return Number(raw);
+      };
+      reserve = createBudget({store, budgetMonth:process.env.BUDGET_MONTH ?? '', freeSearchMonthlyCredits:number('FREE_SEARCH_MONTHLY_CREDITS'),
+        paidSearchMonthlyCredits:number('PAID_SEARCH_MONTHLY_CREDITS'), paidUsageEnabled:process.env.PAID_USAGE_ENABLED === 'true', searchDailyLimit:number('SEARCH_DAILY_LIMIT'),
+        detailMonthlyLimit:number('DETAIL_MONTHLY_LIMIT'), detailDailyLimit:number('DETAIL_DAILY_LIMIT'), totalDailyLimit:number('TOTAL_DAILY_LIMIT', 1000), perSecondLimit:number('UPSTREAM_PER_SECOND_LIMIT', 5)});
+    }
+    catch {try {metric('budget_error');} catch {} return proxyResponse(503, {error:'UPSTREAM_BUDGET_UNAVAILABLE'});}
     runtimeHandler = createHandler({store, metric,
       upstream:createUpstream({metric, reserve, getSecret:async signal => (await secretClient.send(new secrets.GetSecretValueCommand({SecretId:secretId}), {abortSignal:signal})).SecretString})});
   }

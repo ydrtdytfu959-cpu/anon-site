@@ -4,6 +4,7 @@ const { decimalToMinor, multiplyMinor, addMinor } = require('./money.js');
 const { hash, productKey, text, canonical } = require('./validation.js');
 const { checkout } = require('./providers.js');
 const SAFE_TITLE = 240;
+const VOLATILE_TTL_MS = 30000;
 function safeUrl(value) {
   try { const u = new URL(value); return typeof value === 'string' && value.length <= 2048 && u.protocol === 'https:' && !u.username && !u.password ? u.href : null; } catch { return null; }
 }
@@ -30,7 +31,7 @@ async function hydrate(lines, catalog, timeoutMs) {
 }
 function validateLine(line, envelope, now) {
   const fetchedAt = Date.parse(envelope?.fetchedAt), expiresAt = Date.parse(envelope?.expiresAt);
-  if (envelope?.provider !== 'channel3' || envelope?.status !== 'fresh' || envelope.error != null || !Number.isFinite(fetchedAt) || !Number.isFinite(expiresAt) || fetchedAt > now + 10000 || fetchedAt < now - 30000 || expiresAt <= now || expiresAt > fetchedAt + 300000) fail('catalog_unavailable', 'A fresh product snapshot could not be validated.', 503);
+  if (envelope?.provider !== 'channel3' || envelope?.status !== 'fresh' || envelope.error != null || !Number.isFinite(fetchedAt) || !Number.isFinite(expiresAt) || fetchedAt > now + 10000 || fetchedAt <= now - VOLATILE_TTL_MS || expiresAt <= now || expiresAt > fetchedAt + 300000) fail('catalog_unavailable', 'A fresh product snapshot could not be validated.', 503);
   const product = envelope?.data?.product;
   if (!product || product.id !== line.productId) fail('product_changed', 'The provider returned a different product.', 422);
   if (!Array.isArray(envelope.selectionMismatch) || envelope.selectionMismatch.length) fail('variant_changed', 'The provider could not retain the selected variant.', 422);
@@ -54,7 +55,7 @@ function validateLine(line, envelope, now) {
   });
   if (new Set(normalized.map(canonical)).size !== 1) fail('offer_ambiguous', 'This merchant has multiple indistinguishable offers. A unique offer is required.', 422);
   const offer = normalized[0];
-  return { expiresAt, value: { ...line, title: text(product.title, 2000) ? Array.from(product.title).slice(0, SAFE_TITLE).join('') : 'Product', unitPriceMinor: offer.unitPriceMinor, lineTotalMinor: multiplyMinor(offer.unitPriceMinor, line.quantity), currency: 'USD', availability: offer.availability, validatedAt: new Date(fetchedAt).toISOString(), offer: { domain: line.merchantDomain, url: offer.url, maxCommissionRate: offer.maxCommissionRate }, selection: { valid: true } } };
+  return { expiresAt: Math.min(expiresAt, fetchedAt + VOLATILE_TTL_MS), value: { ...line, title: text(product.title, 2000) ? Array.from(product.title).slice(0, SAFE_TITLE).join('') : 'Product', unitPriceMinor: offer.unitPriceMinor, lineTotalMinor: multiplyMinor(offer.unitPriceMinor, line.quantity), currency: 'USD', availability: offer.availability, validatedAt: new Date(fetchedAt).toISOString(), offer: { domain: line.merchantDomain, url: offer.url, maxCommissionRate: offer.maxCommissionRate }, selection: { valid: true } } };
 }
 function component(code, label, amountMinor, status, source, note) { return { code, label, amountMinor, currency: 'USD', status, source, ...(note ? { note } : {}) }; }
 async function buildQuote({ input, catalog, now, randomId, hydrationTimeoutMs = 9000 }) {
@@ -67,6 +68,6 @@ async function buildQuote({ input, catalog, now, randomId, hydrationTimeoutMs = 
   const capability = checkout();
   capability.blockers.push({ code: 'landed_cost_unverified', message: 'Verified U.S. tax, shipping, and Algeria import charges are unavailable.' }, { code: 'quantity_unreserved', message: 'Catalog availability does not reserve the requested quantity.' });
   for (const line of lines) if (line.availability !== 'InStock') capability.blockers.push({ code: line.availability === 'OutOfStock' ? 'availability_unavailable' : 'availability_unknown', message: line.availability === 'OutOfStock' ? 'A selected product is unavailable.' : 'Availability for a selected product is unknown.' });
-  return { quoteId: randomId(), cartHash: hash({ lines: input.lines, destination: input.destination, currency: input.currency }), cartRevision: input.cartRevision, createdAt: new Date(current).toISOString(), expiresAt: new Date(Math.min(current + 300000, ...validated.map(x => x.expiresAt))).toISOString(), currency: 'USD', destination: input.destination, lines, costs: { components, estimatedTotalMinor: null, verifiedPayableTotalMinor: null, potentialChargesOnArrival: [customs] }, checkout: capability };
+  return { quoteId: randomId(), cartHash: hash({ lines: input.lines, destination: input.destination, currency: input.currency }), cartRevision: input.cartRevision, createdAt: new Date(current).toISOString(), expiresAt: new Date(Math.min(current + VOLATILE_TTL_MS, ...validated.map(x => x.expiresAt))).toISOString(), currency: 'USD', destination: input.destination, lines, costs: { components, estimatedTotalMinor: null, verifiedPayableTotalMinor: null, potentialChargesOnArrival: [customs] }, checkout: capability };
 }
 module.exports = { buildQuote, safeUrl, validateLine };

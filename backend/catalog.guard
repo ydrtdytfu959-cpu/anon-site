@@ -8,6 +8,8 @@ rule catalog_cache_is_expiring_and_encrypted when %tables !empty {
     Properties.TimeToLiveSpecification.Enabled == true
     Properties.TimeToLiveSpecification.AttributeName == 'expiresAt'
     Properties.SSESpecification.SSEEnabled == true
+    Properties.DeletionProtectionEnabled == true
+    Properties.PointInTimeRecoverySpecification.PointInTimeRecoveryEnabled == true
   }
 }
 rule runtime_scope {
@@ -26,4 +28,14 @@ rule detail_route_scope {
   Resources.DetailPermission.Properties.SourceAccount is_struct
   Resources.DetailPermission.Properties.SourceArn is_struct
   Resources.DetailIntegration.Properties.PayloadFormatVersion == '2.0'
+}
+
+rule explicit_spending_policy {
+  Parameters.BudgetMonth.Default == ''
+  Parameters.FreeSearchMonthlyCredits.Default == 0
+  Parameters.PaidUsageEnabled.Default == 'false'
+  Parameters.PaidSearchMonthlyCredits.Default == 0
+  Parameters.SearchDailyLimit.Default == 0
+  Parameters.DetailMonthlyLimit.Default == 0
+  Parameters.DetailDailyLimit.Default == 0
 }

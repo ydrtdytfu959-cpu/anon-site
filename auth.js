@@ -46,11 +46,12 @@
       const identifier=value=>typeof value==='string'&&/^[A-Za-z0-9_-]{1,160}$/.test(value);
       if(typeof raw!=='string'||raw.length>32768)throw fail('INVALID_BODY');
       if(path==='/commerce/quotes'){
-        if(!only(data,['cartRevision','lines','destination','currency'])||(!identifier(data.cartRevision)||data.cartRevision.length>80)||data.currency!=='USD'||!only(data.destination,['country'])||data.destination.country!=='DZ'||!Array.isArray(data.lines)||!data.lines.length||data.lines.length>50)throw fail('INVALID_BODY');
+        if(!only(data,['cartRevision','lines','destination','currency'])||(!identifier(data.cartRevision)||data.cartRevision.length>80)||data.currency!=='USD'||!only(data.destination,['country'])||data.destination.country!=='DZ'||!Array.isArray(data.lines)||!data.lines.length||data.lines.length>10)throw fail('INVALID_BODY');
         for(const line of data.lines){
           if(!only(line,['provider','productId','merchantDomain','condition','quantity','options'])||line.provider!=='channel3'||!identifier(line.productId)||line.productId.length>80||typeof line.merchantDomain!=='string'||line.merchantDomain.length>253||!/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}$/.test(line.merchantDomain)||!['new','used',null].includes(line.condition)||!Number.isSafeInteger(line.quantity)||line.quantity<1||line.quantity>20||!object(line.options)||Object.keys(line.options).length>8)throw fail('INVALID_BODY');
           for(const [key,value] of Object.entries(line.options))if(!key||key.length>60||['__proto__','constructor','prototype'].includes(key)||typeof value!=='string'||!value||value.length>80||/[\u0000-\u001f\u007f-\u009f\ud800-\udfff]/u.test(key+value))throw fail('INVALID_BODY');
         }
+        if(new Set(data.lines.map(line=>JSON.stringify([line.productId,Object.fromEntries(Object.entries(line.options).sort(([a],[b])=>a.localeCompare(b)))]))).size>5)throw fail('INVALID_BODY');
       }else if(path==='/commerce/checkout-attempts'){
         if(!only(data,['quoteId','cartRevision','cartHash'])||!identifier(data.quoteId)||(!identifier(data.cartRevision)||data.cartRevision.length>80)||!identifier(data.cartHash))throw fail('INVALID_BODY');
       }else if(!only(data,[]))throw fail('INVALID_BODY');
@@ -58,7 +59,7 @@
     }
     async function api(path,options={},retry=true){
       const method=options.method||'GET',commerce=typeof path==='string'&&path.startsWith('/commerce/');
-      const read=method==='GET'&&(/^(?:\/commerce\/(?:quotes|checkout-attempts|orders)\/[A-Za-z0-9_-]{1,160}|\/commerce\/orders(?:\?cursor=[A-Za-z0-9_-]{1,160})?)$/.test(path));
+      const read=method==='GET'&&(/^(?:\/commerce\/orders\/[A-Za-z0-9_-]{1,160}|\/commerce\/orders(?:\?cursor=[A-Za-z0-9_-]{1,160})?)$/.test(path));
       const post=method==='POST'&&(path==='/commerce/quotes'||path==='/commerce/checkout-attempts'||/^\/commerce\/orders\/[A-Za-z0-9_-]{1,160}\/(?:cancel|refund)$/.test(path));
       if(commerce?!(read||post):!['/me','/orders'].includes(path)||!(method==='GET'||path==='/me'&&method==='PUT'))throw fail('INVALID_PATH');
       const headers={};let body;

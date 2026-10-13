@@ -1,5 +1,7 @@
 # AnoX implementation review
 
+Historical baseline report for commit `7958718de6d859da1c809abef7b98e012a857973`. The current [critical remediation assessment](../remediation/release-assessment.md), [cost policy](../remediation/channel3-cost.md), [validation](../remediation/validation.md) and [deployment/rollback plan](../remediation/deployment-and-rollback.md) supersede this report. In particular, the former daily budget defaults below are removed, new allocations default to zero, and quote freshness is capped at 30 seconds. Historical test counts and template sizes below are not the final remediation results.
+
 Prepared October 11, 2026. Branch: `feat/anox-commerce-foundation`. This branch continues the verified Phase 1 commit `b0ac4df603e300103fd1f2df4aa4d8fe22f4ea07`; Phase 1 remains separately reviewable in draft PR [#5](https://github.com/ydrtdytfu959-cpu/anon-site/pull/5). The release manifest records the exact exported commit. No merge, production deployment, live payment configuration change, charge or merchant order occurred in this continuation.
 
 ## Completed behavior

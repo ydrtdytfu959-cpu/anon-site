@@ -1,0 +1,95 @@
+{
+  "date": "2026-10-13",
+  "baselineCommit": "7958718de6d859da1c809abef7b98e012a857973",
+  "branch": "feat/anox-commerce-foundation",
+  "node": {
+    "version": "v24.18.0",
+    "command": "npm test",
+    "tests": 225,
+    "passed": 225,
+    "failed": 0,
+    "skipped": 0,
+    "exitCode": 0,
+    "output": "node-tests.txt"
+  },
+  "build": {
+    "commands": [
+      "npm run build",
+      "npm run check"
+    ],
+    "result": "pass",
+    "canonicalBrowserParity": true,
+    "catalogTemplateParity": true,
+    "commerceTemplateParity": true,
+    "inlineSyntaxAndCSP": "pass"
+  },
+  "browser": {
+    "command": "ENGINES=chromium,firefox npm run test:browser",
+    "exitCode": 0,
+    "catalogGroups": 16,
+    "commerceGroups": 48,
+    "embeddedPerEngine": 135,
+    "engines": [
+      "Chromium",
+      "Firefox"
+    ],
+    "commerceViewports": [
+      "1440x960",
+      "390x844"
+    ],
+    "scope": "Complete HTML/CSP with intercepted provider/auth fixtures and actual commerce handler with transactional memory store. Not live AWS or financial verification.",
+    "output": "browser-results.json"
+  },
+  "infrastructure": {
+    "cfnLintVersion": "1.46.0",
+    "cfnGuardVersion": "3.2.1",
+    "lintExitCode": 0,
+    "catalogGuardExitCode": 0,
+    "commerceGuardExitCode": 0,
+    "catalogTemplateBytes": 57354,
+    "commerceTemplateBytes": 67130,
+    "deployment": "none",
+    "mutations": "none"
+  },
+  "releaseTools": {
+    "tests": 23,
+    "passed": 23,
+    "failed": 0,
+    "skipped": 0,
+    "exportTests": 13,
+    "preflightTests": 10,
+    "scope": "Temporary Git repositories; deterministic archive and immutable revision checks; adversarial offline preflight fixtures; no AWS calls."
+  },
+  "realAWS": {
+    "scope": "Read-only metadata and safe route/auth/cursor rejection probes only. Captures have their own dates.",
+    "inventory": "aws-inventory.json",
+    "tables": "aws-tables.json",
+    "iam": "aws-iam.json",
+    "http": "aws-http-probes.json",
+    "newCommerceAndDetailRoutes": "absent",
+    "newFeaturesDeployed": false
+  },
+  "payments": {
+    "sandbox": "inventory only",
+    "realMerchantOrders": 0,
+    "financialOperations": 0,
+    "merchantAuthorization": "not established",
+    "checkout": "blocked"
+  },
+  "selfReview": {
+    "result": "demonstrated issues corrected and relevant regressions rerun",
+    "findings": [
+      "security-findings.md",
+      "product-findings.md",
+      "channel3-cost.md",
+      "completed-fixes.md"
+    ],
+    "unresolvedAutomatedFailures": []
+  },
+  "preflight": "preflight-results.json: historical metadata intentionally fails prerequisites; no release authorization",
+  "artifacts": {
+    "exactRevision": "external manifest.json records final commit and source tree; no self-referential commit embedded here",
+    "htmlBytes": 1038565,
+    "htmlSHA256": "84b107d28c093eff6e5bfdac8857017399aee2d738e6536e7cb23c8f1c5a1dde"
+  }
+}
