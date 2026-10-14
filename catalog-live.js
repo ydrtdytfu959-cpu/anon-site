@@ -507,7 +507,7 @@
       structuredAttributes[name] = detailList(values, 64).map(value => detailString(value, 1000, true));
     }
     const official=approvedOfficialOffers(raw);
-    if(!official.length)throw catalogError("catalog_not_approved",403);
+    if(fresh?!official.length:!approvedSellerDomains(raw).length)throw catalogError("catalog_not_approved",403);
     const offers = detailList(official, 64).filter(record).flatMap(offer => {
       const url = detailUrl(offer.url, "buy.trychannel3.com"), merchantDomain = typeof offer.domain === "string" ? offer.domain.toLowerCase() : "";
       if (!fresh || !url || merchantDomain.length > 253 || !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(merchantDomain)) return [];
