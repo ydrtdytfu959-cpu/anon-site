@@ -1829,7 +1829,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
         lastDate=lastDate&&Date.parse(lastDate)<Date.parse(res.value.expiresAt)?lastDate:res.value.expiresAt;
       });
     }
-    if(signal?.aborted)throw catalogError("catalog_aborted");
+    if(signal?.aborted){const aborted=new Error("catalog_aborted");aborted.name="AbortError";throw aborted;}
     if(errors===6)throw catalogError("catalog_unavailable",503);
     const items=shuffleRoundRobin(groups);
     // Keep partially successful results; never invent a cursor when all six are exhausted.
