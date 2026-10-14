@@ -3,6 +3,8 @@
 // Offline prerequisite assessment only: no AWS client, upload, deployment,
 // payment capability, or authority to override an independent release review.
 const fs=require('node:fs');
+const OPERATIONAL_TOPIC='arn:aws:sns:us-east-2:427064007352:AnoX-Operational-Alerts';
+const REQUIRED_OPERATIONAL_ALARMS=Object.freeze(['AnoX-Channel3-Catalog-Errors','AnoX-Channel3-Catalog-Throttles','AnoX-Payment-Webhook-Errors','AnoX-API-Gateway-5xx','AnoX-Regional-Lambda-Concurrency-High']);
 const ROUTES=Object.freeze(['GET /commerce/capabilities','POST /commerce/quotes','POST /commerce/checkout-attempts','GET /commerce/orders','GET /commerce/orders/{orderId}','POST /commerce/orders/{orderId}/cancel','POST /commerce/orders/{orderId}/refund','GET /catalog/channel3/products/{id}']);
 function assess(input,{now=Date.now(),reservedConcurrency=2,phase='frontend'}={}){
  const s=input&&typeof input==='object'&&!Array.isArray(input)?input:{};
@@ -21,6 +23,47 @@ function assess(input,{now=Date.now(),reservedConcurrency=2,phase='frontend'}={}
  if(JSON.stringify(cors?.AllowOrigins)!==JSON.stringify(['https://anox.app'])||cors?.AllowCredentials!==false||!strings(cors?.AllowMethods)||JSON.stringify([...cors.AllowMethods].sort())!==JSON.stringify(['GET','OPTIONS','POST','PUT']))add('CORS_POLICY','P0','Origin/credentials/method drift must be reviewed; never broaden origin as a workaround.');
  const headers=strings(cors?.AllowHeaders)?cors.AllowHeaders.map(h=>h.toLowerCase()):[];
  if(!['authorization','content-type'].every(h=>headers.includes(h))||(phase==='frontend'&&!headers.includes('idempotency-key'))||headers.some(h=>!['authorization','content-type','idempotency-key'].includes(h)))add('CORS_HEADERS','P0','The frontend requires the approved Idempotency-Key preflight policy without unrelated header changes.');
+ // This is still operator-supplied metadata, not an AWS attestation. Reject bare
+ // "alarm delivery verified" booleans that lack the corresponding SNS/CloudWatch evidence.
+ const exposed=strings(cors?.ExposeHeaders)?cors.ExposeHeaders.map(h=>h.toLowerCase()):[];
+ if((cors?.ExposeHeaders!==undefined&&!strings(cors.ExposeHeaders))||exposed.some(h=>!['idempotency-replayed','retry-after'].includes(h))||(phase==='frontend'&&!['idempotency-replayed','retry-after'].every(h=>exposed.includes(h))))add('CORS_EXPOSE_HEADERS','P0','Frontend release requires only the approved replay/retry response headers; reject wildcard or malformed exposure.');
+ const monitoring=record(s.monitoring)?s.monitoring:{};
+ const subscriptions=Array.isArray(monitoring.snsSubscriptions)?monitoring.snsSubscriptions:[];
+ const confirmed=subscriptions.some(sub=>record(sub)&&sub.TopicArn===OPERATIONAL_TOPIC&&sub.Protocol==='email'&&sub.Endpoint==='anox@anox.app'&&typeof sub.SubscriptionArn==='string'&&new RegExp('^'+OPERATIONAL_TOPIC.replace(/[.*+?^$\{\}()|[\]\\]/g,'\\ const routes=Array.isArray(s.routes)?s.routes.filter(record):[],missing=[];')+':[0-9a-f-]{36}
+ const integrations=Array.isArray(s.integrations)?s.integrations.filter(record):[];
+ const expected=s.expectedIntegrationUris;
+ if(expected?.catalog!=='arn:aws:lambda:us-east-2:427064007352:function:AnoX-Channel3-Catalog'||typeof expected?.commerce!=='string'||!/^arn:aws:lambda:us-east-2:427064007352:function:[A-Za-z0-9_-]+-commerce$/.test(expected.commerce))add('INTEGRATION_PLAN','P0','Record independently reviewed exact catalog and namespaced commerce Lambda ARNs.');
+ for(const key of ROUTES){
+  const matching=routes.filter(r=>r.RouteKey===key),r=matching[0];
+  if(!r){missing.push(key);continue;}
+  const privateRoute=!key.includes('/capabilities')&&!key.includes('/catalog/');
+  if(matching.length!==1||r.AuthorizationType!==(privateRoute?'JWT':'NONE')||(privateRoute&&r.AuthorizerId!=='qcopg9'))add('ROUTE_AUTH','P0','Unexpected authorization on '+key+'.');
+  const targets=integrations.filter(i=>r.Target==='integrations/'+i.IntegrationId),integration=targets.length===1?targets[0]:null;
+  if(!integration||integration.IntegrationUri!==expected?.[key.includes('/catalog/')?'catalog':'commerce']||integration.IntegrationType!=='AWS_PROXY'||integration.IntegrationMethod!=='POST'||integration.PayloadFormatVersion!=='2.0')add('ROUTE_INTEGRATION','P0','Verify route target and Lambda integration contract on '+key+'.');
+ }
+ if(phase==='frontend'&&missing.length)add('MISSING_ROUTES','P0','Backend deployment and verification must precede frontend release: '+missing.join(', '));
+ if(phase==='backend'){
+  const available=s.lambdaAccount?.AccountLimit?.UnreservedConcurrentExecutions;
+  if(!Number.isSafeInteger(available)||available-reservedConcurrency<100)add('CONCURRENCY_QUOTA','P0','Additional reservation must leave at least100 unreserved executions; request separately approved quota capacity first.');
+ }else if(s.commerceReservedConcurrency!==reservedConcurrency)add('CONCURRENCY_RESERVATION','P0','Verify the commerce function has exactly its approved reservation after deployment.');
+ for(const name of ['catalog','commerce']){
+  const size=s.templateBytes?.[name];
+  if(!Number.isSafeInteger(size)||size<1||size>1048576)add('TEMPLATE_SIZE','P0','Missing/invalid '+name+' template size or beyond1MiB.');
+  else if(size>51200&&(s.artifact?.privateBucketVerified!==true||s.artifact?.templateUrlPlanned!==true))add('TEMPLATE_DELIVERY','P0','Review a private S3 TemplateURL for '+name+'; no upload is performed by this tool.');
+ }
+ if(s.sourceMatchesReviewedCommit!==true)add('SOURCE_IDENTITY','P0','Independently verify commit, template hashes and existing production rollback identity before release.');
+ if(s.alarmDestinationVerified!==true)add('ALARM_DELIVERY','P1','Approve and test the alarm destination; an alarm without delivery is not a notification.');
+ return{scope:'infrastructure prerequisites only; operator-supplied evidence is not an AWS verification or commercial approval',phase,ready:gates.length===0,authorizesDeployment:false,authorizesPayments:false,gates};
+}
+if(require.main===module){try{if(process.argv.length<3||process.argv.length>4)throw Error('Usage: node scripts/release-preflight.cjs metadata.json [backend|frontend]');const r=assess(JSON.parse(fs.readFileSync(process.argv[2],'utf8')),{phase:process.argv[3]||'frontend'});process.stdout.write(JSON.stringify(r,null,2)+'\n');if(!r.ready)process.exitCode=2;}catch(e){process.stderr.write(e.message+'\n');process.exitCode=1;}}
+module.exports={assess,ROUTES};
+,'i').test(sub.SubscriptionArn));
+ if(!confirmed)add('SNS_CONFIRMATION','P1','Read the confirmed operational SNS email subscription from AWS; pending confirmation is not a delivered notification.');
+ const alarms=Array.isArray(monitoring.cloudwatchAlarms)?monitoring.cloudwatchAlarms:[];
+ if(REQUIRED_OPERATIONAL_ALARMS.some(name=>{const matches=alarms.filter(a=>record(a)&&a.AlarmName===name);return matches.length!==1||matches[0].StateValue!=='OK'||matches[0].ActionsEnabled!==true||!Array.isArray(matches[0].AlarmActions)||!matches[0].AlarmActions.includes(OPERATIONAL_TOPIC);}))add('MONITORING_COVERAGE','P1','Verify all five expected CloudWatch alarms are present, OK, enabled and wired to the confirmed operations topic.');
+ const budgetNotes=Array.isArray(monitoring.budgetNotifications)?monitoring.budgetNotifications:[];
+ const hasBudget=(type,threshold)=>budgetNotes.some(n=>record(n)&&n.NotificationType===type&&n.ComparisonOperator==='GREATER_THAN'&&n.Threshold===threshold&&n.NotificationState==='OK');
+ if(!hasBudget('ACTUAL',80)||!hasBudget('FORECASTED',100))add('BUDGET_NOTIFICATIONS','P1','Verify the existing $5 AWS budget alerts at actual 80% and forecasted 100%; alerts are not a spending cap.');
  const routes=Array.isArray(s.routes)?s.routes.filter(record):[],missing=[];
  const integrations=Array.isArray(s.integrations)?s.integrations.filter(record):[];
  const expected=s.expectedIntegrationUris;
