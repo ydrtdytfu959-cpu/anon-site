@@ -31,6 +31,37 @@ test('Astra presentation catalog accepts only the four approved brands or explic
  assert.equal(r.nextCursor,'next');
  assert.equal(api.normalizeChannel3Product(product('unknown',{brands:[],offers:[]})),null);
 });
+test('Astra mixes six official stores per featured page with bounded independent cursors',async()=>{
+ const terms=['Nike','adidas',"Levi's",'e.l.f. cosmetics','Sephora','TJ Maxx'];
+ const brands=['Nike','adidas',"Levi's",'e.l.f. Cosmetics','Sephora Collection','Other'];
+ const domains=['nike.com','adidas.com','levi.com','elfcosmetics.com','sephora.com','tjmaxx.tjx.com'];
+ const calls=[];
+ const api=adapter(async url=>{
+   const u=new URL(url),term=u.searchParams.get('q'),i=terms.indexOf(term),cursor=u.searchParams.get('page_token');
+   assert.ok(i>=0);assert.equal(u.searchParams.get('limit'),'4');assert.equal(u.searchParams.has('section'),false);
+   calls.push({term,cursor});
+   return new Response(JSON.stringify(envelope(Array.from({length:4},(_,n)=>product('store'+i+'-'+(cursor?4+n:n),{
+     brands:[{name:brands[i]}],offers:[{url:'https://buy.trychannel3.com/item',domain:domains[i]}]
+   })),cursor?null:'next-'+i)),{headers:{'content-type':'application/json'}});
+ });
+ const first=await api.fetchChannel3Page({section:'featured',limit:24});
+ assert.equal(first.items.length,24);assert.equal(new Set(first.items.map(p=>p.brand)).size,6);
+ assert.equal(calls.length,6);assert.deepEqual(calls.map(c=>c.term),terms);
+ const second=await api.fetchChannel3Page({section:'featured',cursor:first.nextCursor});
+ assert.equal(second.items.length,24);assert.equal(second.nextCursor,null);
+ assert.deepEqual(calls.slice(6).map(c=>c.cursor),terms.map((_,i)=>'next-'+i));
+ assert.equal(new Set([...first.items,...second.items].map(p=>p.id)).size,48);
+ await assert.rejects(api.fetchChannel3Page({section:'featured',cursor:'{"v":1,"c":[null]}'}),/catalog_cursor_invalid/);
+});
+
+test('Astra cached presentation cards retain official seller identity without offer links',()=>{
+ const a=adapter(),p=product('cached',{offers:undefined,sellerDomains:['nike.com']});
+ const page=a.parseChannel3Page(envelope([p]));
+ assert.equal(page.items.length,1);assert.equal(page.items[0].brand,'Nike');
+ assert.equal(page.items[0].priceCents,null);assert.equal(page.items[0].source.merchantUrl,null);
+ assert.equal(a.parseChannel3Page(envelope([product('reseller',{offers:undefined,sellerDomains:['kickscrew.com']})])).items.length,0);
+});
+
 test('discovery and query requests stay distinct and opaque cursors round-trip unmodified', () => {
   const api = adapter();
   let url = new URL(api.buildChannel3Url({ section: 'shoes', limit: 24 }));
