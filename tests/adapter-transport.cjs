@@ -43,7 +43,7 @@ test('Nike keeps its original eight-second transport deadline', async () => {
 
 test('parent cancellation aborts an in-flight Channel3 fetch and clears its deadline', async () => {
   const run = pendingTransport(), controller = new AbortController();
-  const request = run.api.fetchChannel3Page({ section: 'featured', signal: controller.signal });
+  const request = run.api.fetchChannel3Page({ q: 'Nike', signal: controller.signal });
   const rejected = assert.rejects(request, error => error.name === 'AbortError');
   controller.abort();
   await rejected;

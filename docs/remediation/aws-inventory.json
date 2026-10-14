@@ -1,0 +1,616 @@
+{
+  "observedOn": "2026-10-11",
+  "scope": "Read-only AWS metadata, us-east-2; no customer records or secret values",
+  "status": "success",
+  "stdout": "",
+  "stderr": null,
+  "return_value": {
+    "identity": {
+      "Account": "427064007352"
+    },
+    "api": {
+      "ApiId": "zmumi2wruk",
+      "ApiEndpoint": "https://zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+      "CorsConfiguration": {
+        "AllowCredentials": false,
+        "AllowHeaders": [
+          "content-type",
+          "authorization"
+        ],
+        "AllowMethods": [
+          "GET",
+          "POST",
+          "PUT",
+          "OPTIONS"
+        ],
+        "AllowOrigins": [
+          "https://anox.app"
+        ],
+        "MaxAge": 3600
+      },
+      "DisableExecuteApiEndpoint": false,
+      "ProtocolType": "HTTP"
+    },
+    "routes": [
+      {
+        "ApiKeyRequired": false,
+        "AuthorizationScopes": [],
+        "AuthorizationType": "JWT",
+        "AuthorizerId": "qcopg9",
+        "RequestModels": {},
+        "RouteId": "5vxjt1i",
+        "RouteKey": "GET /payments",
+        "Target": "integrations/9n79qq1"
+      },
+      {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "RouteId": "6bhjcef",
+        "RouteKey": "POST /webhook",
+        "Target": "integrations/iyfrkrd"
+      },
+      {
+        "ApiKeyRequired": false,
+        "AuthorizationScopes": [],
+        "AuthorizationType": "JWT",
+        "AuthorizerId": "qcopg9",
+        "RequestModels": {},
+        "RouteId": "89htxdb",
+        "RouteKey": "GET /orders",
+        "Target": "integrations/i6k29x9"
+      },
+      {
+        "ApiKeyRequired": false,
+        "AuthorizationScopes": [],
+        "AuthorizationType": "JWT",
+        "AuthorizerId": "qcopg9",
+        "RequestModels": {},
+        "RouteId": "gyra1d9",
+        "RouteKey": "GET /me",
+        "Target": "integrations/i6k29x9"
+      },
+      {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "RouteId": "i7srnxd",
+        "RouteKey": "GET /catalog/search",
+        "Target": "integrations/2jm95vq"
+      },
+      {
+        "ApiKeyRequired": false,
+        "AuthorizationScopes": [],
+        "AuthorizationType": "JWT",
+        "AuthorizerId": "qcopg9",
+        "RequestModels": {},
+        "RouteId": "ln0mjq5",
+        "RouteKey": "PUT /me",
+        "Target": "integrations/i6k29x9"
+      },
+      {
+        "ApiKeyRequired": false,
+        "AuthorizationScopes": [],
+        "AuthorizationType": "JWT",
+        "AuthorizerId": "qcopg9",
+        "RequestModels": {},
+        "RouteId": "m936zai",
+        "RouteKey": "POST /checkout-auth",
+        "Target": "integrations/umtnqpe"
+      },
+      {
+        "ApiKeyRequired": false,
+        "AuthorizationScopes": [],
+        "AuthorizationType": "JWT",
+        "AuthorizerId": "qcopg9",
+        "RequestModels": {},
+        "RouteId": "mt3w6p5",
+        "RouteKey": "GET /tracking",
+        "Target": "integrations/i6k29x9"
+      },
+      {
+        "ApiKeyRequired": false,
+        "AuthorizationScopes": [],
+        "AuthorizationType": "JWT",
+        "AuthorizerId": "qcopg9",
+        "RequestModels": {},
+        "RouteId": "oklinnt",
+        "RouteKey": "GET /orders/{orderId}",
+        "Target": "integrations/i6k29x9"
+      },
+      {
+        "ApiKeyRequired": false,
+        "AuthorizationScopes": [],
+        "AuthorizationType": "NONE",
+        "RequestModels": {},
+        "RouteId": "pi0rnv8",
+        "RouteKey": "GET /catalog/products",
+        "Target": "integrations/wdgi0ms"
+      },
+      {
+        "ApiKeyRequired": false,
+        "AuthorizationScopes": [],
+        "AuthorizationType": "NONE",
+        "RequestModels": {},
+        "RouteId": "pqtnu75",
+        "RouteKey": "GET /catalog/products/{productId}",
+        "Target": "integrations/wdgi0ms"
+      },
+      {
+        "ApiKeyRequired": false,
+        "AuthorizationScopes": [],
+        "AuthorizationType": "JWT",
+        "AuthorizerId": "qcopg9",
+        "RequestModels": {},
+        "RouteId": "q7ahdgn",
+        "RouteKey": "POST /orders/{orderId}/link",
+        "Target": "integrations/i6k29x9"
+      },
+      {
+        "ApiKeyRequired": false,
+        "AuthorizationScopes": [],
+        "AuthorizationType": "NONE",
+        "RequestParameters": {},
+        "RouteId": "sckn4y9",
+        "RouteKey": "GET /health",
+        "Target": "integrations/g0ji4pe"
+      },
+      {
+        "ApiKeyRequired": false,
+        "AuthorizationScopes": [],
+        "AuthorizationType": "JWT",
+        "AuthorizerId": "qcopg9",
+        "RequestModels": {},
+        "RouteId": "x5eglh7",
+        "RouteKey": "GET /shipments",
+        "Target": "integrations/i6k29x9"
+      },
+      {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "RouteId": "zqcmnz9",
+        "RouteKey": "POST /assistant",
+        "Target": "integrations/ggh5t19"
+      },
+      {
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "RouteId": "zqooj40",
+        "RouteKey": "POST /checkout",
+        "Target": "integrations/g0ji4pe"
+      }
+    ],
+    "integrations": [
+      {
+        "ConnectionType": "INTERNET",
+        "Description": "AnoX Channel3 catalog search",
+        "IntegrationId": "2jm95vq",
+        "IntegrationMethod": "POST",
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Channel3-Catalog",
+        "PayloadFormatVersion": "2.0",
+        "TimeoutInMillis": 20000
+      },
+      {
+        "ConnectionType": "INTERNET",
+        "IntegrationId": "9n79qq1",
+        "IntegrationMethod": "POST",
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Payment-Read",
+        "PayloadFormatVersion": "2.0",
+        "TimeoutInMillis": 10000
+      },
+      {
+        "ConnectionType": "INTERNET",
+        "Description": "AnoX Secrets Manager backed checkout core",
+        "IntegrationId": "g0ji4pe",
+        "IntegrationMethod": "POST",
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Checkout-Core",
+        "PayloadFormatVersion": "2.0",
+        "TimeoutInMillis": 10000
+      },
+      {
+        "ConnectionType": "INTERNET",
+        "Description": "AnoX conversational shopping assistant",
+        "IntegrationId": "ggh5t19",
+        "IntegrationMethod": "POST",
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Chat",
+        "PayloadFormatVersion": "2.0",
+        "TimeoutInMillis": 25000
+      },
+      {
+        "ConnectionType": "INTERNET",
+        "IntegrationId": "i6k29x9",
+        "IntegrationMethod": "POST",
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Account-API-AccountFunction-FIlyvPfCeFEL",
+        "PayloadFormatVersion": "2.0",
+        "TimeoutInMillis": 10000
+      },
+      {
+        "ConnectionType": "INTERNET",
+        "Description": "AnoX hardened Stripe webhook processor",
+        "IntegrationId": "iyfrkrd",
+        "IntegrationMethod": "POST",
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Payment-Webhook",
+        "PayloadFormatVersion": "2.0",
+        "TimeoutInMillis": 10000
+      },
+      {
+        "ConnectionType": "INTERNET",
+        "Description": "Authenticated AnoX checkout",
+        "IntegrationId": "umtnqpe",
+        "IntegrationMethod": "POST",
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Checkout-Auth",
+        "PayloadFormatVersion": "2.0",
+        "TimeoutInMillis": 15000
+      },
+      {
+        "ConnectionType": "INTERNET",
+        "Description": "AnoX catalog API",
+        "IntegrationId": "wdgi0ms",
+        "IntegrationMethod": "POST",
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Smart-Catalog",
+        "PayloadFormatVersion": "2.0",
+        "TimeoutInMillis": 20000
+      }
+    ],
+    "authorizers": [
+      {
+        "AuthorizerId": "qcopg9",
+        "AuthorizerType": "JWT",
+        "IdentitySource": [
+          "$request.header.Authorization"
+        ],
+        "JwtConfiguration": {
+          "Audience": [
+            "63738r9gpr126qpgp1a5cubchi"
+          ],
+          "Issuer": "https://cognito-idp.us-east-2.amazonaws.com/us-east-2_gUci3YuMm"
+        },
+        "Name": "AnoX-Cognito-JWT"
+      }
+    ],
+    "stages": [
+      {
+        "AutoDeploy": true,
+        "CreatedDate": "2026-09-12T00:42:12+00:00",
+        "DefaultRouteSettings": {
+          "DetailedMetricsEnabled": false
+        },
+        "DeploymentId": "pq09gf",
+        "LastDeploymentStatusMessage": "Successfully deployed stage with deployment ID 'pq09gf'",
+        "LastUpdatedDate": "2026-10-07T03:04:14+00:00",
+        "RouteSettings": {
+          "POST /assistant": {
+            "ThrottlingBurstLimit": 5,
+            "ThrottlingRateLimit": 2
+          }
+        },
+        "StageName": "$default",
+        "StageVariables": {},
+        "Tags": {}
+      }
+    ],
+    "functions": [
+      {
+        "FunctionName": "AnoX-Account-API-AccountFunction-FIlyvPfCeFEL",
+        "FunctionArn": "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Account-API-AccountFunction-FIlyvPfCeFEL",
+        "Runtime": "nodejs24.x",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Account-API-AccountRole-EHhv6Ykrc5Mj",
+        "Handler": "index.handler",
+        "CodeSize": 1875,
+        "CodeSha256": "Mh6RwHzyvqtfIZLJpb/JRi4Hc0qCHBgelr0z3L1oUtY=",
+        "LastModified": "2026-09-19T02:23:51.000+0000",
+        "Timeout": 10,
+        "MemorySize": 128,
+        "Version": "$LATEST",
+        "environmentKeys": [
+          "ORDERS_TABLE",
+          "SHIPMENTS_TABLE",
+          "TRACKING_TABLE",
+          "USERS_TABLE"
+        ]
+      },
+      {
+        "FunctionName": "AnoX-Shipping-Core",
+        "FunctionArn": "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Shipping-Core",
+        "Runtime": "nodejs24.x",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Shipping-Core-ShippingRole-e2i1Kde1jVrI",
+        "Handler": "index.handler",
+        "CodeSize": 6541,
+        "CodeSha256": "ak3cLHYDfVbK49qgtbIKck78lxpTkkr/YBhA0J+FcYg=",
+        "LastModified": "2026-09-23T07:05:08.000+0000",
+        "Timeout": 15,
+        "MemorySize": 256,
+        "Version": "$LATEST",
+        "environmentKeys": [
+          "EASYPOST_SECRET_ID",
+          "ORDERS_TABLE",
+          "SHIPMENTS_TABLE",
+          "TRACKING_TABLE"
+        ]
+      },
+      {
+        "FunctionName": "AnoX-Checkout-Core",
+        "FunctionArn": "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Checkout-Core",
+        "Runtime": "nodejs24.x",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Checkout-Core-CheckoutCoreRole-3Y6uuyRMDyNL",
+        "Handler": "index.handler",
+        "CodeSize": 4235,
+        "CodeSha256": "c2oFL2i1qjHj8mYxVZeq9Ql4Fh1jXsazrLGwtKN63mU=",
+        "LastModified": "2026-09-19T01:28:05.687+0000",
+        "Timeout": 10,
+        "MemorySize": 128,
+        "Version": "$LATEST",
+        "environmentKeys": [
+          "ORDERS_TABLE",
+          "STRIPE_SECRET_ID"
+        ]
+      },
+      {
+        "FunctionName": "AnoX-Channel3-Catalog",
+        "FunctionArn": "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Channel3-Catalog",
+        "Runtime": "nodejs24.x",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Channel3-Catalog-Channel3Role-3AzyNIuhdUvo",
+        "Handler": "index.handler",
+        "CodeSize": 6571,
+        "CodeSha256": "q7GNvyL6iNEL42YY0LM+k2Rp37YPyE0NKbIfE39bk6c=",
+        "LastModified": "2026-10-08T04:07:22.000+0000",
+        "Timeout": 20,
+        "MemorySize": 256,
+        "Version": "$LATEST",
+        "environmentKeys": [
+          "CACHE_TABLE",
+          "CHANNEL3_SECRET_ID"
+        ]
+      },
+      {
+        "FunctionName": "AnoX-Payment-Read",
+        "FunctionArn": "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Payment-Read",
+        "Runtime": "nodejs24.x",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Payment-Read-Role",
+        "Handler": "index.handler",
+        "CodeSize": 1039,
+        "CodeSha256": "1/rIjZY4+4++4BHO8aZyCdz0BWkjYvif+OzhLlGByAE=",
+        "LastModified": "2026-09-18T11:52:20.267+0000",
+        "Timeout": 10,
+        "MemorySize": 128,
+        "Version": "$LATEST",
+        "environmentKeys": [
+          "ORDERS_TABLE",
+          "PAYMENTS_TABLE"
+        ]
+      },
+      {
+        "FunctionName": "anox-api",
+        "FunctionArn": "arn:aws:lambda:us-east-2:427064007352:function:anox-api",
+        "Runtime": "nodejs24.x",
+        "Role": "arn:aws:iam::427064007352:role/service-role/anox-api-role-kximt488",
+        "Handler": "index.handler",
+        "CodeSize": 5298,
+        "CodeSha256": "KBV8CnH1lvUWZTmHDv+SXP7fnEpuNawZUIhHsiWIDis=",
+        "LastModified": "2026-09-19T01:30:26.000+0000",
+        "Timeout": 10,
+        "MemorySize": 128,
+        "Version": "$LATEST",
+        "environmentKeys": [
+          "ORDERS_TABLE"
+        ]
+      },
+      {
+        "FunctionName": "AnoX-AI-Intent",
+        "FunctionArn": "arn:aws:lambda:us-east-2:427064007352:function:AnoX-AI-Intent",
+        "Runtime": "nodejs24.x",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-AI-Intent-Role",
+        "Handler": "index.handler",
+        "CodeSize": 2112,
+        "CodeSha256": "Ku2/QktZOiKxDTVkiqY2pydck9tMEEkBetZU1J16kkk=",
+        "LastModified": "2026-09-24T05:01:00.569+0000",
+        "Timeout": 15,
+        "MemorySize": 256,
+        "Version": "$LATEST",
+        "environmentKeys": [
+          "ALLOWED_ORIGINS",
+          "OPENAI_MODEL",
+          "OPENAI_SECRET_ID"
+        ]
+      },
+      {
+        "FunctionName": "AnoX-Checkout-Auth",
+        "FunctionArn": "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Checkout-Auth",
+        "Runtime": "nodejs24.x",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Checkout-Auth-CheckoutAuthRole-7yyJ62h9keRU",
+        "Handler": "index.handler",
+        "CodeSize": 1491,
+        "CodeSha256": "ynhEcopF6gVbnH8WNmPDl4oXR39B3/0luDV7NGZg598=",
+        "LastModified": "2026-09-19T01:29:33.000+0000",
+        "Timeout": 15,
+        "MemorySize": 128,
+        "Version": "$LATEST",
+        "environmentKeys": [
+          "CHECKOUT_FUNCTION",
+          "ORDERS_TABLE"
+        ]
+      },
+      {
+        "FunctionName": "AnoX-Payment-Webhook",
+        "FunctionArn": "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Payment-Webhook",
+        "Runtime": "nodejs24.x",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Payment-Webhook-Role",
+        "Handler": "index.handler",
+        "CodeSize": 3500,
+        "CodeSha256": "PRgebBDVdF2HMV4p7i3YWKAJnbBvJpkEBsCdpddnuAM=",
+        "LastModified": "2026-09-18T18:54:29.000+0000",
+        "Timeout": 10,
+        "MemorySize": 128,
+        "Version": "$LATEST",
+        "environmentKeys": [
+          "ORDERS_TABLE",
+          "PAYMENTS_TABLE",
+          "STRIPE_SECRET_ID"
+        ]
+      },
+      {
+        "FunctionName": "AnoX-Catalog-API",
+        "FunctionArn": "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Catalog-API",
+        "Runtime": "nodejs24.x",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Catalog-API-Role",
+        "Handler": "index.handler",
+        "CodeSize": 2201,
+        "CodeSha256": "ZpmZQUfS7jzSblQBdSerfzueAl/pFGByHec1IV/P9Uo=",
+        "LastModified": "2026-10-07T02:57:02.000+0000",
+        "Timeout": 20,
+        "MemorySize": 256,
+        "Version": "$LATEST",
+        "environmentKeys": [
+          "CHANNEL3_SECRET_ID",
+          "CJ_COMPANY_ID",
+          "CJ_SECRET_ID",
+          "NIKE_ADVERTISER_ID",
+          "PRODUCTS_TABLE"
+        ]
+      },
+      {
+        "FunctionName": "AnoX-Smart-Catalog",
+        "FunctionArn": "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Smart-Catalog",
+        "Runtime": "nodejs24.x",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Smart-Catalog-Role",
+        "Handler": "index.handler",
+        "CodeSize": 1563,
+        "CodeSha256": "/nx8Xk3P964MB2B2hWqk7BSoY09cfa+clDvXn1ipMrQ=",
+        "LastModified": "2026-09-24T05:17:30.248+0000",
+        "Timeout": 20,
+        "MemorySize": 256,
+        "Version": "$LATEST",
+        "environmentKeys": [
+          "AI_FUNCTION",
+          "CATALOG_FUNCTION"
+        ]
+      },
+      {
+        "FunctionName": "AnoX-Chat",
+        "FunctionArn": "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Chat",
+        "Runtime": "nodejs24.x",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Chat-Role",
+        "Handler": "index.handler",
+        "CodeSize": 12146,
+        "CodeSha256": "qPS7qF1dCVBr/DoP0NPbetrd6NkXX+Xe24GvlKk8X/E=",
+        "LastModified": "2026-09-25T22:46:58.007+0000",
+        "Timeout": 25,
+        "MemorySize": 384,
+        "Version": "$LATEST",
+        "environmentKeys": [
+          "CATALOG_FUNCTION",
+          "OPENAI_MODEL",
+          "OPENAI_SECRET_ID"
+        ]
+      }
+    ],
+    "tables": [
+      "AnoX-Channel3-Catalog-CatalogCache-GGLNCMZC7CSK",
+      "AnoX-Orders",
+      "AnoX-Payments",
+      "AnoX-Products",
+      "AnoX-Shipments",
+      "AnoX-TrackingEvents",
+      "AnoX-Users"
+    ],
+    "alarms": {
+      "MetricAlarms": [],
+      "CompositeAlarms": []
+    },
+    "lambdaAccount": {
+      "AccountLimit": {
+        "TotalCodeSize": 322122547200,
+        "CodeSizeUnzipped": 262144000,
+        "CodeSizeZipped": 52428800,
+        "ConcurrentExecutions": 10,
+        "UnreservedConcurrentExecutions": 10
+      },
+      "AccountUsage": {
+        "TotalCodeSize": 51009,
+        "FunctionCount": 12
+      }
+    }
+  },
+  "warning": null,
+  "api_calls": [
+    {
+      "service": "sts",
+      "operation": "GetCallerIdentity",
+      "status": "success"
+    },
+    {
+      "service": "apigatewayv2",
+      "operation": "GetApi",
+      "status": "success"
+    },
+    {
+      "service": "apigatewayv2",
+      "operation": "GetRoutes",
+      "status": "success",
+      "n_items": {
+        "Items": 16
+      }
+    },
+    {
+      "service": "apigatewayv2",
+      "operation": "GetIntegrations",
+      "status": "success",
+      "n_items": {
+        "Items": 8
+      }
+    },
+    {
+      "service": "apigatewayv2",
+      "operation": "GetAuthorizers",
+      "status": "success",
+      "n_items": {
+        "Items": 1
+      }
+    },
+    {
+      "service": "apigatewayv2",
+      "operation": "GetStages",
+      "status": "success",
+      "n_items": {
+        "Items": 1
+      }
+    },
+    {
+      "service": "lambda",
+      "operation": "ListFunctions",
+      "status": "success",
+      "n_items": {
+        "Functions": 12
+      }
+    },
+    {
+      "service": "dynamodb",
+      "operation": "ListTables",
+      "status": "success",
+      "n_items": {
+        "TableNames": 7
+      }
+    },
+    {
+      "service": "cloudwatch",
+      "operation": "DescribeAlarms",
+      "status": "success",
+      "n_items": {
+        "MetricAlarms": 0,
+        "CompositeAlarms": 0,
+        "LogAlarms": 0
+      }
+    },
+    {
+      "service": "lambda",
+      "operation": "GetAccountSettings",
+      "status": "success"
+    }
+  ]
+}

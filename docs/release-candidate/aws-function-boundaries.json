@@ -1,0 +1,356 @@
+{
+  "status": "success",
+  "stdout": "",
+  "stderr": "Error calling function call_boto3 with arguments {'service_name': 'lambda', 'operation_name': 'GetPolicy', 'region_name': 'us-east-2', 'params': {'FunctionName': 'AnoX-Shipping-Core'}}: An error occurred (ResourceNotFoundException) when calling the GetPolicy operation: The resource you requested does not exist.\n",
+  "return_value": {
+    "capturedAt": "2026-10-14T04:33:48.651907+00:00",
+    "functions": {
+      "AnoX-Account-API-AccountFunction-FIlyvPfCeFEL": {
+        "GetPolicy": {
+          "Policy": "{\"Version\":\"2012-10-17\",\"Id\":\"default\",\"Statement\":[{\"Sid\":\"AnoX-Account-API-InvokePermission-Y6JkHXsAyTxt\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"apigateway.amazonaws.com\"},\"Action\":\"lambda:InvokeFunction\",\"Resource\":\"arn:aws:lambda:us-east-2:427064007352:function:AnoX-Account-API-AccountFunction-FIlyvPfCeFEL\",\"Condition\":{\"ArnLike\":{\"AWS:SourceArn\":\"arn:aws:execute-api:us-east-2:427064007352:zmumi2wruk/*/*\"}}}]}",
+          "RevisionId": "7c2cdcdc-d79f-4b29-8d81-9caf920b865e"
+        },
+        "ListFunctionUrlConfigs": {
+          "FunctionUrlConfigs": []
+        },
+        "GetFunctionConcurrency": {}
+      },
+      "AnoX-Shipping-Core": {
+        "GetPolicy": {
+          "error": "An error occurred (ResourceNotFoundException) when calling the GetPolicy operation: The resource you requested does not exist."
+        },
+        "ListFunctionUrlConfigs": {
+          "FunctionUrlConfigs": []
+        },
+        "GetFunctionConcurrency": {}
+      },
+      "AnoX-Checkout-Core": {
+        "GetPolicy": {
+          "Policy": "{\"Version\":\"2012-10-17\",\"Id\":\"default\",\"Statement\":[{\"Sid\":\"AnoX-Checkout-Core-CheckoutCoreHealthInvokePermission-pzHrGBmIGTsr\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"apigateway.amazonaws.com\"},\"Action\":\"lambda:InvokeFunction\",\"Resource\":\"arn:aws:lambda:us-east-2:427064007352:function:AnoX-Checkout-Core\",\"Condition\":{\"ArnLike\":{\"AWS:SourceArn\":\"arn:aws:execute-api:us-east-2:427064007352:zmumi2wruk/*/GET/health\"}}},{\"Sid\":\"AnoX-Checkout-Core-CheckoutCoreCheckoutInvokePermission-1uEBu1Nrihbp\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"apigateway.amazonaws.com\"},\"Action\":\"lambda:InvokeFunction\",\"Resource\":\"arn:aws:lambda:us-east-2:427064007352:function:AnoX-Checkout-Core\",\"Condition\":{\"ArnLike\":{\"AWS:SourceArn\":\"arn:aws:execute-api:us-east-2:427064007352:zmumi2wruk/*/POST/checkout\"}}}]}",
+          "RevisionId": "c2c47174-062c-4334-9073-b2094712f70b"
+        },
+        "ListFunctionUrlConfigs": {
+          "FunctionUrlConfigs": []
+        },
+        "GetFunctionConcurrency": {}
+      },
+      "AnoX-Channel3-Catalog": {
+        "GetPolicy": {
+          "Policy": "{\"Version\":\"2012-10-17\",\"Id\":\"default\",\"Statement\":[{\"Sid\":\"AllowAnoXApiGatewayCatalogSearch\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"apigateway.amazonaws.com\"},\"Action\":\"lambda:InvokeFunction\",\"Resource\":\"arn:aws:lambda:us-east-2:427064007352:function:AnoX-Channel3-Catalog\",\"Condition\":{\"ArnLike\":{\"AWS:SourceArn\":\"arn:aws:execute-api:us-east-2:427064007352:zmumi2wruk/*/GET/catalog/search\"}}}]}",
+          "RevisionId": "8e2cf5b9-367c-4acc-9296-1ef941a9bf81"
+        },
+        "ListFunctionUrlConfigs": {
+          "FunctionUrlConfigs": []
+        },
+        "GetFunctionConcurrency": {}
+      },
+      "AnoX-Payment-Read": {
+        "GetPolicy": {
+          "Policy": "{\"Version\":\"2012-10-17\",\"Id\":\"default\",\"Statement\":[{\"Sid\":\"AnoX-Payment-Read-API-Permission-3S8gwzO2E7Ny\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"apigateway.amazonaws.com\"},\"Action\":\"lambda:InvokeFunction\",\"Resource\":\"arn:aws:lambda:us-east-2:427064007352:function:AnoX-Payment-Read\",\"Condition\":{\"ArnLike\":{\"AWS:SourceArn\":\"arn:aws:execute-api:us-east-2:427064007352:zmumi2wruk/*/GET/payments\"}}}]}",
+          "RevisionId": "5a9a426c-2f94-4bf2-93a6-2b0c10a62937"
+        },
+        "ListFunctionUrlConfigs": {
+          "FunctionUrlConfigs": []
+        },
+        "GetFunctionConcurrency": {}
+      },
+      "anox-api": {
+        "GetPolicy": {
+          "Policy": "{\"Version\":\"2012-10-17\",\"Id\":\"default\",\"Statement\":[{\"Sid\":\"dd9c154e-8563-5510-8635-d3f7d1ac509f\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"apigateway.amazonaws.com\"},\"Action\":\"lambda:InvokeFunction\",\"Resource\":\"arn:aws:lambda:us-east-2:427064007352:function:anox-api\",\"Condition\":{\"ArnLike\":{\"AWS:SourceArn\":\"arn:aws:execute-api:us-east-2:427064007352:zmumi2wruk/*/*/health\"}}},{\"Sid\":\"8437a5e4-afea-5e71-b39a-ad7609eb0ed4\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"apigateway.amazonaws.com\"},\"Action\":\"lambda:InvokeFunction\",\"Resource\":\"arn:aws:lambda:us-east-2:427064007352:function:anox-api\",\"Condition\":{\"ArnLike\":{\"AWS:SourceArn\":\"arn:aws:execute-api:us-east-2:427064007352:zmumi2wruk/*/*/checkout\"}}},{\"Sid\":\"ddd7209c-023c-5f81-a4b0-1504c04831cc\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"apigateway.amazonaws.com\"},\"Action\":\"lambda:InvokeFunction\",\"Resource\":\"arn:aws:lambda:us-east-2:427064007352:function:anox-api\",\"Condition\":{\"ArnLike\":{\"AWS:SourceArn\":\"arn:aws:execute-api:us-east-2:427064007352:zmumi2wruk/*/*/webhook\"}}}]}",
+          "RevisionId": "f9d14d8a-7d73-40a5-aa73-9a5369a0dbc8"
+        },
+        "ListFunctionUrlConfigs": {
+          "FunctionUrlConfigs": []
+        },
+        "GetFunctionConcurrency": {}
+      },
+      "AnoX-AI-Intent": {
+        "GetPolicy": {
+          "Policy": "{\"Version\":\"2012-10-17\",\"Id\":\"default\",\"Statement\":[{\"Sid\":\"AllowAnoXHttpApiIntent\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"apigateway.amazonaws.com\"},\"Action\":\"lambda:InvokeFunction\",\"Resource\":\"arn:aws:lambda:us-east-2:427064007352:function:AnoX-AI-Intent\",\"Condition\":{\"ArnLike\":{\"AWS:SourceArn\":\"arn:aws:execute-api:us-east-2:427064007352:zmumi2wruk/*/POST/ai/intent\"}}}]}",
+          "RevisionId": "3d8df7bd-74b8-4f56-8181-7de8a8acc5af"
+        },
+        "ListFunctionUrlConfigs": {
+          "FunctionUrlConfigs": []
+        },
+        "GetFunctionConcurrency": {}
+      },
+      "AnoX-Checkout-Auth": {
+        "GetPolicy": {
+          "Policy": "{\"Version\":\"2012-10-17\",\"Id\":\"default\",\"Statement\":[{\"Sid\":\"AnoX-Checkout-Auth-CheckoutAuthInvokePermission-hcPRzAuP0caI\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"apigateway.amazonaws.com\"},\"Action\":\"lambda:InvokeFunction\",\"Resource\":\"arn:aws:lambda:us-east-2:427064007352:function:AnoX-Checkout-Auth\",\"Condition\":{\"ArnLike\":{\"AWS:SourceArn\":\"arn:aws:execute-api:us-east-2:427064007352:zmumi2wruk/*/POST/checkout-auth\"}}}]}",
+          "RevisionId": "4a15ee98-1ba9-4781-bb62-9c67dd3e0ec8"
+        },
+        "ListFunctionUrlConfigs": {
+          "FunctionUrlConfigs": []
+        },
+        "GetFunctionConcurrency": {}
+      },
+      "AnoX-Payment-Webhook": {
+        "GetPolicy": {
+          "Policy": "{\"Version\":\"2012-10-17\",\"Id\":\"default\",\"Statement\":[{\"Sid\":\"AnoX-Payment-Webhook-InvokePermission-kaEPwXkFVsp2\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"apigateway.amazonaws.com\"},\"Action\":\"lambda:InvokeFunction\",\"Resource\":\"arn:aws:lambda:us-east-2:427064007352:function:AnoX-Payment-Webhook\",\"Condition\":{\"ArnLike\":{\"AWS:SourceArn\":\"arn:aws:execute-api:us-east-2:427064007352:zmumi2wruk/*/POST/webhook\"}}}]}",
+          "RevisionId": "56e15a09-4673-4034-86f6-e6a1d3e2b731"
+        },
+        "ListFunctionUrlConfigs": {
+          "FunctionUrlConfigs": []
+        },
+        "GetFunctionConcurrency": {}
+      },
+      "AnoX-Catalog-API": {
+        "GetPolicy": {
+          "Policy": "{\"Version\":\"2012-10-17\",\"Id\":\"default\",\"Statement\":[{\"Sid\":\"AnoX-CJ-Catalog-Test-CatalogApiInvokePermission-IrA59OxdPmNk\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"apigateway.amazonaws.com\"},\"Action\":\"lambda:InvokeFunction\",\"Resource\":\"arn:aws:lambda:us-east-2:427064007352:function:AnoX-Catalog-API\",\"Condition\":{\"ArnLike\":{\"AWS:SourceArn\":\"arn:aws:execute-api:us-east-2:427064007352:zmumi2wruk/*/GET/catalog/*\"}}},{\"Sid\":\"AnoXCatalogWarmV2\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"events.amazonaws.com\"},\"Action\":\"lambda:InvokeFunction\",\"Resource\":\"arn:aws:lambda:us-east-2:427064007352:function:AnoX-Catalog-API\",\"Condition\":{\"ArnLike\":{\"AWS:SourceArn\":\"arn:aws:events:us-east-2:427064007352:rule/AnoX-Catalog-Warm-V2\"}}}]}",
+          "RevisionId": "dd80afbd-bc6c-417b-891d-fcd3502058ef"
+        },
+        "ListFunctionUrlConfigs": {
+          "FunctionUrlConfigs": []
+        },
+        "GetFunctionConcurrency": {}
+      },
+      "AnoX-Smart-Catalog": {
+        "GetPolicy": {
+          "Policy": "{\"Version\":\"2012-10-17\",\"Id\":\"default\",\"Statement\":[{\"Sid\":\"AllowAnoXApiInvokeSmartCatalog\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"apigateway.amazonaws.com\"},\"Action\":\"lambda:InvokeFunction\",\"Resource\":\"arn:aws:lambda:us-east-2:427064007352:function:AnoX-Smart-Catalog\",\"Condition\":{\"ArnLike\":{\"AWS:SourceArn\":\"arn:aws:execute-api:us-east-2:427064007352:zmumi2wruk/*/GET/catalog/products*\"}}}]}",
+          "RevisionId": "466a8286-1621-44ad-b4b5-b258c4a26aa8"
+        },
+        "ListFunctionUrlConfigs": {
+          "FunctionUrlConfigs": []
+        },
+        "GetFunctionConcurrency": {}
+      },
+      "AnoX-Chat": {
+        "GetPolicy": {
+          "Policy": "{\"Version\":\"2012-10-17\",\"Id\":\"default\",\"Statement\":[{\"Sid\":\"AllowAnoXApiAssistant\",\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"apigateway.amazonaws.com\"},\"Action\":\"lambda:InvokeFunction\",\"Resource\":\"arn:aws:lambda:us-east-2:427064007352:function:AnoX-Chat\",\"Condition\":{\"ArnLike\":{\"AWS:SourceArn\":\"arn:aws:execute-api:us-east-2:427064007352:zmumi2wruk/*/POST/assistant\"}}}]}",
+          "RevisionId": "baa3c876-aaab-4a72-a178-75cca03dc9dd"
+        },
+        "ListFunctionUrlConfigs": {
+          "FunctionUrlConfigs": []
+        },
+        "GetFunctionConcurrency": {}
+      }
+    }
+  },
+  "api_calls": [
+    {
+      "service": "lambda",
+      "operation": "ListFunctions",
+      "status": "success",
+      "n_items": {
+        "Functions": 12
+      }
+    },
+    {
+      "service": "lambda",
+      "operation": "GetPolicy",
+      "status": "success"
+    },
+    {
+      "service": "lambda",
+      "operation": "ListFunctionUrlConfigs",
+      "status": "success",
+      "n_items": {
+        "FunctionUrlConfigs": 0
+      }
+    },
+    {
+      "service": "lambda",
+      "operation": "GetFunctionConcurrency",
+      "status": "success"
+    },
+    {
+      "service": "lambda",
+      "operation": "GetPolicy",
+      "status": "error",
+      "error": "ResourceNotFoundException: An error occurred (ResourceNotFoundException) when calling the GetPolicy operation: The resource you requested does not exist."
+    },
+    {
+      "service": "lambda",
+      "operation": "ListFunctionUrlConfigs",
+      "status": "success",
+      "n_items": {
+        "FunctionUrlConfigs": 0
+      }
+    },
+    {
+      "service": "lambda",
+      "operation": "GetFunctionConcurrency",
+      "status": "success"
+    },
+    {
+      "service": "lambda",
+      "operation": "GetPolicy",
+      "status": "success"
+    },
+    {
+      "service": "lambda",
+      "operation": "ListFunctionUrlConfigs",
+      "status": "success",
+      "n_items": {
+        "FunctionUrlConfigs": 0
+      }
+    },
+    {
+      "service": "lambda",
+      "operation": "GetFunctionConcurrency",
+      "status": "success"
+    },
+    {
+      "service": "lambda",
+      "operation": "GetPolicy",
+      "status": "success"
+    },
+    {
+      "service": "lambda",
+      "operation": "ListFunctionUrlConfigs",
+      "status": "success",
+      "n_items": {
+        "FunctionUrlConfigs": 0
+      }
+    },
+    {
+      "service": "lambda",
+      "operation": "GetFunctionConcurrency",
+      "status": "success"
+    },
+    {
+      "service": "lambda",
+      "operation": "GetPolicy",
+      "status": "success"
+    },
+    {
+      "service": "lambda",
+      "operation": "ListFunctionUrlConfigs",
+      "status": "success",
+      "n_items": {
+        "FunctionUrlConfigs": 0
+      }
+    },
+    {
+      "service": "lambda",
+      "operation": "GetFunctionConcurrency",
+      "status": "success"
+    },
+    {
+      "service": "lambda",
+      "operation": "GetPolicy",
+      "status": "success"
+    },
+    {
+      "service": "lambda",
+      "operation": "ListFunctionUrlConfigs",
+      "status": "success",
+      "n_items": {
+        "FunctionUrlConfigs": 0
+      }
+    },
+    {
+      "service": "lambda",
+      "operation": "GetFunctionConcurrency",
+      "status": "success"
+    },
+    {
+      "service": "lambda",
+      "operation": "GetPolicy",
+      "status": "success"
+    },
+    {
+      "service": "lambda",
+      "operation": "ListFunctionUrlConfigs",
+      "status": "success",
+      "n_items": {
+        "FunctionUrlConfigs": 0
+      }
+    },
+    {
+      "service": "lambda",
+      "operation": "GetFunctionConcurrency",
+      "status": "success"
+    },
+    {
+      "service": "lambda",
+      "operation": "GetPolicy",
+      "status": "success"
+    },
+    {
+      "service": "lambda",
+      "operation": "ListFunctionUrlConfigs",
+      "status": "success",
+      "n_items": {
+        "FunctionUrlConfigs": 0
+      }
+    },
+    {
+      "service": "lambda",
+      "operation": "GetFunctionConcurrency",
+      "status": "success"
+    },
+    {
+      "service": "lambda",
+      "operation": "GetPolicy",
+      "status": "success"
+    },
+    {
+      "service": "lambda",
+      "operation": "ListFunctionUrlConfigs",
+      "status": "success",
+      "n_items": {
+        "FunctionUrlConfigs": 0
+      }
+    },
+    {
+      "service": "lambda",
+      "operation": "GetFunctionConcurrency",
+      "status": "success"
+    },
+    {
+      "service": "lambda",
+      "operation": "GetPolicy",
+      "status": "success"
+    },
+    {
+      "service": "lambda",
+      "operation": "ListFunctionUrlConfigs",
+      "status": "success",
+      "n_items": {
+        "FunctionUrlConfigs": 0
+      }
+    },
+    {
+      "service": "lambda",
+      "operation": "GetFunctionConcurrency",
+      "status": "success"
+    },
+    {
+      "service": "lambda",
+      "operation": "GetPolicy",
+      "status": "success"
+    },
+    {
+      "service": "lambda",
+      "operation": "ListFunctionUrlConfigs",
+      "status": "success",
+      "n_items": {
+        "FunctionUrlConfigs": 0
+      }
+    },
+    {
+      "service": "lambda",
+      "operation": "GetFunctionConcurrency",
+      "status": "success"
+    },
+    {
+      "service": "lambda",
+      "operation": "GetPolicy",
+      "status": "success"
+    },
+    {
+      "service": "lambda",
+      "operation": "ListFunctionUrlConfigs",
+      "status": "success",
+      "n_items": {
+        "FunctionUrlConfigs": 0
+      }
+    },
+    {
+      "service": "lambda",
+      "operation": "GetFunctionConcurrency",
+      "status": "success"
+    }
+  ]
+}

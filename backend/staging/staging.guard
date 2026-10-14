@@ -1,0 +1,56 @@
+let tables = Resources.*[ Type == 'AWS::DynamoDB::Table' ]
+let routes = Resources.*[ Type == 'AWS::ApiGatewayV2::Route' ]
+let permissions = Resources.*[ Type == 'AWS::Lambda::Permission' ]
+rule isolated_api {
+  Resources.StagingApi.Properties.ProtocolType == 'HTTP'
+  Resources.StagingApi.Properties.CorsConfiguration.AllowOrigins == ['https://anox.app']
+  Resources.StagingApi.Properties.CorsConfiguration.AllowCredentials == false
+  Resources.StagingApi.Properties.CorsConfiguration.AllowHeaders == ['content-type', 'authorization', 'Idempotency-Key']
+  Resources.StagingStage.Properties.AutoDeploy == false
+  Resources.StagingStage.Properties.StageName == '$default'
+  Resources.StagingStage.Properties.DeploymentId is_struct
+  %routes.Properties.ApiId.Ref == 'StagingApi'
+  %permissions.Properties.SourceAccount.Ref == 'AWS::AccountId'
+}
+rule dedicated_auth {
+  Resources.StagingUserPool.DeletionPolicy == 'Retain'
+  Resources.StagingUserPool.Properties.DeletionProtection == 'ACTIVE'
+  Resources.StagingUserPool.Properties.AdminCreateUserConfig.AllowAdminCreateUserOnly == true
+  Resources.StagingClient.Properties.GenerateSecret == false
+  Resources.StagingClient.Properties.ExplicitAuthFlows == ['ALLOW_USER_PASSWORD_AUTH', 'ALLOW_USER_SRP_AUTH', 'ALLOW_REFRESH_TOKEN_AUTH']
+  Resources.StagingClient.Properties.EnableTokenRevocation == true
+  Resources.StagingAuthorizer.Properties.ApiId.Ref == 'StagingApi'
+  Resources.StagingAuthorizer.Properties.AuthorizerType == 'JWT'
+  Resources.QuotesRoute.Properties.AuthorizationType == 'JWT'
+  Resources.AttemptsRoute.Properties.AuthorizationType == 'JWT'
+  Resources.OrdersRoute.Properties.AuthorizationType == 'JWT'
+  Resources.OrderRoute.Properties.AuthorizationType == 'JWT'
+  Resources.CancelRoute.Properties.AuthorizationType == 'JWT'
+  Resources.RefundRoute.Properties.AuthorizationType == 'JWT'
+}
+rule protected_state {
+  %tables {
+    DeletionPolicy == 'Retain'
+    UpdateReplacePolicy == 'Retain'
+    Properties.BillingMode == 'PAY_PER_REQUEST'
+    Properties.SSESpecification.SSEEnabled == true
+    Properties.DeletionProtectionEnabled == true
+    Properties.PointInTimeRecoverySpecification.PointInTimeRecoveryEnabled == true
+  }
+}
+rule zero_default_spending {
+  Parameters.FreeSearchMonthlyCredits.Default == 0
+  Parameters.FreeSearchMonthlyCredits.MaxValue == 3
+  Parameters.PaidUsageEnabled.AllowedValues == ['false']
+  Parameters.PaidSearchMonthlyCredits.MaxValue == 0
+  Parameters.SearchDailyLimit.Default == 0
+  Parameters.DetailMonthlyLimit.Default == 0
+  Parameters.DetailMonthlyLimit.MaxValue == 25
+  Parameters.TotalDailyLimit.Default == 0
+  Parameters.TotalDailyLimit.MaxValue == 28
+  Resources.Channel3Function.Properties.Environment.Variables.METRIC_NAMESPACE == 'AnoX/Staging/Catalog'
+  Resources.PaidUsageAlarm.Properties.Namespace == 'AnoX/Staging/Catalog'
+  Resources.CommerceFailureAlarm.Properties.Namespace == 'AnoX/Staging/Commerce'
+  Resources.Channel3Function.Properties.ReservedConcurrentExecutions.Ref == 'StagingCatalogConcurrency'
+  Resources.CommerceFunction.Properties.ReservedConcurrentExecutions.Ref == 'ReservedConcurrency'
+}

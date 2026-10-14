@@ -1,0 +1,230 @@
+[
+  {
+    "path": "backend/index.js",
+    "exitCode": 0
+  },
+  {
+    "path": "backend/commerce/quote.js",
+    "exitCode": 0
+  },
+  {
+    "path": "backend/commerce/money.js",
+    "exitCode": 0
+  },
+  {
+    "path": "backend/commerce/runtime.js",
+    "exitCode": 0
+  },
+  {
+    "path": "backend/commerce/orders.js",
+    "exitCode": 0
+  },
+  {
+    "path": "backend/commerce/delivery.js",
+    "exitCode": 0
+  },
+  {
+    "path": "backend/commerce/store.js",
+    "exitCode": 0
+  },
+  {
+    "path": "backend/commerce/index.js",
+    "exitCode": 0
+  },
+  {
+    "path": "backend/commerce/webhooks.js",
+    "exitCode": 0
+  },
+  {
+    "path": "backend/commerce/errors.js",
+    "exitCode": 0
+  },
+  {
+    "path": "backend/commerce/validation.js",
+    "exitCode": 0
+  },
+  {
+    "path": "backend/commerce/providers.js",
+    "exitCode": 0
+  },
+  {
+    "path": "backend/build-template.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "backend/commerce/build-template.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "backend/commerce/stage-api-settings.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "backend/staging/build-template.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "scripts/browser-catalog.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "scripts/smoke-deployed.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "scripts/profile-commerce-quotes.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "scripts/build-catalog.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "scripts/export-review.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "scripts/release-preflight.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "scripts/browser-live-catalog.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "scripts/browser-commerce.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "scripts/build-clients.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "scripts/prepare-staging-acceptance.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "scripts/channel3-cost-model.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/backend-cache.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/commerce-persistence.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/commerce-runtime.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/commerce-delivery.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/commerce-client.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/adapter-transport.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/adapter-detail.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/auth-commerce.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/commerce-webhooks.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/export-review.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/commerce-service.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/staging-preparation.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/repository.test.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/backend-detail.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/commerce-money.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/release-preflight.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/backend-budget.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/backend-template.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/client-bundle.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/security-boundaries.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/commerce-template.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/bundle.test.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/channel3-cost-model.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/adapter-regression.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/commerce-api-settings.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/backend-runtime.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "tests/adapter-cursor.cjs",
+    "exitCode": 0
+  },
+  {
+    "path": "auth.js",
+    "exitCode": 0
+  },
+  {
+    "path": "catalog-live.js",
+    "exitCode": 0
+  },
+  {
+    "path": "commerce-client.js",
+    "exitCode": 0
+  }
+]

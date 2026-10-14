@@ -1,0 +1,38 @@
+{
+  "status": "success",
+  "stdout": "",
+  "return_value": {
+    "capturedAt": "2026-10-14T04:34:16.091500+00:00",
+    "rule": {
+      "Name": "AnoX-Catalog-Warm-V2",
+      "Arn": "arn:aws:events:us-east-2:427064007352:rule/AnoX-Catalog-Warm-V2",
+      "ScheduleExpression": "rate(6 hours)",
+      "State": "ENABLED",
+      "Description": "Warm AnoX Nike catalog cache from CJ every 6 hours",
+      "EventBusName": "default",
+      "CreatedBy": "427064007352"
+    },
+    "targets": [
+      {
+        "Id": "AnoXCatalogWarmTarget",
+        "Arn": "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Catalog-API",
+        "InputBytes": 17
+      }
+    ]
+  },
+  "api_calls": [
+    {
+      "service": "events",
+      "operation": "DescribeRule",
+      "status": "success"
+    },
+    {
+      "service": "events",
+      "operation": "ListTargetsByRule",
+      "status": "success",
+      "n_items": {
+        "Targets": 1
+      }
+    }
+  ]
+}

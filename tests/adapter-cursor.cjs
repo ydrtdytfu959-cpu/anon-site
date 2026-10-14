@@ -11,36 +11,55 @@ function adapter(fetch = async () => { throw Error('Unexpected network request')
 }
 const product = (id = 'p1', patch = {}) => ({ id, title: 'Running shoe', brands: [{ id: 'b1', name: 'Nike' }],
   images: [{ cleaned_url: 'https://cdn.trychannel3.com/clean.jpg', url: 'https://cdn.trychannel3.com/main.jpg' }],
-  offers: [{ url: 'https://buy.trychannel3.com/p1', domain: 'shop.com', availability: 'InStock', condition: 'new', price: { price: 45.99, currency: 'USD' } }], ...patch });
+  offers: [{ url: 'https://buy.trychannel3.com/p1', domain: 'nike.com', availability: 'InStock', condition: 'new', price: { price: 45.99, currency: 'USD' } }], ...patch });
 function envelope(products = [product()], next = null, patch = {}) {
   const now = Date.now();
   return { provider: 'channel3', data: { products, next_page_token: next }, fetchedAt: new Date(now - 60000).toISOString(), expiresAt: new Date(now + 240000).toISOString(), ...patch };
 }
 
-test('AnoX limits discovery to four approved product brands and two trusted retailer domains',()=>{
-  const api=adapter();
-  const accepted=[
-    product('nike',{brands:[{name:'Nike'}]}),
-    product('adidas',{brands:[{name:'ADIDAS'}]}),
-    product('levis',{brands:[{name:'Levi\u2019s'}]}),
-    product('elf',{brands:[{name:'e.l.f. Cosmetics'}]}),
-    product('sephora',{brands:[{name:'Other'}],offers:[{domain:'www.sephora.com',url:'https://buy.trychannel3.com/sephora',price:{currency:'USD',price:12}}]}),
-    product('tjmaxx',{brands:[{name:'Other'}],offers:[{domain:'tjmaxx.tjx.com',url:'https://buy.trychannel3.com/tjx',price:{currency:'USD',price:12}}]})
-  ];
-  const rejected=[
-    product('arbitrary',{brands:[{name:'Other'}]}),
-    product('empty',{brands:[]}),
-    product('sneaky',{title:'Nike Sephora TJ Maxx',brands:[{name:'Other'}]}),
-    product('spoof',{brands:[{name:'Other'}],offers:[{domain:'sephora.com.evil.example',url:'https://buy.trychannel3.com/evil',price:{currency:'USD',price:12}}]}),
-    product('missing-proof',{brands:[{name:'Other'}],offers:[{domain:'sephora.com',url:'http://invalid.example/a',price:{currency:'USD',price:12}}]})
-  ];
-  const page=api.parseChannel3Page(envelope([...accepted,...rejected], 'next'));
-  assert.deepEqual(page.items.map(p=>p.id),accepted.map(p=>p.id));
-  assert.equal(page.invalidCount,rejected.length);
-  assert.equal(page.nextCursor,'next');
-  assert.equal(page.total,null);
-  assert.equal(page.items.find(p=>p.id==='levis').brand,"Levi's");
-  assert.equal(page.items.find(p=>p.id==='elf').brand,'e.l.f. Cosmetics');
+test('Astra presentation catalog accepts only the four approved brands or explicit retailer evidence',()=>{
+ const api=adapter(),names=['Nike','Adidas',"Levi\u2019s",'e.l.f. Cosmetics'];
+ const sellerHosts=['nike.com','adidas.com','levi.com','elfcosmetics.com'];
+ const matching=names.map((name,i)=>product('brand'+i,{brands:[{id:'x',name}],offers:[{url:'https://buy.trychannel3.com/test',domain:sellerHosts[i]}]}));
+ const seller=product('sephora',{brands:[{name:'Another'}],offers:[{domain:'sephora.com',url:'https://buy.trychannel3.com/a'}]});
+ const rejected=[product('other',{brands:[{name:'Another'}]}),product('title-spoof',{title:'Nike Sephora',brands:[]}),
+ product('reseller',{brands:[{name:'Nike'}],offers:[{url:'https://buy.trychannel3.com/reseller',domain:'kickscrew.com'}]}),
+ product('fake-official',{brands:[{name:'Nike'}],offers:[{url:'https://wrong.example/test',domain:'nike.com'}]})];
+ const r=api.parseChannel3Page(envelope([...matching,seller,...rejected],'next'));
+ assert.deepEqual(r.items.map(x=>x.id),[...matching,seller].map(x=>x.id));
+ assert.equal(r.invalidCount,rejected.length);
+ assert.equal(r.nextCursor,'next');
+ assert.equal(api.normalizeChannel3Product(product('unknown',{brands:[],offers:[]})),null);
+});
+test('Astra mixes six official stores per featured page with bounded independent cursors',async()=>{
+ const terms=['Nike','adidas',"Levi's",'e.l.f. cosmetics','Sephora','TJ Maxx'];
+ const brands=['Nike','adidas',"Levi's",'e.l.f. Cosmetics','Sephora Collection','Other'];
+ const domains=['nike.com','adidas.com','levi.com','elfcosmetics.com','sephora.com','tjmaxx.tjx.com'];
+ const calls=[];
+ const api=adapter(async url=>{
+   const u=new URL(url),term=u.searchParams.get('q'),i=terms.indexOf(term),cursor=u.searchParams.get('page_token');
+   assert.ok(i>=0);assert.equal(u.searchParams.get('limit'),'4');assert.equal(u.searchParams.has('section'),false);
+   calls.push({term,cursor});
+   return new Response(JSON.stringify(envelope(Array.from({length:4},(_,n)=>product('store'+i+'-'+(cursor?4+n:n),{
+     brands:[{name:brands[i]}],offers:[{url:'https://buy.trychannel3.com/item',domain:domains[i]}]
+   })),cursor?null:'next-'+i)),{headers:{'content-type':'application/json'}});
+ });
+ const first=await api.fetchChannel3Page({section:'featured',limit:24});
+ assert.equal(first.items.length,24);assert.equal(new Set(first.items.map(p=>p.brand)).size,6);
+ assert.equal(calls.length,6);assert.deepEqual(calls.map(c=>c.term),terms);
+ const second=await api.fetchChannel3Page({section:'featured',cursor:first.nextCursor});
+ assert.equal(second.items.length,24);assert.equal(second.nextCursor,null);
+ assert.deepEqual(calls.slice(6).map(c=>c.cursor),terms.map((_,i)=>'next-'+i));
+ assert.equal(new Set([...first.items,...second.items].map(p=>p.id)).size,48);
+ await assert.rejects(api.fetchChannel3Page({section:'featured',cursor:'{"v":1,"c":[null]}'}),/catalog_cursor_invalid/);
+});
+
+test('Astra cached presentation cards retain official seller identity without offer links',()=>{
+ const a=adapter(),p=product('cached',{offers:undefined,sellerDomains:['nike.com']});
+ const page=a.parseChannel3Page(envelope([p]));
+ assert.equal(page.items.length,1);assert.equal(page.items[0].brand,'Nike');
+ assert.equal(page.items[0].priceCents,null);assert.equal(page.items[0].source.merchantUrl,null);
+ assert.equal(a.parseChannel3Page(envelope([product('reseller',{offers:undefined,sellerDomains:['kickscrew.com']})])).items.length,0);
 });
 
 test('discovery and query requests stay distinct and opaque cursors round-trip unmodified', () => {
@@ -50,22 +69,7 @@ test('discovery and query requests stay distinct and opaque cursors round-trip u
   assert.equal(url.searchParams.has('section'), false);
   assert.equal(url.searchParams.get('limit'), '24');
   url = new URL(api.buildChannel3Url());
-  assert.equal(url.searchParams.get('q'), 'Nike');
-  assert.equal(url.searchParams.has('section'), false);
-  for (const [section, term] of Object.entries({
-    featured:'Nike', men:"Levi's men", women:'Nike women',
-    shoes:'adidas', clothing:"Levi's", beauty:'e.l.f. cosmetics',
-    accessories:'Nike accessories', sports:'Nike sports', brands:'Sephora'
-  })) {
-    const request = new URL(api.buildChannel3Url({ section }));
-    assert.equal(request.searchParams.get('q'), term, section);
-    assert.equal(request.searchParams.has('section'), false, section);
-    assert.equal(request.searchParams.get('limit'), '24');
-  }
-  assert.equal(api.parseChannel3Page(envelope(), {section:'beauty'}).section,'beauty');
-  const sectionCursor = new URL(api.buildChannel3Url({section:'beauty',cursor:'opaque +/='}));
-  assert.equal(sectionCursor.searchParams.get('q'),'e.l.f. cosmetics');
-  assert.equal(sectionCursor.searchParams.get('page_token'),'opaque +/=');
+  assert.equal(url.searchParams.get('section'), 'featured');
   const cursor = ' token +/=_%?&#العربية ';
   url = new URL(api.buildChannel3Url({ q: ' black shoes ', cursor, filters: { availability: ['OutOfStock', 'InStock'] } }));
   assert.equal(url.searchParams.get('q'), 'black shoes');
@@ -120,6 +124,15 @@ test('cursor pages keep server freshness, no invented total, one image and nulla
   assert.equal(page.items[0].source.fetchedAt, body.fetchedAt);
   assert.equal(page.items[0].media.length, 1);
   assert.equal(api.parseChannel3Page(envelope([], null)).nextCursor, null);
+});
+test('search adapter retains presentation-only records and ignores legacy volatile fields',()=>{
+  const api=adapter();
+  for(const raw of [product(),product('no-price',{offers:[{url:'https://buy.trychannel3.com/a',domain:'nike.com'}]})]){
+    const page=api.parseChannel3Page(envelope([raw]));assert.equal(page.items.length,1);
+    const card=page.items[0];assert.equal(card.presentationOnly,true);assert.equal(card.priceCents,null);assert.equal(card.compareAtPriceCents,null);
+    assert.equal(card.stock,null);assert.equal(card.availability,'unknown');assert.equal(card.variants.length,0);assert.equal(card.variantDetailsKnown,false);
+    assert.equal(card.source.merchantUrl,null);assert.equal(card.source.availabilityVerifiedAt,null);assert.equal(card.purchasable,false);
+  }
 });
 
 test('three cursor pages expose overlap without discarding records or fabricating offsets', async () => {

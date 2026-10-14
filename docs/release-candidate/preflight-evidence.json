@@ -1,0 +1,93 @@
+{
+  "evaluatedAt": "2026-10-14T11:59:25.941Z",
+  "metadataCapturedAt": "2026-10-13T23:33:39.564737+00:00",
+  "evidenceScope": "Historical read-only metadata plus explicitly unapproved proposed integration ARN. No deployment readiness attestation.",
+  "backend": {
+    "scope": "infrastructure prerequisites only; operator-supplied evidence is not an AWS verification or commercial approval",
+    "phase": "backend",
+    "ready": false,
+    "authorizesDeployment": false,
+    "authorizesPayments": false,
+    "gates": [
+      {
+        "code": "STALE_EVIDENCE",
+        "severity": "P1",
+        "message": "Capture current metadata within one hour of independent deployment review."
+      },
+      {
+        "code": "CONCURRENCY_QUOTA",
+        "severity": "P0",
+        "message": "Additional reservation must leave at least100 unreserved executions; request separately approved quota capacity first."
+      },
+      {
+        "code": "TEMPLATE_DELIVERY",
+        "severity": "P0",
+        "message": "Review a private S3 TemplateURL for catalog; no upload is performed by this tool."
+      },
+      {
+        "code": "TEMPLATE_DELIVERY",
+        "severity": "P0",
+        "message": "Review a private S3 TemplateURL for commerce; no upload is performed by this tool."
+      },
+      {
+        "code": "SOURCE_IDENTITY",
+        "severity": "P0",
+        "message": "Independently verify commit, template hashes and existing production rollback identity before release."
+      },
+      {
+        "code": "ALARM_DELIVERY",
+        "severity": "P1",
+        "message": "Approve and test the alarm destination; an alarm without delivery is not a notification."
+      }
+    ]
+  },
+  "frontend": {
+    "scope": "infrastructure prerequisites only; operator-supplied evidence is not an AWS verification or commercial approval",
+    "phase": "frontend",
+    "ready": false,
+    "authorizesDeployment": false,
+    "authorizesPayments": false,
+    "gates": [
+      {
+        "code": "STALE_EVIDENCE",
+        "severity": "P1",
+        "message": "Capture current metadata within one hour of independent deployment review."
+      },
+      {
+        "code": "CORS_HEADERS",
+        "severity": "P0",
+        "message": "The frontend requires the approved Idempotency-Key preflight policy without unrelated header changes."
+      },
+      {
+        "code": "MISSING_ROUTES",
+        "severity": "P0",
+        "message": "Backend deployment and verification must precede frontend release: GET /commerce/capabilities, POST /commerce/quotes, POST /commerce/checkout-attempts, GET /commerce/orders, GET /commerce/orders/{orderId}, POST /commerce/orders/{orderId}/cancel, POST /commerce/orders/{orderId}/refund, GET /catalog/channel3/products/{id}"
+      },
+      {
+        "code": "CONCURRENCY_RESERVATION",
+        "severity": "P0",
+        "message": "Verify the commerce function has exactly its approved reservation after deployment."
+      },
+      {
+        "code": "TEMPLATE_DELIVERY",
+        "severity": "P0",
+        "message": "Review a private S3 TemplateURL for catalog; no upload is performed by this tool."
+      },
+      {
+        "code": "TEMPLATE_DELIVERY",
+        "severity": "P0",
+        "message": "Review a private S3 TemplateURL for commerce; no upload is performed by this tool."
+      },
+      {
+        "code": "SOURCE_IDENTITY",
+        "severity": "P0",
+        "message": "Independently verify commit, template hashes and existing production rollback identity before release."
+      },
+      {
+        "code": "ALARM_DELIVERY",
+        "severity": "P1",
+        "message": "Approve and test the alarm destination; an alarm without delivery is not a notification."
+      }
+    ]
+  }
+}
