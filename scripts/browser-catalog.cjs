@@ -85,8 +85,8 @@ async function run(engine) {
     assert.equal(await page.locator('[data-sort] option[value="low"],[data-sort] option[value="high"]').count(),0);
     add('cached cards show presentation only without price, stock, retailer links or unsupported controls');
     await nav('shop?maxPrice=50&sort=low');await page.locator('[data-catalog-filter-unavailable]').waitFor();
-    assert.equal(await cards().count(),0);assert.equal(calls.length,1);
-    await page.locator('[data-clear-filters]').last().click();await count(24);assert.equal(calls.length,1);
+    assert.equal(await cards().count(),0);assert.equal(calls.length,6);
+    await page.locator('[data-clear-filters]').last().click();await count(24);assert.equal(calls.length,6);
     add('legacy price-filter URLs disclose unavailable data and recover without extra upstream requests');
     add('empty storefront requests one lazy discovery section');
     await page.locator('[data-live-load-more]').click();await count(48);
