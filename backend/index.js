@@ -202,7 +202,7 @@ function validateDetailRow(row, request, kind, now) {
     return expires > now && (kind === 'presentation' || fetched > request.startedAt) ? payload : null;
   } catch {fail(503, 'CACHE_UNAVAILABLE');}
 }
-function sanitizeProduct(input) {
+function sanitizeProduct(input, trustedCache = false) {
   if (!object(input) || typeof input.id !== 'string' || !/^[A-Za-z0-9_-]{1,80}$/.test(input.id) || typeof input.title !== 'string' || !input.title.trim() || input.title.length > 200) return null;
   const output = {id: input.id, title: input.title, description: cleanString(input.description, 2000)};
   output.brands = (Array.isArray(input.brands) ? input.brands : []).slice(0, 4).filter(object).map(brand => ({id: cleanString(brand.id, 200), name: cleanString(brand.name, 100)}));
@@ -216,21 +216,24 @@ function sanitizeProduct(input) {
     'levi.com','www.levi.com','elfcosmetics.com','www.elfcosmetics.com',
     'sephora.com','www.sephora.com','tjmaxx.com','www.tjmaxx.com',
     'tjmaxx.tjx.com','www.tjmaxx.tjx.com']);
-  output.sellerDomains=[...new Set((Array.isArray(input.offers)?input.offers:[]).slice(0,8)
-    .filter(o=>object(o)&&hosts.has(String(o.domain||'').toLowerCase())&&
-      safeUrl(o.url,'buy.trychannel3.com'))
-    .map(o=>String(o.domain).toLowerCase()))].slice(0,6);
+  const verified=trustedCache&&Array.isArray(input.sellerDomains)
+    ? input.sellerDomains.slice(0,6).filter(v=>typeof v==='string'&&hosts.has(v))
+    : (Array.isArray(input.offers)?input.offers:[]).slice(0,8)
+      .filter(o=>object(o)&&hosts.has(String(o.domain||'').toLowerCase())&&
+        safeUrl(o.url,'buy.trychannel3.com'))
+      .map(o=>String(o.domain).toLowerCase());
+  output.sellerDomains=[...new Set(verified)].slice(0,6);
   // Search pages are presentation-only. Volatile offers, prices, stock and
   // variants are retrieved fresh only when a user opens product detail.
   output.key_features = (Array.isArray(input.key_features) ? input.key_features : []).slice(0, 8).filter(value => typeof value === 'string').map(value => value.slice(0, 200));
   return output;
 }
-function sanitizePage(input, request) {
+function sanitizePage(input, request, trustedCache = false) {
   if (!object(input) || !Array.isArray(input.products) || input.products.length > request.limit) fail(502, 'UPSTREAM_INVALID');
   const token = input.next_page_token;
   if (token !== null && !tokenValid(token)) fail(502, 'UPSTREAM_INVALID');
   if (token !== null && token === request.token) fail(502, 'UPSTREAM_INVALID');
-  const products = input.products.map(sanitizeProduct).filter(Boolean);
+  const products = input.products.map(p=>sanitizeProduct(p,trustedCache)).filter(Boolean);
   return {products, next_page_token: token};
 }
 function validateCached(row, request, now) {
@@ -238,7 +241,7 @@ function validateCached(row, request, now) {
   if (row.kind !== 'page' || row.version !== VERSION || row.contextHash !== request.contextHash || !object(row.payload) || row.payload.provider !== 'channel3' || Object.keys(row.payload).some(key => !['provider', 'data', 'fetchedAt', 'expiresAt'].includes(key))) fail(503, 'CACHE_UNAVAILABLE');
   const fetched = Date.parse(row.payload.fetchedAt), expires = Date.parse(row.payload.expiresAt);
   if (!Number.isFinite(fetched) || !Number.isFinite(expires) || fetched > now + 60_000 || expires <= fetched || expires - fetched > request.ttl || row.expiresAtMs !== expires) fail(503, 'CACHE_UNAVAILABLE');
-  let sanitized;try {sanitized = sanitizePage(row.payload.data, request);} catch {fail(503, 'CACHE_UNAVAILABLE');}
+  let sanitized;try {sanitized = sanitizePage(row.payload.data, request, true);} catch {fail(503, 'CACHE_UNAVAILABLE');}
   if (JSON.stringify(sanitized) !== JSON.stringify(row.payload.data) || Buffer.byteLength(JSON.stringify(row.payload)) > MAX_PAGE_BYTES) fail(503, 'CACHE_UNAVAILABLE');
   return expires > now ? row.payload : null;
 }
