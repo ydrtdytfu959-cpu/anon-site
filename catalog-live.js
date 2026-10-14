@@ -229,12 +229,12 @@
     if(!photo||new URL(photo).hostname.toLowerCase()!=="static.nike.com")return null;
     const name=localized(title,title);
     const category=categoryFor({category:title});
-    return {id,slug:id,name,brand:"Nike",category,kind:"product",currency:"USD",
+    return {id:"cj-nike-"+id,slug:"cj-nike-"+id,officialUrl:url,name,brand:"Nike",category,kind:"product",currency:"USD",
       priceCents:null,compareAtPriceCents:null,presentationOnly:true,weightGrams:0,
       variantDetailsKnown:false,stock:null,variants:[],media:[{url:photo,alt:name,width:420,height:390}],
       description:localized(firstValue(raw.description,title),title),updatedAt:fetchedAt,
       availability:"unknown",purchasable:false,
-      source:{merchantUrl:url,merchantDomain:new URL(url).hostname.toLowerCase(),
+      source:{merchantUrl:null,merchantDomain:null,
         verifiedAt:null,fetchedAt,availabilityVerifiedAt:null,availability:"unknown",
         sourceType:"affiliate-feed"}};
   }
@@ -258,7 +258,7 @@
     if(typeof productId!=="string"||!/^[A-Za-z0-9_-]{1,80}$/.test(productId))throw catalogError("catalog_identity");
     const payload=await readJson(API_BASE+"/products/"+encodeURIComponent(productId),signal,12000);
     const result=normalizeCjNikePreview(payload?.product);
-    if(!result||result.id!==productId)throw catalogError("catalog_identity");
+    if(!result||result.id!=="cj-nike-"+productId)throw catalogError("catalog_identity");
     return result;
   }
 
