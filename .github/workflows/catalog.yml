@@ -13,6 +13,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      - run: node -e 'const fs=require("fs"),c=require("crypto"),b=require("./scripts/build-catalog.cjs");console.log("EXPECTED_CSP=sha256-"+c.createHash("sha256").update(b.scripts(fs.readFileSync("index.html","utf8"))[0],"utf8").digest("base64"))'
       - run: npm run check
       - run: npm ci --ignore-scripts
       - run: npm test
