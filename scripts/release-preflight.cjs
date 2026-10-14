@@ -29,6 +29,7 @@ function assess(input,{now=Date.now(),reservedConcurrency=2,phase='frontend'}={}
  const exposes=strings(cors?.ExposeHeaders)?cors.ExposeHeaders.map(h=>h.toLowerCase()):[];
  if((cors?.ExposeHeaders!==undefined&&!strings(cors.ExposeHeaders))||
     exposes.some(h=>!['idempotency-replayed','retry-after'].includes(h))||
+    new Set(exposes).size!==exposes.length||
     (phase==='frontend'&&!['idempotency-replayed','retry-after'].every(h=>exposes.includes(h))))
    add('CORS_EXPOSE_HEADERS','P0','Require only the two approved replay/retry response headers before frontend promotion.');
  const monitoring=record(s.monitoring)?s.monitoring:{};
@@ -46,9 +47,17 @@ function assess(input,{now=Date.now(),reservedConcurrency=2,phase='frontend'}={}
      matches[0].ActionsEnabled!==true||!Array.isArray(matches[0].AlarmActions)||
      !matches[0].AlarmActions.includes(OPERATIONAL_TOPIC);
  }))add('MONITORING_COVERAGE','P1','Verify all five operational alarms are healthy, enabled, and wired to the confirmed SNS topic.');
+ // Explicitly scope warning evidence to the reviewed USD 5 monthly COST budget.
+ // Populate BudgetName on each normalized notification from the same AWS budget query.
+ const budget=record(monitoring.budget)?monitoring.budget:null;
+ const budgetName=typeof budget?.BudgetName==='string'&&budget.BudgetName.trim()?budget.BudgetName:null;
+ if(!budgetName||budget.BudgetType!=='COST'||budget.TimeUnit!=='MONTHLY'||
+    Number(budget.BudgetLimit?.Amount)!==5||budget.BudgetLimit?.Unit!=='USD')
+   add('BUDGET_IDENTITY','P1','Verify the named monthly USD 5 COST budget, not unrelated account budgets.');
  const notifications=Array.isArray(monitoring.budgetNotifications)?monitoring.budgetNotifications:[];
- const hasBudget=(type,threshold)=>notifications.some(n=>record(n)&&n.NotificationType===type&&
-   n.ComparisonOperator==='GREATER_THAN'&&n.Threshold===threshold&&n.NotificationState==='OK');
+ const hasBudget=(type,threshold)=>notifications.some(n=>record(n)&&budgetName&&n.BudgetName===budgetName&&
+   n.NotificationType===type&&n.ComparisonOperator==='GREATER_THAN'&&
+   n.Threshold===threshold&&n.NotificationState==='OK');
  if(!hasBudget('ACTUAL',80)||!hasBudget('FORECASTED',100))
    add('BUDGET_NOTIFICATIONS','P1','Verify actual 80% and forecasted 100% budget warnings; warnings do not cap spending.');
  const routes=Array.isArray(s.routes)?s.routes.filter(record):[],missing=[];
