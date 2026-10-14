@@ -368,49 +368,81 @@
     return { q, section, limit, items, total: null, nextCursor, fetchedAt, expiresAt, invalidCount: raw.length - items.length };
   }
 
+  // Scan a full source page per metered query, while emitting at most one
+  // 24-product mixed page. Cursor offsets retain unused verified products.
   function parseMixedCursor(value){
-    if(value===null)return Array(6).fill(null);
+    if(value===null)return {c:Array(6).fill(null),o:Array(6).fill(0),until:null};
     let obj;try{obj=JSON.parse(value);}catch{throw catalogError("catalog_cursor_invalid",400);}
-    if(!record(obj)||obj.v!==1||!Array.isArray(obj.c)||obj.c.length!==6||
-       obj.c.some(v=>v!==null&&(typeof v!=="string"||v.length>1024)))throw catalogError("catalog_cursor_invalid",400);
-    return obj.c;
+    if(!record(obj)||obj.v!==2||!Array.isArray(obj.c)||obj.c.length!==6||
+       !Array.isArray(obj.o)||obj.o.length!==6||
+       obj.c.some(v=>v!==null&&(typeof v!=="string"||v.length>1024))||
+       obj.o.some(v=>!Number.isSafeInteger(v)||v<0||v>24)||
+       !Number.isSafeInteger(obj.until)||obj.until<=0)throw catalogError("catalog_cursor_invalid",400);
+    if(Date.now()>=obj.until)throw catalogError("catalog_cursor_expired",410);
+    return {c:obj.c,o:obj.o,until:obj.until};
   }
-  function shuffleRoundRobin(groups){
-    const order=groups.map((_,i)=>i);
+  function shuffleRoundRobin(groups,limit){
+    const order=groups.map((_,i)=>i),used=groups.map(()=>0);
     for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
-    const items=[];for(let pos=0;pos<4;pos++)for(const i of order)if(groups[i][pos])items.push(groups[i][pos]);
-    return items;
+    const items=[];
+    for(let pos=0;pos<24&&items.length<limit;pos++){
+      for(const i of order){
+        if(items.length>=limit)break;
+        if(groups[i][pos]){items.push(groups[i][pos]);used[i]++;}
+      }
+    }
+    return {items,used};
   }
   async function fetchMixedPage(normalized,signal){
-    const cursors=parseMixedCursor(normalized.cursor);
-    const groups=Array(6).fill(null).map(()=>[]);
-    const next=cursors.slice();let errors=0,firstDate=null,lastDate=null;
-    // Three simultaneous reads at most; two bounded waves, no unbounded prefetch.
+    const state=parseMixedCursor(normalized.cursor),cursors=state.c,offsets=state.o;
+    const groups=Array(6).fill(null).map(()=>[]),totals=Array(6).fill(0);
+    const sourceNext=cursors.slice(),next=cursors.slice(),nextOffsets=offsets.slice();
+    let errors=0,earliestFetched=null,earliestExpiry=state.until??Infinity;
+    // Still exactly six bounded upstream searches at most: only the search
+    // page size changes from 4 to 24. No extra provider call or paid opt-in.
     for(let start=0;start<6;start+=3){
       const results=await Promise.allSettled(FEATURED_SOURCES.slice(start,start+3).map(async([,query],offset)=>{
         const i=start+offset;
         if(cursors[i]==="")return null;
-        const url=buildChannel3Url({q:query,limit:4,cursor:cursors[i],filters:normalized.filters});
-        const page=parseChannel3Page(await readJson(url,signal,channel3Provider.timeoutMs),{q:query,limit:4});
+        const url=buildChannel3Url({q:query,limit:24,cursor:cursors[i],filters:normalized.filters});
+        const page=parseChannel3Page(await readJson(url,signal,channel3Provider.timeoutMs),{q:query,limit:24});
+        if(offsets[i]>page.items.length)throw catalogError("catalog_cursor_invalid",400);
         return page;
       }));
+      const cursorError=results.find(res=>res.status==="rejected"&&
+        ["catalog_cursor_invalid","catalog_cursor_expired"].includes(res.reason?.code));
+      if(cursorError)throw cursorError.reason;
       results.forEach((res,k)=>{
         const i=start+k;
-        if(res.status==="rejected"){errors++;next[i]=cursors[i];return;}
-        if(!res.value){next[i]="";return;}
-        groups[i]=res.value.items;
-        next[i]=res.value.nextCursor??"";
-        firstDate=firstDate&&Date.parse(firstDate)<Date.parse(res.value.fetchedAt)?firstDate:res.value.fetchedAt;
-        lastDate=lastDate&&Date.parse(lastDate)<Date.parse(res.value.expiresAt)?lastDate:res.value.expiresAt;
+        if(res.status==="rejected"){errors++;return;}
+        if(!res.value){next[i]="";nextOffsets[i]=0;return;}
+        const page=res.value;
+        totals[i]=page.items.length;groups[i]=page.items.slice(offsets[i]);
+        sourceNext[i]=page.nextCursor??"";
+        const fetched=Date.parse(page.fetchedAt),expiry=Date.parse(page.expiresAt);
+        earliestFetched=earliestFetched===null?fetched:Math.min(earliestFetched,fetched);
+        earliestExpiry=Math.min(earliestExpiry,expiry);
       });
     }
     if(signal?.aborted){const aborted=new Error("catalog_aborted");aborted.name="AbortError";throw aborted;}
     if(errors===6)throw catalogError("catalog_unavailable",503);
-    const items=shuffleRoundRobin(groups);
-    // Keep partially successful results; never invent a cursor when all six are exhausted.
-    const nextCursor=next.every(v=>v==="")?null:JSON.stringify({v:1,c:next});
+    const {items,used}=shuffleRoundRobin(groups,normalized.limit);
+    for(let i=0;i<6;i++){
+      if(cursors[i]===""||!totals[i]&&!groups[i].length&&next[i]==="")continue;
+      if(offsets[i]+used[i]<totals[i]){
+        next[i]=cursors[i];nextOffsets[i]=offsets[i]+used[i];
+      }else if(sourceNext[i]!==cursors[i]||groups[i].length||totals[i]===0&&sourceNext[i]===""){
+        // Do not skip verified records at the end of an upstream page.
+        // Failed sources retain their unchanged cursor for a later retry.
+        if(sourceNext[i]!==cursors[i]||groups[i].length||totals[i]>0){
+          next[i]=sourceNext[i];nextOffsets[i]=0;
+        }
+      }
+    }
+    const nextCursor=next.every(v=>v==="")?null:JSON.stringify({v:2,c:next,o:nextOffsets,until:earliestExpiry});
     return {q:"",section:"featured",limit:normalized.limit,items,total:null,nextCursor,
-      fetchedAt:firstDate||new Date().toISOString(),expiresAt:lastDate||new Date(Date.now()+60000).toISOString(),
+      fetchedAt:new Date(earliestFetched??Date.now()).toISOString(),
+      expiresAt:new Date(Number.isFinite(earliestExpiry)?earliestExpiry:Date.now()+60000).toISOString(),
       invalidCount:0,partialErrors:errors};
   }
   async function fetchChannel3Page(options = {}) {
