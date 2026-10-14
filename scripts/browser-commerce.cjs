@@ -49,6 +49,8 @@ async function run(engine,mobile=false){
     return send(detail(id,options)).catch(e=>{if(id!=='slow')throw e;});
    }
    if(url.pathname==='/catalog/search')return send({provider:'channel3',data:{products:[],next_page_token:null},fetchedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+300000).toISOString()});
+   // The independent CJ Nike discovery fallback must not escape this offline fixture.
+   if(url.pathname==='/catalog/products')return send({error:'cj_fixture_unavailable'},503);
    if(url.pathname.startsWith('/commerce/')){
     const body=request.method()==='POST'?request.postDataJSON():undefined;
     const type=url.pathname==='/commerce/quotes'?'quote':url.pathname==='/commerce/capabilities'?'capabilities':url.pathname==='/commerce/orders'?'orders':'order';

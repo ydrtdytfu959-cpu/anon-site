@@ -113,6 +113,39 @@ test('mixed cursor rejects arbitrary offsets, obsolete cursors and expired cache
  await assert.rejects(api.fetchChannel3Page({section:'featured',cursor:JSON.stringify({v:1,c:Array(6).fill(null)})}),/catalog_cursor_invalid/);
 });
 
+test('CJ Nike fills a catalog page when Channel3 has no eligible listings without weakening origin checks', async()=>{
+  const calls=[],api=adapter(async url=>{
+    const u=new URL(url);
+    calls.push(u.pathname);
+    if(u.pathname==='/catalog/search')return new Response('{"error":"UPSTREAM_BUDGET_EXCEEDED"}',{status:429,headers:{'content-type':'application/json','retry-after':'5'}});
+    assert.equal(u.pathname,'/catalog/products');
+    const offset=Number(u.searchParams.get('offset'));
+    assert.equal(u.searchParams.get('limit'),'24');
+    const products=Array.from({length:24},(_,i)=>({productId:'cj-'+(offset+i),advertiserName:'NIKE',brand:'Nike',
+      title:'Official Nike shoe '+(offset+i),productUrl:'https://www.nike.com/t/official-'+(offset+i),
+      imageUrl:'https://static.nike.com/a.jpg',description:'Nike shoe'}));
+    return new Response(JSON.stringify({source:'CJ',advertiser:'NIKE',totalCount:200,products}),{headers:{'content-type':'application/json'}});
+  });
+  const first=await api.fetchChannel3Page({section:'featured',limit:24});
+  assert.equal(first.items.length,24);
+  assert.ok(first.items.every(p=>p.brand==='Nike'&&p.id.startsWith('cj-nike-')&&p.presentationOnly));
+  assert.ok(first.items.every(p=>p.source.merchantUrl===null&&p.priceCents===null&&p.stock===null));
+  assert.equal(calls.filter(p=>p==='/catalog/products').length,1);
+  const second=await api.fetchChannel3Page({section:'featured',limit:24,cursor:first.nextCursor});
+  assert.equal(second.items.length,24);
+  assert.equal(new Set([...first.items,...second.items].map(p=>p.id)).size,48);
+});
+
+test('CJ Nike rejects marketplace sellers even when a product bears Nike branding',()=>{
+  const api=adapter(),good={productId:'n1',title:'Nike tee',advertiserName:'NIKE',brand:'Nike',
+    imageUrl:'https://static.nike.com/a.jpg',productUrl:'https://www.nike.com/t/genuine'};
+  assert.ok(api.normalizeCjNikePreview(good));
+  assert.equal(api.normalizeCjNikePreview({...good,productUrl:'https://marketplace.example/nike'}),null);
+  assert.equal(api.normalizeCjNikePreview({...good,advertiserName:'OTHER'}),null);
+  assert.equal(api.normalizeCjNikePreview({...good,imageUrl:'https://thirdparty.example/image.jpg'}),null);
+  assert.equal(api.normalizeCjNikePreview({...good,brand:'Unknown'}),null);
+});
+
 test('Astra cached presentation cards retain official seller identity without offer links',()=>{
  const a=adapter(),p=product('cached',{offers:undefined,sellerDomains:['nike.com']});
  const page=a.parseChannel3Page(envelope([p]));
