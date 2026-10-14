@@ -1,6 +1,15 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const api=require('../catalog-live.js'),{product,envelope}=require('./fixtures/channel3-detail.cjs');
+test('Astra detail rejects unrelated brands or sellers even on direct product URLs',()=>{
+ const bad=product({brands:[{id:'b',name:'Other'}],offers:[{domain:'unapproved.example',url:'https://buy.trychannel3.com/any',price:{currency:'USD',price:10}}]});
+ assert.throws(()=>api.parseChannel3Detail(envelope({},bad),'shoe_1'), e=>e.code==='catalog_not_approved');
+ const viaSephora=product({brands:[{id:'b',name:'Other'}],offers:[{domain:'sephora.com',url:'https://buy.trychannel3.com/a',price:{currency:'USD',price:10}}]});
+ const good=api.parseChannel3Detail(envelope({},viaSephora),'shoe_1');
+ assert.equal(good.offers.length,1);assert.equal(good.offers[0].merchantDomain,'sephora.com');
+ const noOutlet=product({brands:[{id:'b',name:'Other'}],offers:[{domain:'tjmaxx.com.bad.site',url:'https://buy.trychannel3.com/a'}]});
+ assert.throws(()=>api.parseChannel3Detail(envelope({},noOutlet),'shoe_1'));
+});
 test('detail adapter keeps a full separate model with exact money and unknown quantity',()=>{
   const detail=api.parseChannel3Detail(envelope(), 'shoe_1');
   assert.equal(detail.schema,'anox.product-detail/1');assert.equal(detail.provider,'channel3');assert.equal(detail.title,'Real shoe');
