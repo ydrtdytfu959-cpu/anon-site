@@ -265,3 +265,42 @@ test('cursor errors are safe, typed and never automatically restart the search',
     assert.equal(requests, 1);
   }
 });
+
+test('Nike-relevant shelves and Nike search fall back to verified CJ without Channel3 credits',async()=>{
+ const calls=[],api=adapter(async url=>{
+   const u=new URL(url),q=u.searchParams.get('q'),offset=Number(u.searchParams.get('offset')||0);
+   calls.push({path:u.pathname,q,offset});
+   if(u.pathname==='/catalog/search')return new Response('{"error":"UPSTREAM_BUDGET_EXCEEDED"}',{status:429,headers:{'content-type':'application/json','retry-after':'1'}});
+   assert.equal(u.pathname,'/catalog/products');
+   const products=Array.from({length:24},(_,i)=>({
+     productId:'valid-'+(offset+i),title:'Nike official '+(offset+i),brand:'Nike',advertiserName:'NIKE',
+     productUrl:'https://www.nike.com/t/valid-'+(offset+i),imageUrl:'https://static.nike.com/good.jpg'
+   }));
+   return new Response(JSON.stringify({source:'CJ',advertiser:'NIKE',products,totalCount:300}),{headers:{'content-type':'application/json'}});
+ });
+ const page=await api.fetchChannel3Page({section:'shoes',limit:24});
+ assert.equal(page.items.length,24);
+ assert.equal(page.nextCursor,'cj:24');
+ assert.ok(page.items.every(p=>p.id.startsWith('cj-nike-')&&p.brand==='Nike'&&p.presentationOnly&&p.priceCents===null));
+ assert.deepEqual(calls.map(x=>x.path),['/catalog/search','/catalog/products']);
+ assert.equal(calls[1].q,'shoes');
+ const next=await api.fetchChannel3Page({section:'shoes',limit:24,cursor:page.nextCursor});
+ assert.equal(next.items.length,24);
+ assert.equal(calls.at(-1).path,'/catalog/products');
+ assert.equal(calls.at(-1).offset,24);
+ assert.equal(calls.length,3,'a CJ-owned cursor must not touch Channel3');
+ const matching=await api.fetchChannel3Page({q:'Nike shoes',limit:24});
+ assert.equal(matching.items.length,24);
+ assert.equal(calls.at(-1).q,'Nike shoes');
+});
+test('Non-Nike stores cannot be silently replaced with CJ Nike products',async()=>{
+ const calls=[],api=adapter(async url=>{
+   const u=new URL(url);calls.push(u.pathname);
+   if(u.pathname==='/catalog/products')throw Error('Unexpected CJ access for another store');
+   return new Response('{"error":"UPSTREAM_BUDGET_EXCEEDED"}',{status:429,headers:{'content-type':'application/json','retry-after':'1'}});
+ });
+ await assert.rejects(api.fetchChannel3Page({q:'Adidas running',limit:24}),/catalog_rate_limited|catalog_http_429/);
+ await assert.rejects(api.fetchChannel3Page({section:'beauty',limit:24}),/catalog_rate_limited|catalog_http_429/);
+ assert.deepEqual(calls,['/catalog/search']);
+ await assert.rejects(api.fetchChannel3Page({section:'shoes',limit:24,cursor:'cj:0'}),/catalog_cursor_invalid/);
+});
