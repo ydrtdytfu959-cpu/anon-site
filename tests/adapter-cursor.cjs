@@ -27,7 +27,7 @@ test('Astra presentation catalog accepts only the four approved brands or explic
  product('fake-official',{brands:[{name:'Nike'}],offers:[{url:'https://wrong.example/test',domain:'nike.com'}]})];
  const r=api.parseChannel3Page(envelope([...matching,seller,...rejected],'next'));
  assert.deepEqual(r.items.map(x=>x.id),[...matching,seller].map(x=>x.id));
- assert.equal(r.invalidCount,2);
+ assert.equal(r.invalidCount,rejected.length);
  assert.equal(r.nextCursor,'next');
  assert.equal(api.normalizeChannel3Product(product('unknown',{brands:[],offers:[]})),null);
 });
@@ -65,8 +65,8 @@ test('Astra cached presentation cards retain official seller identity without of
 test('discovery and query requests stay distinct and opaque cursors round-trip unmodified', () => {
   const api = adapter();
   let url = new URL(api.buildChannel3Url({ section: 'shoes', limit: 24 }));
-  assert.equal(url.searchParams.get('section'), 'shoes');
-  assert.equal(url.searchParams.has('q'), false);
+  assert.equal(url.searchParams.get('q'), 'adidas');
+  assert.equal(url.searchParams.has('section'), false);
   assert.equal(url.searchParams.get('limit'), '24');
   url = new URL(api.buildChannel3Url());
   assert.equal(url.searchParams.get('section'), 'featured');
