@@ -88,11 +88,12 @@ test('mixed official discovery scans 24 upstream records and preserves every unu
 test('mixed discovery keeps only independently verified merchant offers across the full source page',async()=>{
  const terms=['Nike','adidas',"Levi's",'e.l.f. cosmetics','Sephora','TJ Maxx'];
  const hosts=['nike.com','adidas.com','levi.com','elfcosmetics.com','sephora.com','tjmaxx.tjx.com'];
+ const brands=['Nike','Adidas',"Levi's",'e.l.f. Cosmetics','Sephora Collection','Other'];
  const api=adapter(async url=>{
    const i=terms.indexOf(new URL(url).searchParams.get('q'));
    assert.ok(i>=0);
    const raw=Array.from({length:24},(_,n)=>product('search-'+i+'-'+n,{
-     offers:[{domain:n===23?hosts[i]:'reseller.example',url:'https://buy.trychannel3.com/retailer'}]
+     brands:[{name:brands[i]}],offers:[{domain:n===23?hosts[i]:'reseller.example',url:'https://buy.trychannel3.com/retailer'}]
    }));
    return new Response(JSON.stringify(envelope(raw,null)),{headers:{'content-type':'application/json'}});
  });
