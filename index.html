@@ -9,7 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3">
   <meta name="robots" content="index,follow">
   <meta name="description" content="AnoX — اكتشف المنتجات، وقارن التفاصيل وتكلفة وصولها التقديرية إلى الجزائر.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-4iXQzRvhP1ZS/N1k1AAHxaAp3gowJfrPDXc13k5MG8o=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — U.S. products for Algeria">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-KQtWqZceDxSFhmndH9oiTs0SKdACundefinedvTgM5apUZfolTY=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — U.S. products for Algeria">
   <meta property="og:description" content="AnoX LLC — discover U.S. products and discuss purchasing and fulfillment to Algeria.">
   <meta property="og:url" content="https://anox.app/">
   <title>AnoX — اختيارات أبعد. تكلفة أوضح.</title>
@@ -1943,15 +1943,48 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       expiresAt:new Date(Number.isFinite(earliestExpiry)?earliestExpiry:Date.now()+60000).toISOString(),
       invalidCount:0,partialErrors:errors};
   }
+  // A separate Nike-only authorized CJ feed can serve Nike searches and
+  // Nike-relevant shelves without consuming scarce Channel3 search credits.
+  // Never substitute a Nike result for a request naming another official store.
+  const CJ_NIKE_SHELVES=Object.freeze({women:"women",shoes:"shoes",sports:"training",accessories:"accessories"});
+  function cjNikeFallbackTerm({q,section}) {
+    if(q)return /\b(?:nike|jordan)\b/i.test(q)?q:null;
+    return Object.hasOwn(CJ_NIKE_SHELVES,section)?CJ_NIKE_SHELVES[section]:null;
+  }
+  async function fetchCjNikeShelf(normalized,signal) {
+    const term=cjNikeFallbackTerm(normalized);
+    if(!term)throw catalogError("catalog_unavailable",503);
+    let offset=0;
+    if(normalized.cursor!==null){
+      if(!/^cj:[1-9][0-9]{0,3}$/.test(normalized.cursor))throw catalogError("catalog_cursor_invalid",400);
+      offset=Number(normalized.cursor.slice(3));
+      if(offset>5000)throw catalogError("catalog_cursor_invalid",400);
+    }
+    const url=buildCatalogUrl({q:term,limit:normalized.limit,offset});
+    const page=parseCjNikePreviewPage(await readJson(url,signal,12000,true),{limit:normalized.limit,offset});
+    if(!page.items.length)throw catalogError("catalog_unavailable",503);
+    return {q:normalized.q,section:normalized.section,limit:normalized.limit,items:page.items,
+      total:null,nextCursor:page.nextOffset!==null&&page.nextOffset<=5000?"cj:"+page.nextOffset:null,
+      fetchedAt:page.fetchedAt,expiresAt:new Date(Date.now()+120000).toISOString(),
+      invalidCount:page.invalidCount};
+  }
   async function fetchChannel3Page(options = {}) {
-    const normalized = channel3Options(options);
+    const normalized = channel3Options(options),signal=options.signal;
+    if(!normalized.q&&normalized.section==="featured")return fetchMixedPage(normalized,signal);
+    // CJ-owned continuation never accidentally reaches Channel3.
+    if(normalized.cursor?.startsWith("cj:"))return fetchCjNikeShelf(normalized,signal);
     try {
-      if(!normalized.q&&normalized.section==="featured")return await fetchMixedPage(normalized,options.signal);
-      return parseChannel3Page(await readJson(buildChannel3Url(normalized), options.signal, channel3Provider.timeoutMs), normalized);
+      const result=parseChannel3Page(await readJson(buildChannel3Url(normalized),signal,channel3Provider.timeoutMs),normalized);
+      if(result.items.length||normalized.cursor!==null||!cjNikeFallbackTerm(normalized))return result;
+      try{return await fetchCjNikeShelf(normalized,signal);}catch{return result;}
     } catch (error) {
-      // The backend classifies unusable continuations without exposing provider diagnostics.
-      if (normalized.cursor !== null && error.message === "catalog_http_400") throw catalogError("catalog_cursor_invalid", 400);
-      if (normalized.cursor !== null && error.message === "catalog_http_410") throw catalogError("catalog_cursor_expired", 410);
+      // A failed upstream search cannot empty an official Nike shelf if CJ works.
+      // But never switch the identity of a Channel3 continuation mid-pagination.
+      if(normalized.cursor===null&&cjNikeFallbackTerm(normalized)){
+        try{return await fetchCjNikeShelf(normalized,signal);}catch{}
+      }
+      if(normalized.cursor!==null&&error.message==="catalog_http_400")throw catalogError("catalog_cursor_invalid",400);
+      if(normalized.cursor!==null&&error.message==="catalog_http_410")throw catalogError("catalog_cursor_expired",410);
       throw error;
     }
   }
