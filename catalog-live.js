@@ -243,7 +243,7 @@
   function approvedRetailerOffers(raw) {
     return (Array.isArray(raw?.offers)?raw.offers:[]).filter(offer=>{
       const domain=stringValue(offer?.domain).toLowerCase();
-      return APPROVED_RETAILERS.includes(domain) && !!safeHttpsUrl(offer?.url);
+      return APPROVED_RETAILERS.includes(domain) && !!safeHttpsUrl(offer?.url) && new URL(offer.url).hostname.toLowerCase()==="buy.trychannel3.com";
     });
   }
   function channel3Offer(raw){
