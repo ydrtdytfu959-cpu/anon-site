@@ -11,7 +11,7 @@ function adapter(fetch = async () => { throw Error('Unexpected network request')
 }
 const product = (id = 'p1', patch = {}) => ({ id, title: 'Running shoe', brands: [{ id: 'b1', name: 'Nike' }],
   images: [{ cleaned_url: 'https://cdn.trychannel3.com/clean.jpg', url: 'https://cdn.trychannel3.com/main.jpg' }],
-  offers: [{ url: 'https://buy.trychannel3.com/p1', domain: 'shop.com', availability: 'InStock', condition: 'new', price: { price: 45.99, currency: 'USD' } }], ...patch });
+  offers: [{ url: 'https://buy.trychannel3.com/p1', domain: 'nike.com', availability: 'InStock', condition: 'new', price: { price: 45.99, currency: 'USD' } }], ...patch });
 function envelope(products = [product()], next = null, patch = {}) {
   const now = Date.now();
   return { provider: 'channel3', data: { products, next_page_token: next }, fetchedAt: new Date(now - 60000).toISOString(), expiresAt: new Date(now + 240000).toISOString(), ...patch };
@@ -19,9 +19,12 @@ function envelope(products = [product()], next = null, patch = {}) {
 
 test('Astra presentation catalog accepts only the four approved brands or explicit retailer evidence',()=>{
  const api=adapter(),names=['Nike','Adidas',"Levi\u2019s",'e.l.f. Cosmetics'];
- const matching=names.map((name,i)=>product('brand'+i,{brands:[{id:'x',name}]}));
+ const sellerHosts=['nike.com','adidas.com','levi.com','elfcosmetics.com'];
+ const matching=names.map((name,i)=>product('brand'+i,{brands:[{id:'x',name}],offers:[{url:'https://buy.trychannel3.com/test',domain:sellerHosts[i]}]}));
  const seller=product('sephora',{brands:[{name:'Another'}],offers:[{domain:'sephora.com',url:'https://buy.trychannel3.com/a'}]});
- const rejected=[product('other',{brands:[{name:'Another'}]}),product('title-spoof',{title:'Nike Sephora',brands:[]})];
+ const rejected=[product('other',{brands:[{name:'Another'}]}),product('title-spoof',{title:'Nike Sephora',brands:[]}),
+ product('reseller',{brands:[{name:'Nike'}],offers:[{url:'https://buy.trychannel3.com/reseller',domain:'kickscrew.com'}]}),
+ product('fake-official',{brands:[{name:'Nike'}],offers:[{url:'https://wrong.example/test',domain:'nike.com'}]})];
  const r=api.parseChannel3Page(envelope([...matching,seller,...rejected],'next'));
  assert.deepEqual(r.items.map(x=>x.id),[...matching,seller].map(x=>x.id));
  assert.equal(r.invalidCount,2);
@@ -93,7 +96,7 @@ test('cursor pages keep server freshness, no invented total, one image and nulla
 });
 test('search adapter retains presentation-only records and ignores legacy volatile fields',()=>{
   const api=adapter();
-  for(const raw of [product(),product('no-offer',{offers:undefined})]){
+  for(const raw of [product(),product('no-price',{offers:[{url:'https://buy.trychannel3.com/a',domain:'nike.com'}]})]){
     const page=api.parseChannel3Page(envelope([raw]));assert.equal(page.items.length,1);
     const card=page.items[0];assert.equal(card.presentationOnly,true);assert.equal(card.priceCents,null);assert.equal(card.compareAtPriceCents,null);
     assert.equal(card.stock,null);assert.equal(card.availability,'unknown');assert.equal(card.variants.length,0);assert.equal(card.variantDetailsKnown,false);
