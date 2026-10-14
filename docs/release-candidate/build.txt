@@ -1,0 +1,5 @@
+
+> anox-catalog@1.0.0 build
+> node backend/build-template.cjs && node backend/commerce/build-template.cjs && node backend/staging/build-template.cjs && node scripts/build-clients.cjs
+
+Canonical clients and inline CSP generated

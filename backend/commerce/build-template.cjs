@@ -1,7 +1,7 @@
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
-const MODULES = ['errors.js', 'money.js', 'validation.js', 'providers.js', 'quote.js', 'orders.js', 'index.js', 'store.js', 'webhooks.js', 'runtime.js'];
+const MODULES = ['errors.js', 'money.js', 'validation.js', 'providers.js', 'delivery.js', 'quote.js', 'orders.js', 'index.js', 'store.js', 'webhooks.js', 'runtime.js'];
 function bundleSource() {
   const modules = MODULES.map(name => JSON.stringify('./' + name) + ':function(module,exports,require){\n' + fs.readFileSync(path.join(__dirname, name), 'utf8') + '\n}').join(',\n');
   return "'use strict';\nconst externalRequire=require;\nconst factories={\n" + modules + "\n};\nconst loaded=Object.create(null);\nfunction load(name){if(!Object.hasOwn(factories,name))return externalRequire(name);if(loaded[name])return loaded[name].exports;const module={exports:{}};loaded[name]=module;factories[name](module,module.exports,load);return module.exports;}\nexports.handler=load('./runtime.js').handler;\n";

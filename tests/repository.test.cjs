@@ -7,7 +7,7 @@ const path = require('node:path');
 const html = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
 const source = html.slice(html.indexOf('    const CATALOG_LIMITS='), html.indexOf('    /* PRODUCTION COMMERCE TRUST BOUNDARY'));
 const whole = (n, min, max) => Number.isSafeInteger(n) && n >= min && n <= max;
-const {ProductProviderRegistry, CatalogRepository} = new Function('isObject','whole','requireInteger','text','safeURL','normalizedDate','CATEGORIES','DEVELOPER_MODE','clone', source + ';return {ProductProviderRegistry,CatalogRepository};')(
+const {ProductProviderRegistry, CatalogRepository, normalizeProduct} = new Function('isObject','whole','requireInteger','text','safeURL','normalizedDate','CATEGORIES','DEVELOPER_MODE','clone', source + ';return {ProductProviderRegistry,CatalogRepository,normalizeProduct};')(
   x => !!x && typeof x === 'object' && !Array.isArray(x), whole,
   (n,min,max,label) => { if (!whole(n,min,max)) throw Error(label); return n; },
   (x,n=200) => typeof x === 'string' ? x.slice(0,n) : '',
@@ -25,6 +25,15 @@ function setup(list) {
   return {registry,repo:new CatalogRepository(registry)};
 }
 function deferred() { let resolve; const promise = new Promise(r=>resolve=r); return {promise,resolve}; }
+
+test('core admits only strictly presentation-only Channel3 cards without invented price or variants',()=>{
+  const raw={...item('card'),presentationOnly:true,priceCents:null,compareAtPriceCents:null,stock:null,variants:[],variantDetailsKnown:false,availability:'unknown',source:{fetchedAt:new Date().toISOString(),merchantUrl:null,verifiedAt:null,availabilityVerifiedAt:null,availability:'unknown'}};
+  const normalized=normalizeProduct(raw,{id:'channel3-live',mode:'live'});
+  assert.equal(normalized.presentationOnly,true);assert.equal(normalized.priceCents,null);assert.equal(normalized.priceUsd,null);assert.equal(normalized.stock,null);
+  assert.deepEqual(normalized.variants,[]);assert.equal(normalized.source.merchantUrl,null);assert.equal(normalized.source.verifiedAt,null);
+  for(const patch of [{priceCents:1},{stock:1},{variants:[{color:'Black',size:'M',stock:1}]},{availability:'in_stock'},{purchasable:true},{source:{...raw.source,merchantUrl:'https://buy.trychannel3.com/old'}}])assert.throws(()=>normalizeProduct({...raw,...patch},{id:'channel3-live',mode:'live'}));
+  assert.throws(()=>normalizeProduct(raw,{id:'nike-live',mode:'live'}));
+});
 
 test('registry preserves opaque cursors and cursor error codes alongside offset providers', async()=>{
   const requests=[];
@@ -216,9 +225,9 @@ test('cursor ingestion still rejects a page exceeding the declared pixel budget'
 
 test('live catalog rendering includes all accepted pages and can continue after local filters hide everything',()=>{
   const block=html.slice(html.indexOf('function catalogResults('),html.indexOf('function V2CategoryHeader('));
-  const render=new Function('V2ChoiceResults','catalogPage','currentRoute','ui','filterParams','V2CatalogChoices','tx','esc','formatUSD','DEVELOPER_MODE','button','icon','liveLoadMoreMarkup','productCard','Catalog','catalogPaginationMarkup','emptyMarkup','filterChips','liveContextNotice',block+';return catalogResults;')(
-    p=>p,p=>({page:1,start:1,end:24,total:p.length,items:p.slice(0,24)}),()=>({name:'shop'}),{page:1,sort:'featured'},()=>new URLSearchParams(),()=>({}),(_ar,en)=>en,String,String,false,
-    (_label,attributes)=>'<button '+attributes+'></button>',()=>'',()=>'<button data-live-load-more></button>',p=>'<article data-id="'+p.id+'"></article>',{usingLive:()=>true},()=>'',()=>'<p>Empty</p>',()=>'',()=>''
+  const render=new Function('V2ChoiceResults','catalogPage','currentRoute','ui','filterParams','V2CatalogChoices','tx','esc','formatUSD','DEVELOPER_MODE','button','icon','liveLoadMoreMarkup','productCard','Catalog','catalogPaginationMarkup','emptyMarkup','filterChips','liveContextNotice','catalogPresentationSource',block+';return catalogResults;')(
+    p=>p,p=>({page:1,start:1,end:24,total:p.length,items:p.slice(0,24)}),()=>({name:'shop'}),{page:1,sort:'featured',filters:{}},()=>new URLSearchParams(),()=>({}),(_ar,en)=>en,String,String,false,
+    (_label,attributes)=>'<button '+attributes+'></button>',()=>'',()=>'<button data-live-load-more></button>',p=>'<article data-id="'+p.id+'"></article>',{usingLive:()=>true},()=>'',()=>'<p>Empty</p>',()=>'',()=>'',()=>[]
   );
   const markup=render(Array.from({length:50},(_,i)=>({id:'item'+i})));
   assert.equal((markup.match(/<article /g)||[]).length,50);

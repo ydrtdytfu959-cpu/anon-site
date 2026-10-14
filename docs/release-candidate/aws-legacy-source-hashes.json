@@ -1,0 +1,88 @@
+{
+  "status": "success",
+  "return_value": {
+    "capturedAt": "2026-10-14T04:32:26.871819+00:00",
+    "evidenceBoundary": "Processed CloudFormation source only; not a comparison to deployed Lambda ZIP bytes.",
+    "stacks": {
+      "AnoX-Checkout-Core": {
+        "functions": [
+          {
+            "logicalId": "CheckoutCoreFunction",
+            "utf8Bytes": 12314,
+            "sourceSha256": "b10afdc739383430cfc56c1ed75ab8a0c56417eab0676b0556966f0cdffb555f",
+            "matchesPriorLocalSource": false,
+            "matchesPriorExportAfterRemovingOneAppendedNewline": true
+          }
+        ]
+      },
+      "AnoX-Checkout-Auth": {
+        "functions": [
+          {
+            "logicalId": "CheckoutAuthFunction",
+            "utf8Bytes": 3615,
+            "sourceSha256": "9432debf1303d3c8113f03a7cee15dd7de0cc75c56f548cede30204d94a613c7",
+            "matchesPriorLocalSource": false,
+            "matchesPriorExportAfterRemovingOneAppendedNewline": true
+          }
+        ]
+      },
+      "AnoX-Payment-Webhook": {
+        "functions": [
+          {
+            "logicalId": "PaymentWebhookFunction",
+            "utf8Bytes": 11997,
+            "sourceSha256": "f971b6059f924da869f9a5ae363a8596855b85003149c4de4fdb401dd305c036",
+            "matchesPriorLocalSource": false,
+            "matchesPriorExportAfterRemovingOneAppendedNewline": true
+          }
+        ]
+      },
+      "AnoX-Payment-Read-API": {
+        "functions": [
+          {
+            "logicalId": "Function",
+            "utf8Bytes": 2018,
+            "sourceSha256": "fe43093c1167a6f5b21b51f133097d5b5cf44c69986094287a23a1df5d2f5220",
+            "matchesPriorLocalSource": false,
+            "matchesPriorExportAfterRemovingOneAppendedNewline": true
+          }
+        ]
+      }
+    },
+    "comparisonNote": "Prior temporary exports appended one newline. All four prior exports equal the fresh exact source plus that newline; no substantive template-source change was found. Exact deployed ZIP drift remains unverified."
+  },
+  "api_calls": [
+    {
+      "service": "cloudformation",
+      "operation": "GetTemplate",
+      "status": "success",
+      "n_items": {
+        "StagesAvailable": 2
+      }
+    },
+    {
+      "service": "cloudformation",
+      "operation": "GetTemplate",
+      "status": "success",
+      "n_items": {
+        "StagesAvailable": 2
+      }
+    },
+    {
+      "service": "cloudformation",
+      "operation": "GetTemplate",
+      "status": "success",
+      "n_items": {
+        "StagesAvailable": 2
+      }
+    },
+    {
+      "service": "cloudformation",
+      "operation": "GetTemplate",
+      "status": "success",
+      "n_items": {
+        "StagesAvailable": 2
+      }
+    }
+  ]
+}

@@ -13,3 +13,10 @@ test('staged API updates preserve existing CORS origins methods and unrelated ro
 test('staging refuses missing or unexpected live metadata instead of guessing CORS origins', () => {
   for (const api of [{}, { ApiId: 'zmumi2wruk', CorsConfiguration: { AllowOrigins: ['*'] } }, { ApiId: 'zmumi2wruk', CorsConfiguration: { AllowOrigins: ['https://anox.app', 'https://other.example'] } }]) assert.throws(() => stageApiSettings(api, { StageName: '$default' }));
 });
+test('planning refuses broadened credentials methods headers and malformed stage metadata', () => {
+  const valid = { ApiId: 'zmumi2wruk', CorsConfiguration: { AllowOrigins: ['https://anox.app'], AllowMethods: ['GET', 'POST', 'PUT', 'OPTIONS'], AllowHeaders: ['content-type', 'authorization'], AllowCredentials: false } };
+  for (const change of [a => a.CorsConfiguration.AllowCredentials = true, a => a.CorsConfiguration.AllowMethods.push('*'), a => a.CorsConfiguration.AllowMethods.push('DELETE'), a => a.CorsConfiguration.AllowHeaders.push('*'), a => a.CorsConfiguration.ExposeHeaders = ['*'], a => a.CorsConfiguration.AllowHeaders.push(null)]) {
+    const api = structuredClone(valid); change(api); assert.throws(() => stageApiSettings(api, { StageName: '$default' }));
+  }
+  for (const stage of [{ StageName: '$default', RouteSettings: [] }, { StageName: '$default', RouteSettings: { 'GET /orders': null } }]) assert.throws(() => stageApiSettings(valid, stage));
+});

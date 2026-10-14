@@ -1,0 +1,33 @@
+{
+  "classification": "Local unit and browser fixtures; offline infrastructure validation",
+  "node": {
+    "passed": 263,
+    "failed": 0,
+    "skipped": 0,
+    "exitCode": 0
+  },
+  "browser": {
+    "engines": [
+      "chromium",
+      "firefox"
+    ],
+    "catalogGroups": 20,
+    "commerceGroups": 48,
+    "embeddedPerEngine": 135,
+    "exitCode": 0
+  },
+  "build": 0,
+  "parityCsp": 0,
+  "lint": 0,
+  "guard": {
+    "catalog": 0,
+    "commerce": 0,
+    "staging": 0
+  },
+  "syntaxFiles": 57,
+  "syntaxFailed": 0,
+  "lockedInstall": 0,
+  "deployed": false,
+  "paymentsEnabled": false,
+  "realAwsAcceptanceExecuted": false
+}

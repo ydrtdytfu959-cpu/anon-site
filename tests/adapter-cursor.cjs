@@ -80,6 +80,15 @@ test('cursor pages keep server freshness, no invented total, one image and nulla
   assert.equal(page.items[0].media.length, 1);
   assert.equal(api.parseChannel3Page(envelope([], null)).nextCursor, null);
 });
+test('search adapter retains presentation-only records and ignores legacy volatile fields',()=>{
+  const api=adapter();
+  for(const raw of [product(),product('no-offer',{offers:undefined})]){
+    const page=api.parseChannel3Page(envelope([raw]));assert.equal(page.items.length,1);
+    const card=page.items[0];assert.equal(card.presentationOnly,true);assert.equal(card.priceCents,null);assert.equal(card.compareAtPriceCents,null);
+    assert.equal(card.stock,null);assert.equal(card.availability,'unknown');assert.equal(card.variants.length,0);assert.equal(card.variantDetailsKnown,false);
+    assert.equal(card.source.merchantUrl,null);assert.equal(card.source.availabilityVerifiedAt,null);assert.equal(card.purchasable,false);
+  }
+});
 
 test('three cursor pages expose overlap without discarding records or fabricating offsets', async () => {
   const bodies = [envelope([product('a'), product('b')], 'cursor-1'), envelope([product('b'), product('c')], 'cursor-2'), envelope([product('d')], null)];

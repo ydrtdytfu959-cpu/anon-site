@@ -1,5 +1,7 @@
 # Channel3 usage, cost policy and caching release gate
 
+Historical remediation report. The presentation-only card correction and current release decision are documented in [the release-candidate cost report](../release-candidate/channel3-cost-and-compliance.md); this report retains its original findings/evidence.
+
 Reviewed October 12, 2026. Source implementation is staged in `feat/anox-commerce-foundation`; no AWS setting, provider account setting or production budget was changed by this review. This document supersedes the earlier engineering report's 1,000 paid searches/day default. That former default was not a free allowance and was unsafe without an explicit spending decision.
 
 ## Provider evidence and limits of knowledge

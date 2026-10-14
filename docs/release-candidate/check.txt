@@ -1,0 +1,5 @@
+
+> anox-catalog@1.0.0 check
+> node backend/build-template.cjs --check && node backend/commerce/build-template.cjs --check && node backend/staging/build-template.cjs --check && node scripts/build-clients.cjs --check
+
+Catalog, auth and commerce sources and inline CSP verified

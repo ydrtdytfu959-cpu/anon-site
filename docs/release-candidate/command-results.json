@@ -1,0 +1,34 @@
+[
+  {
+    "name": "build",
+    "command": [
+      "npm",
+      "run",
+      "build"
+    ],
+    "startedAt": "2026-10-14T04:36:37.098389+00:00",
+    "exitCode": 0,
+    "evidence": "build.txt"
+  },
+  {
+    "name": "check",
+    "command": [
+      "npm",
+      "run",
+      "check"
+    ],
+    "startedAt": "2026-10-14T04:36:37.444872+00:00",
+    "exitCode": 0,
+    "evidence": "check.txt"
+  },
+  {
+    "name": "node-tests",
+    "command": [
+      "npm",
+      "test"
+    ],
+    "startedAt": "2026-10-14T04:36:37.605426+00:00",
+    "exitCode": 0,
+    "evidence": "node-tests.txt"
+  }
+]

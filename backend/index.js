@@ -1,7 +1,8 @@
 'use strict';
 const {createHash, randomUUID} = require('node:crypto');
 
-const VERSION = 1;
+// Version 2 deliberately expires pre-policy cache/cursor identities; spending keys stay period-only.
+const VERSION = 2;
 const SEARCH_TTL = 300_000, DISCOVERY_TTL = 600_000, CURSOR_TTL = 1_800_000;
 const DETAIL_TTL = 30_000, PRESENTATION_TTL = 3_600_000, MAX_DETAIL_BYTES = 256 * 1024;
 const MAX_PAGE_BYTES = 300 * 1024, MAX_UPSTREAM_BYTES = 2 * 1024 * 1024;
@@ -209,18 +210,8 @@ function sanitizeProduct(input) {
   output.images = url ? [{url, alt_text: cleanString(image.alt_text, 200)}] : [];
   const category = object(input.category) ? input.category : {};
   output.category = {slug: cleanString(category.slug, 100), title: cleanString(category.title, 100), path: (Array.isArray(category.path) ? category.path : []).slice(0, 6).filter(object).map(part => ({slug: cleanString(part.slug, 100), title: cleanString(part.title, 100)}))};
-  output.offers = (Array.isArray(input.offers) ? input.offers : []).slice(0, 8).filter(object).flatMap(offer => {
-    const url = safeUrl(offer.url, 'buy.trychannel3.com'), price = offer.price;
-    if (!url || !object(price) || typeof price.price !== 'number' || !Number.isFinite(price.price) || price.price < 0 || price.price > 1e9 || price.currency !== 'USD') return [];
-    const clean = {url, domain: cleanString(offer.domain, 200), price: {price: price.price, currency: 'USD'}, availability: cleanString(offer.availability, 40), condition: cleanString(offer.condition, 40)};
-    if (typeof price.compare_at_price === 'number' && Number.isFinite(price.compare_at_price) && price.compare_at_price >= 0 && price.compare_at_price <= 1e9) clean.price.compare_at_price = price.compare_at_price;
-    return [clean];
-  });
-  const variants = object(input.variants) ? input.variants : {};
-  output.variants = {
-    options: (Array.isArray(variants.options) ? variants.options : []).slice(0, 4).filter(object).map(option => ({name: cleanString(option.name, 60), values: (Array.isArray(option.values) ? option.values : []).slice(0, 60).filter(object).map(value => ({label: cleanString(value.label, 80), exists: value.exists === true}))})),
-    selected: (Array.isArray(variants.selected) ? variants.selected : []).slice(0, 8).filter(object).map(value => ({name: cleanString(value.name, 60), label: cleanString(value.label, 80)}))
-  };
+  // Search pages are presentation-only. Volatile offers, prices, stock and
+  // variants are retrieved fresh only when a user opens product detail.
   output.key_features = (Array.isArray(input.key_features) ? input.key_features : []).slice(0, 8).filter(value => typeof value === 'string').map(value => value.slice(0, 200));
   return output;
 }
@@ -534,11 +525,12 @@ function createUpstream({fetch: transport = globalThis.fetch, getSecret, reserve
   };
   return search;
 }
-function createMetric({log = line => console.log(line), now = Date.now} = {}) {
+function createMetric({log = line => console.log(line), now = Date.now, namespace = 'AnoX/Catalog'} = {}) {
+  if (!['AnoX/Catalog','AnoX/Staging/Catalog'].includes(namespace)) throw Error('INVALID_METRIC_CONFIG');
   const names = new Set(['cache_hit', 'cache_miss', 'upstream_request', 'upstream_failure', 'cache_contention', 'cache_error', 'search_credit_request', 'product_detail_request', 'detail_fresh', 'detail_coalesced', 'presentation_fallback', 'budget_exceeded', 'rate_limited', 'budget_error']);
   return name => {
     if (!names.has(name)) return;
-    log(JSON.stringify({_aws: {Timestamp: now(), CloudWatchMetrics: [{Namespace: 'AnoX/Catalog', Dimensions: [['Service']], Metrics: [{Name: name, Unit: 'Count'}]}]}, Service: 'Channel3Catalog', event: name, [name]: 1}));
+    log(JSON.stringify({_aws: {Timestamp: now(), CloudWatchMetrics: [{Namespace: namespace, Dimensions: [['Service']], Metrics: [{Name: name, Unit: 'Count'}]}]}, Service: 'Channel3Catalog', event: name, [name]: 1}));
   };
 }
 let runtimeHandler;
@@ -552,7 +544,10 @@ async function handler(event) {
     const client = new dynamo.DynamoDBClient(config), secretClient = new secrets.SecretsManagerClient(config);
     const table = process.env.CACHE_TABLE, secretId = process.env.CHANNEL3_SECRET_ID;
     if (!table || !secretId) return proxyResponse(503, {error: 'CACHE_UNAVAILABLE'});
-    const metric = createMetric(), store = createDynamoStore({client, commands:dynamo, table});
+    let metric;
+    try {metric = createMetric({namespace:process.env.METRIC_NAMESPACE ?? 'AnoX/Catalog'});}
+    catch {return proxyResponse(503,{error:'CATALOG_CONFIG_UNAVAILABLE'});}
+    const store = createDynamoStore({client, commands:dynamo, table});
     let reserve;
     try {
       if (!['true', 'false'].includes(process.env.PAID_USAGE_ENABLED ?? 'false')) throw Error('INVALID_BUDGET_CONFIG');

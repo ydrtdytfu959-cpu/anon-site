@@ -3,6 +3,7 @@ const { fail } = require('./errors.js');
 const { decimalToMinor, multiplyMinor, addMinor } = require('./money.js');
 const { hash, productKey, text, canonical } = require('./validation.js');
 const { checkout } = require('./providers.js');
+const { deliveryComponents } = require('./delivery.js');
 const SAFE_TITLE = 240;
 const VOLATILE_TTL_MS = 30000;
 function safeUrl(value) {
@@ -63,8 +64,8 @@ async function buildQuote({ input, catalog, now, randomId, hydrationTimeoutMs = 
   // Read time after hydration so a slow request cannot extend a provider snapshot.
   const current = now(), validated = input.lines.map(line => validateLine(line, products.get(productKey(line)), current));
   const lines = validated.map(x => x.value), subtotal = addMinor(lines.map(line => line.lineTotalMinor));
-  const customs = component('customs_import', 'Customs duties and import taxes', null, 'unknown', null, 'Import classification and responsibility for arrival charges are not established.');
-  const components = [component('products', 'Products', subtotal, 'estimated', 'channel3', 'Fresh catalog prices are not a merchant purchase reservation or quantity guarantee.'), component('us_sales_tax', 'U.S. sales tax', null, 'unknown', null), component('us_shipping', 'Domestic U.S. shipping', null, 'unknown', null), component('international_shipping', 'International shipping to Algeria', null, 'unknown', null), customs, component('currency_conversion', 'Currency conversion', 0, 'verified', 'quote_currency', 'This quote is denominated in USD; no currency conversion is performed.'), component('anox_service_fee', 'AnoX service fee', 500, 'conditional', 'anox', 'Exactly $5 per successfully completed order. Nothing is collected for a blocked attempt.')];
+  const delivery = deliveryComponents(), customs = delivery.find(value => value.code === 'customs_import');
+  const components = [component('products', 'Products', subtotal, 'estimated', 'channel3', 'Fresh catalog prices are not a merchant purchase reservation or quantity guarantee.'), ...delivery, component('currency_conversion', 'Currency conversion', 0, 'verified', 'quote_currency', 'This quote is denominated in USD; no currency conversion is performed.'), component('anox_service_fee', 'AnoX service fee', 500, 'conditional', 'anox', 'Exactly $5 per successfully completed order. Nothing is collected for a blocked attempt.')];
   const capability = checkout();
   capability.blockers.push({ code: 'landed_cost_unverified', message: 'Verified U.S. tax, shipping, and Algeria import charges are unavailable.' }, { code: 'quantity_unreserved', message: 'Catalog availability does not reserve the requested quantity.' });
   for (const line of lines) if (line.availability !== 'InStock') capability.blockers.push({ code: line.availability === 'OutOfStock' ? 'availability_unavailable' : 'availability_unknown', message: line.availability === 'OutOfStock' ? 'A selected product is unavailable.' : 'Availability for a selected product is unknown.' });

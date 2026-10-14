@@ -227,43 +227,18 @@
     const brands=Array.isArray(raw?.brands)?raw.brands:[];
     return stringValue(brands.find(entry=>stringValue(entry?.name))?.name)||"Brand";
   }
-  function channel3Offer(raw){
-    const offers=(Array.isArray(raw?.offers)?raw.offers:[]).filter(offer=>{
-      const currency=stringValue(offer?.price?.currency).toUpperCase(),price=numberValue(offer?.price?.price);
-      return currency==="USD"&&Number.isFinite(price)&&price>=0&&safeHttpsUrl(offer?.url);
-    });
-    return offers.sort((a,b)=>{
-      const rank=offer=>(String(offer?.availability).toLowerCase()==="instock"?4:0)+(String(offer?.condition).toLowerCase()==="new"?2:0)+(stringValue(offer?.domain).endsWith(".com")?1:0);
-      return rank(b)-rank(a);
-    })[0]||null;
-  }
-  function channel3Selected(raw,matcher){
-    const selected=Array.isArray(raw?.variants?.selected)?raw.variants.selected:[];
-    const hit=selected.find(entry=>matcher.test(stringValue(entry?.name)));
-    return stringValue(hit?.label);
-  }
-  function channel3Variants(raw,inStock){
-    const options=Array.isArray(raw?.variants?.options)?raw.variants.options:[];
-    const sizeOption=options.find(option=>/size/i.test(stringValue(option?.name)));
-    const selectedColor=channel3Selected(raw,/color|wash|style/i)||"Default";
-    const sizes=Array.isArray(sizeOption?.values)?sizeOption.values.filter(value=>value?.exists===true&&stringValue(value?.label)).map(value=>stringValue(value.label)).slice(0,60):[];
-    if(!sizes.length)return {variants:[{color:selectedColor,size:"Unspecified",stock:0}],known:false};
-    return {variants:sizes.map(size=>({color:selectedColor,size,stock:inStock?1:0})),known:true};
-  }
   function normalizeChannel3Product(raw,index=0,fetchedAt=new Date().toISOString()){
     if(!raw||typeof raw!=="object"||Array.isArray(raw))return null;
     const id=stringValue(raw.id),title=stringValue(raw.title);if(!/^[A-Za-z0-9_-]{1,80}$/.test(id)||!title||title.length>200)return null;
-    const offer=channel3Offer(raw);if(!offer)return null;
-    const priceCents=cents(offer.price?.price);if(priceCents===null)return null;
-    const compareAtPriceCents=cents(offer.price?.compare_at_price),inStock=String(offer.availability).toLowerCase()==="instock",variantInfo=channel3Variants(raw,inStock),name=localized(title,title);
+    // Ignore volatile fields even from an older backend during rollout.
+    const name=localized(title,title);
     const media=(Array.isArray(raw.images)?raw.images:[]).slice(0,1).flatMap(image=>{const url=trustedImageUrl(firstValue(image?.cleaned_url,image?.url));if(!url)return [];return [{url,alt:localized(stringValue(image?.alt_text)||title,title),width:420,height:390}];});
     const category=channel3Category(raw),kind=safeKey(firstValue(raw?.category?.slug,raw?.category?.title,category),"product").toLowerCase();
-    return {id,slug:id,name,brand:channel3Brand(raw),category,kind:/^[a-z][a-z-]{0,29}$/.test(kind)?kind:"product",currency:"USD",priceCents,
-      compareAtPriceCents:compareAtPriceCents!==null&&compareAtPriceCents>priceCents?compareAtPriceCents:null,weightGrams:0,variantDetailsKnown:variantInfo.known,
-      stock:variantInfo.variants.reduce((sum,variant)=>sum+variant.stock,0),variants:variantInfo.variants,media,
+    return {id,slug:id,name,brand:channel3Brand(raw),category,kind:/^[a-z][a-z-]{0,29}$/.test(kind)?kind:"product",currency:"USD",priceCents:null,presentationOnly:true,
+      compareAtPriceCents:null,weightGrams:0,variantDetailsKnown:false,stock:null,variants:[],media,
       description:localized(firstValue(raw.description,Array.isArray(raw.key_features)?raw.key_features.join(". "):"",title),title),updatedAt:fetchedAt,
-      availability:inStock?"in_stock":String(offer.availability).toLowerCase()==="outofstock"?"out_of_stock":"unknown",
-      source:{merchantUrl:safeHttpsUrl(offer.url),merchantDomain:stringValue(offer.domain),verifiedAt:fetchedAt,fetchedAt,availabilityVerifiedAt:fetchedAt,availability:inStock?"verified":"reported",sourceType:"catalog-api"},
+      availability:"unknown",
+      source:{merchantUrl:null,merchantDomain:null,verifiedAt:null,fetchedAt,availabilityVerifiedAt:null,availability:"unknown",sourceType:"catalog-api"},
       purchasable:false};
   }
   function catalogError(code, status) {

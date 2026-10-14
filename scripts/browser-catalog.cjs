@@ -64,6 +64,15 @@ async function run(engine) {
     await page.goto('https://anox.app/#shop');
     await count(24);
     assert.deepEqual(calls,[{q:null,section:'featured',cursor:null}]);
+    assert.ok((await cards().allTextContents()).every(text=>text.includes('Check current price on product page')&&!text.includes('$45.00')));
+    assert.equal(await cards().locator('[data-retailer-link]').count(),0);
+    assert.equal(await page.locator('[data-filter="maxPrice"],[data-filter="available"],[data-v2-filter="size"],[data-v2-filter="color"]').count(),0);
+    assert.equal(await page.locator('[data-sort] option[value="low"],[data-sort] option[value="high"]').count(),0);
+    add('cached cards show presentation only without price, stock, retailer links or unsupported controls');
+    await nav('shop?maxPrice=50&sort=low');await page.locator('[data-catalog-filter-unavailable]').waitFor();
+    assert.equal(await cards().count(),0);assert.equal(calls.length,1);
+    await page.locator('[data-clear-filters]').last().click();await count(24);assert.equal(calls.length,1);
+    add('legacy price-filter URLs disclose unavailable data and recover without extra upstream requests');
     add('empty storefront requests one lazy discovery section');
     await page.locator('[data-live-load-more]').click();await count(47);
     await page.locator('[data-live-load-more]').click();await count(50);

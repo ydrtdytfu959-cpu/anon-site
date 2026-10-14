@@ -4,17 +4,17 @@ The deployable page is the complete root `index.html`. The canonical browser mod
 
 The Channel3 Lambda source and generated CloudFormation template are in [`backend/`](backend/README.md). The separate, staged commerce service is in [`backend/commerce/`](backend/commerce/README.md). `npm run build` generates both templates, so deployed copies cannot silently diverge from their sources. No build or test command deploys AWS changes.
 
-Product details, saved cart selections and server quotes are implemented for review. Merchant purchasing, financial collection and guaranteed delivered totals remain unavailable until supported integrations and commercial approvals exist. The new backend routes have not been deployed. The current [release assessment and issue register](docs/remediation/release-assessment.md), [validation](docs/remediation/validation.md), [cost policy](docs/remediation/channel3-cost.md), [checkout and shipping feasibility](docs/remediation/checkout-and-shipping-feasibility.md) and [deployment/rollback runbook](docs/remediation/deployment-and-rollback.md) supersede the historical implementation reports in `docs/commerce/`.
+Product details, saved cart selections and server quotes are implemented for review. Merchant purchasing, financial collection and guaranteed delivered totals remain unavailable until supported integrations and commercial approvals exist. The new backend routes have not been deployed. The current [release candidate assessment and issue register](docs/release-candidate/release-assessment.md), [validation](docs/release-candidate/validation.md), [cost policy](docs/release-candidate/channel3-cost-and-compliance.md), [checkout activation specification](docs/release-candidate/checkout-activation-spec.md), [Algeria delivery requirements](docs/release-candidate/algeria-delivery.md) and [deployment/rollback runbook](docs/release-candidate/deployment-and-rollback.md) continue the preserved historical evidence in `docs/remediation/` and `docs/commerce/`.
 
 With Node 24:
 
 ```sh
-npm ci
+npm ci --ignore-scripts
 npm run build
 npm run check
 npm test
-npx playwright install chromium
-npm run test:browser
+npx playwright install chromium firefox
+ENGINES=chromium,firefox npm run test:browser
 ```
 
 The browser tests serve the real HTML at an intercepted `https://anox.app` origin with its CSP enabled, replacing external API/image responses with fixtures. Commerce fixture requests execute the actual backend handler with injected transactional storage; they are not live AWS or payment-sandbox tests. `ENGINES=chromium,firefox` tests both installed engines. All 135 embedded self-tests must pass. The outdated favicon assertion now checks the existing same-origin `/favicon.svg?v=3` asset.

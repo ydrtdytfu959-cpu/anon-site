@@ -48,6 +48,24 @@ test('identical query reuses fresh sanitized cache without another upstream cred
   assert.equal(Date.parse(body(first).expiresAt)-Date.parse(body(first).fetchedAt),300_000);
   assert.deepEqual(f.logs,['cache_miss','cache_hit']);
 });
+test('search cards cache presentation only, without prices, offers, stock or variant snapshots',async()=>{
+  const f=fixture(),request=event({q:'shoes'});
+  for(const response of [await f.handler(request),await f.handler(request)]){
+    const card=body(response).data.products[0];
+    assert.equal(card.id,'p1');assert.equal(card.title,'Shoe p1');assert.equal(card.images.length,1);
+    for(const field of ['offers','variants','price','availability','stock'])assert.equal(Object.hasOwn(card,field),false,field);
+    assert.ok(!JSON.stringify(card).includes('buy.trychannel3.com'));
+  }
+  assert.equal(f.calls.length,1);
+  assert.ok(!JSON.stringify([...f.store.rows.values()]).includes('buy.trychannel3.com'));
+});
+test('pre-policy page and cursor identities cannot return cached offers or restart upstream',async()=>{
+  const {createHash}=require('node:crypto'),hash=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
+  const f=fixture(),contextHash=hash([1,'channel3','search','','shoes',{},24]),key='page#'+hash([1,contextHash,null]);
+  f.store.rows.set(key,{kind:'page',version:1,contextHash,expiresAtMs:1_800_000_300_000,payload:{provider:'channel3',data:{products:[product('old')],next_page_token:'old-next'},fetchedAt:new Date(1_800_000_000_000).toISOString(),expiresAt:new Date(1_800_000_300_000).toISOString()}});
+  const denied=await f.handler(event({q:'shoes',page_token:'old-next'}));assert.equal(denied.statusCode,400);assert.equal(body(denied).error,'CURSOR_INVALID');assert.equal(f.calls.length,0);
+  const first=await f.handler(event({q:'shoes'}));assert.equal(first.statusCode,200);assert.equal(body(first).data.products[0].id,'p1');assert.equal(f.calls.length,1);assert.ok(!first.body.includes('buy.trychannel3.com'));
+});
 test('search expiration fetches a current price and never silently serves stale data',async()=>{
   const f=fixture((input,n)=>({products:[{...product('p1'),title:'Version '+n}],next_page_token:null}));
   await f.handler(event({q:'shoe'}));f.advance(300_000);

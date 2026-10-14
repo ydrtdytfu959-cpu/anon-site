@@ -63,6 +63,20 @@ test('EMF emits bounded count labels without accepting request data',()=>{
   const metric=api.createMetric({log:line=>logs.push(JSON.parse(line)),now:()=>123});metric('cache_hit');metric('raw-secret-query');
   assert.equal(logs.length,1);assert.equal(logs[0].cache_hit,1);assert.equal(logs[0]._aws.Timestamp,123);assert.deepEqual(logs[0]._aws.CloudWatchMetrics[0].Dimensions,[['Service']]);
 });
+test('catalog metrics isolate approved staging namespace and reject arbitrary labels',()=>{
+  for(const namespace of ['AnoX/Catalog','AnoX/Staging/Catalog']){
+    const logs=[],metric=api.createMetric({namespace,log:line=>logs.push(JSON.parse(line))});metric('search_credit_request');
+    assert.equal(logs[0]._aws.CloudWatchMetrics[0].Namespace,namespace);assert.equal(logs[0].Service,'Channel3Catalog');
+  }
+  for(const namespace of ['',null,'Customer/secret','AnoX/Catalog/other'])assert.throws(()=>api.createMetric({namespace}),/INVALID_METRIC_CONFIG/);
+});
+test('invalid runtime metric namespace fails closed without AWS, provider calls or production metrics',async()=>{
+  const fs=require('node:fs'),vm=require('node:vm'),source=fs.readFileSync(require.resolve('../backend/index.js'),'utf8');
+  let calls=0;const logs=[];class Client{async send(){calls++;throw Error('unexpected AWS access');}}
+  const context={module:{exports:{}},console:{log:line=>logs.push(line)},process:{env:{CACHE_TABLE:'fixture',CHANNEL3_SECRET_ID:'fixture',METRIC_NAMESPACE:'unapproved'}},require:name=>name.startsWith('@aws-sdk/')?{DynamoDBClient:Client,SecretsManagerClient:Client}:require(name)};
+  vm.runInNewContext(source,context);const response=await context.module.exports.handler({});
+  assert.equal(response.statusCode,503);assert.equal(JSON.parse(response.body).error,'CATALOG_CONFIG_UNAVAILABLE');assert.equal(calls,0);assert.deepEqual(logs,[]);
+});
 test('actual upstream request metric counts HTTP attempts but not secret failures',async()=>{
   const metrics=[];let calls=0;
   const bad=api.createUpstream({metric:name=>metrics.push(name),getSecret:async()=>{throw Error('secret unavailable');},fetch:async()=>{calls++;return json({products:[],next_page_token:null});}});
