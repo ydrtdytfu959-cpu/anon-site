@@ -227,14 +227,34 @@
     const brands=Array.isArray(raw?.brands)?raw.brands:[];
     return stringValue(brands.find(entry=>stringValue(entry?.name))?.name)||"Brand";
   }
+  // A product is in the public catalog only when its source declares one of
+  // four approved brands, or a fresh offer identifies an approved retailer.
+  // Titles and search terms are NEVER evidence of brand or retailer identity.
+  const APPROVED_BRANDS=Object.freeze({nike:"Nike",adidas:"Adidas",levis:"Levi's",elf:"e.l.f. Cosmetics",elfcosmetics:"e.l.f. Cosmetics"});
+  const APPROVED_RETAILERS=Object.freeze(["sephora.com","www.sephora.com","tjmaxx.com","www.tjmaxx.com","tjmaxx.tjx.com","www.tjmaxx.tjx.com"]);
+  function approvedBrand(raw){
+    for(const entry of (Array.isArray(raw?.brands)?raw.brands:[]).slice(0,16)){
+      const name=stringValue(entry?.name).normalize("NFKC").toLowerCase().replace(/[^a-z0-9]/g,"");
+      if(Object.hasOwn(APPROVED_BRANDS,name))return APPROVED_BRANDS[name];
+    }
+    return null;
+  }
+  function approvedRetailerOffers(raw){
+    return (Array.isArray(raw?.offers)?raw.offers:[]).filter(offer=>
+      APPROVED_RETAILERS.includes(stringValue(offer?.domain).toLowerCase())&&
+      !!safeHttpsUrl(offer?.url)
+    );
+  }
   function normalizeChannel3Product(raw,index=0,fetchedAt=new Date().toISOString()){
     if(!raw||typeof raw!=="object"||Array.isArray(raw))return null;
     const id=stringValue(raw.id),title=stringValue(raw.title);if(!/^[A-Za-z0-9_-]{1,80}$/.test(id)||!title||title.length>200)return null;
+    const approved=approvedBrand(raw);
+    if(!approved&&!approvedRetailerOffers(raw).length)return null;
     // Ignore volatile fields even from an older backend during rollout.
     const name=localized(title,title);
     const media=(Array.isArray(raw.images)?raw.images:[]).slice(0,1).flatMap(image=>{const url=trustedImageUrl(firstValue(image?.cleaned_url,image?.url));if(!url)return [];return [{url,alt:localized(stringValue(image?.alt_text)||title,title),width:420,height:390}];});
     const category=channel3Category(raw),kind=safeKey(firstValue(raw?.category?.slug,raw?.category?.title,category),"product").toLowerCase();
-    return {id,slug:id,name,brand:channel3Brand(raw),category,kind:/^[a-z][a-z-]{0,29}$/.test(kind)?kind:"product",currency:"USD",priceCents:null,presentationOnly:true,
+    return {id,slug:id,name,brand:approved||channel3Brand(raw),category,kind:/^[a-z][a-z-]{0,29}$/.test(kind)?kind:"product",currency:"USD",priceCents:null,presentationOnly:true,
       compareAtPriceCents:null,weightGrams:0,variantDetailsKnown:false,stock:null,variants:[],media,
       description:localized(firstValue(raw.description,Array.isArray(raw.key_features)?raw.key_features.join(". "):"",title),title),updatedAt:fetchedAt,
       availability:"unknown",
@@ -399,7 +419,9 @@
       if (!name.trim() || name.length > 80 || ["__proto__", "constructor", "prototype"].includes(name)) throw catalogError("catalog_payload");
       structuredAttributes[name] = detailList(values, 64).map(value => detailString(value, 1000, true));
     }
-    const offers = detailList(raw.offers, 64).filter(record).flatMap(offer => {
+    const approved=approvedBrand(raw), approvedOffers=approvedRetailerOffers(raw);
+    if(!approved&&!approvedOffers.length)throw catalogError("catalog_not_approved",403);
+    const offers = detailList(approved?raw.offers:approvedOffers, 64).filter(record).flatMap(offer => {
       const url = detailUrl(offer.url, "buy.trychannel3.com"), merchantDomain = typeof offer.domain === "string" ? offer.domain.toLowerCase() : "";
       if (!fresh || !url || merchantDomain.length > 253 || !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(merchantDomain)) return [];
       const currency = offer.price?.currency === "USD" ? "USD" : null;

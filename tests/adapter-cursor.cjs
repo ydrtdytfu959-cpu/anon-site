@@ -9,7 +9,7 @@ function adapter(fetch = async () => { throw Error('Unexpected network request')
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../catalog-live.js'), 'utf8'), context);
   return context.module.exports;
 }
-const product = (id = 'p1', patch = {}) => ({ id, title: 'Running shoe', brands: [{ id: 'b1', name: 'Brand' }],
+const product = (id = 'p1', patch = {}) => ({ id, title: 'Running shoe', brands: [{ id: 'b1', name: 'Nike' }],
   images: [{ cleaned_url: 'https://cdn.trychannel3.com/clean.jpg', url: 'https://cdn.trychannel3.com/main.jpg' }],
   offers: [{ url: 'https://buy.trychannel3.com/p1', domain: 'shop.com', availability: 'InStock', condition: 'new', price: { price: 45.99, currency: 'USD' } }], ...patch });
 function envelope(products = [product()], next = null, patch = {}) {
@@ -17,6 +17,17 @@ function envelope(products = [product()], next = null, patch = {}) {
   return { provider: 'channel3', data: { products, next_page_token: next }, fetchedAt: new Date(now - 60000).toISOString(), expiresAt: new Date(now + 240000).toISOString(), ...patch };
 }
 
+test('Astra presentation catalog accepts only the four approved brands or explicit retailer evidence',()=>{
+ const api=adapter(),names=['Nike','Adidas',"Levi\u2019s",'e.l.f. Cosmetics'];
+ const matching=names.map((name,i)=>product('brand'+i,{brands:[{id:'x',name}]}));
+ const seller=product('sephora',{brands:[{name:'Another'}],offers:[{domain:'sephora.com',url:'https://buy.trychannel3.com/a'}]});
+ const rejected=[product('other',{brands:[{name:'Another'}]}),product('title-spoof',{title:'Nike Sephora',brands:[]})];
+ const r=api.parseChannel3Page(envelope([...matching,seller,...rejected],'next'));
+ assert.deepEqual(r.items.map(x=>x.id),[...matching,seller].map(x=>x.id));
+ assert.equal(r.invalidCount,2);
+ assert.equal(r.nextCursor,'next');
+ assert.equal(api.normalizeChannel3Product(product('unknown',{brands:[],offers:[]})),null);
+});
 test('discovery and query requests stay distinct and opaque cursors round-trip unmodified', () => {
   const api = adapter();
   let url = new URL(api.buildChannel3Url({ section: 'shoes', limit: 24 }));
