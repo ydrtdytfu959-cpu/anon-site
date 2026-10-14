@@ -235,7 +235,7 @@
     const brands=Array.isArray(raw?.brands)?raw.brands:[];
     for(const entry of brands.slice(0,16)){
       const name=stringValue(entry?.name);
-      const key=name.normalize("NFKC").toLowerCase().replace(/[\\s.\\u2019'_-]/g,"");
+      const key=name.normalize("NFKC").toLowerCase().replace(/[^a-z0-9]/g,"");
       if(Object.hasOwn(APPROVED_BRANDS,key))return APPROVED_BRANDS[key];
     }
     return null;
