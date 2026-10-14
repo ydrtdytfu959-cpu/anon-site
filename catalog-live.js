@@ -268,19 +268,25 @@
     OFFICIAL_STORES.Sephora.includes(stringValue(o.domain).toLowerCase())||
     OFFICIAL_STORES["TJ Maxx"].includes(stringValue(o.domain).toLowerCase())
   );}
-  function approvedOfficialOffers(raw) {
+  function approvedSellerDomains(raw) {
     const brand=approvedBrand(raw);
-    if(!brand&&!approvedRetailerOffers(raw).length)return [];
-    // A Nike label sold by an unapproved reseller is not a Nike-store item.
-    return officialOffers(raw).filter(offer=>!brand||
-      OFFICIAL_STORES[brand].includes(stringValue(offer.domain).toLowerCase()));
+    const fromOffers=officialOffers(raw).map(o=>stringValue(o.domain).toLowerCase());
+    const fromCache=(Array.isArray(raw?.sellerDomains)?raw.sellerDomains:[])
+      .slice(0,6).map(v=>stringValue(v).toLowerCase()).filter(d=>OFFICIAL_DOMAINS.has(d));
+    const retail=[...OFFICIAL_STORES.Sephora,...OFFICIAL_STORES["TJ Maxx"]];
+    return [...new Set([...fromOffers,...fromCache])].filter(d=>
+      (brand&&OFFICIAL_STORES[brand].includes(d))||retail.includes(d));
+  }
+  function approvedOfficialOffers(raw){
+    const allowed=new Set(approvedSellerDomains(raw));
+    return officialOffers(raw).filter(o=>allowed.has(stringValue(o.domain).toLowerCase()));
   }
   function normalizeChannel3Product(raw,index=0,fetchedAt=new Date().toISOString()){
     if(!raw||typeof raw!=="object"||Array.isArray(raw))return null;
     const id=stringValue(raw.id),title=stringValue(raw.title);if(!/^[A-Za-z0-9_-]{1,80}$/.test(id)||!title||title.length>200)return null;
-    const official=approvedOfficialOffers(raw);
-    if(!official.length)return null;
-    const approved=approvedBrand(raw),retailer=stringValue(official[0].domain).toLowerCase();
+    const sellers=approvedSellerDomains(raw);
+    if(!sellers.length)return null;
+    const retailer=sellers[0];
     const label=Object.entries(OFFICIAL_STORES).find(([,domains])=>domains.includes(retailer))?.[0];
     if(!label)return null;
     // Ignore volatile fields even from an older backend during rollout.
