@@ -54,9 +54,11 @@ async function run(engine) {
         const page = cursor === null ? 1 : cursor === `fixture-${cursorKey}-2` ? 2 : cursor === `fixture-${cursorKey}-3` ? 3 : 0;
         assert.ok(page, 'cursor stayed in its original query context');
         const mixed=featuredQueries.includes(q);
-        const start = mixed ? (page-1)*4 : page===1?0:page===2?23:46,
-          size = mixed?4:(page===3?4:24), now = Date.now();
-        const body = {provider:'channel3',data:{products:Array.from({length:size}, (_, n)=>product(key,start+n,q)),next_page_token:page<3?`fixture-${cursorKey}-${page+1}`:null},
+        // Each source yields 12 verified records on a single paid search page.
+        // The six sources therefore buffer 72 cards across three user-facing pages.
+        const start = mixed ? 0 : page===1?0:page===2?23:46,
+          size = mixed?12:(page===3?4:24), now = Date.now();
+        const body = {provider:'channel3',data:{products:Array.from({length:size}, (_, n)=>product(key,start+n,q)),next_page_token:mixed?null:(page<3?`fixture-${cursorKey}-${page+1}`:null)},
           fetchedAt:new Date(now).toISOString(),expiresAt:new Date(now+(q?300000:600000)).toISOString()};
         return route.fulfill({headers,body:JSON.stringify(body)}).catch(error=>{if(key!=='slow')throw error;});
       }
@@ -95,8 +97,10 @@ async function run(engine) {
     assert.equal(await page.locator('[data-live-load-more]').count(),0);
     assert.equal(calls.length,18);
     assert.deepEqual(calls.slice(0,6).map(c=>c.q),featuredQueries);
-    assert.deepEqual(calls.slice(6,12).map(c=>c.cursor),featuredQueries.map(q=>`fixture-${q}-2`));
-    assert.deepEqual(calls.slice(12,18).map(c=>c.cursor),featuredQueries.map(q=>`fixture-${q}-3`));
+    // Cached provider pages remain the same; the mixed cursor only advances
+    // in-memory offsets, never inventing a continuation token.
+    assert.deepEqual(calls.slice(6,12).map(c=>c.cursor),featuredQueries.map(()=>null));
+    assert.deepEqual(calls.slice(12,18).map(c=>c.cursor),featuredQueries.map(()=>null));
     const identities=await cards().evaluateAll(nodes=>nodes.map(n=>n.querySelector('a[href*="product/"]')?.getAttribute('href')));
     assert.equal(new Set(identities).size,72);
     assert.ok((await cards().evaluateAll(nodes=>nodes.map(n=>n.querySelectorAll('img').length))).every(n=>n===1));
