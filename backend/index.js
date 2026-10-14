@@ -128,7 +128,7 @@ function detailDimensions(value) {
     return [name, object(field) && typeof field.number === 'number' && Number.isFinite(field.number) && field.number > 0 && field.number <= 1e9 && units.includes(field.unit) ? {number:field.number, unit:field.unit} : null];
   }));
 }
-function sanitizeDetail(input, productId) {
+function sanitizeDetail(input, productId, trustedCache = false) {
   if (!object(input) || input.id !== productId) fail(502, 'UPSTREAM_INVALID');
   const output = {id:productId, title:detailText(input.title, 200, true), description:detailText(input.description, 60000)};
   output.brands = detailArray(input.brands, 16).filter(object).map(brand => ({id:detailText(brand.id, 200, true), name:detailText(brand.name, 100, true)}));
@@ -155,6 +155,16 @@ function sanitizeDetail(input, productId) {
     return [{url, domain, price:amount === null ? null : {price:amount, currency:'USD', compare_at_price:usdAmount(offer.price.compare_at_price)}, availability:availability(offer.availability), condition:['new', 'used'].includes(offer.condition) ? offer.condition : null,
       max_commission_rate:typeof offer.max_commission_rate === 'number' && offer.max_commission_rate >= 0 && offer.max_commission_rate <= 1 ? offer.max_commission_rate : null, dimensions:detailDimensions(offer.dimensions)}];
   });
+  // Persist source-proven official seller identity across read-only
+  // presentation fallback, but never preserve stale prices or purchase links.
+  const officialHosts=new Set(['nike.com','www.nike.com','adidas.com','www.adidas.com',
+    'levi.com','www.levi.com','elfcosmetics.com','www.elfcosmetics.com',
+    'sephora.com','www.sephora.com','tjmaxx.com','www.tjmaxx.com',
+    'tjmaxx.tjx.com','www.tjmaxx.tjx.com']);
+  const sources=trustedCache&&Array.isArray(input.sellerDomains)
+    ? input.sellerDomains.slice(0,6).filter(domain=>typeof domain==='string'&&officialHosts.has(domain))
+    : output.offers.filter(offer=>officialHosts.has(offer.domain)).map(offer=>offer.domain);
+  output.sellerDomains=[...new Set(sources)].slice(0,6);
   output.variants = null;
   if (input.variants !== undefined && input.variants !== null) {
     if (!object(input.variants)) fail(502, 'UPSTREAM_INVALID');
@@ -195,7 +205,7 @@ function validateDetailRow(row, request, kind, now) {
     if (row.kind !== kind || row.version !== VERSION || row.contextHash !== request.contextHash || !object(payload) || Object.keys(payload).some(key => !['provider', 'data', 'fetchedAt', 'expiresAt', 'status', 'error', 'selectionMismatch'].includes(key)) || payload.provider !== 'channel3' || !object(payload.data) || Object.keys(payload.data).length !== 1) throw Error();
     const fetched = Date.parse(payload.fetchedAt), expires = Date.parse(payload.expiresAt);
     if (!Number.isFinite(fetched) || !Number.isFinite(expires) || fetched > now + 60000 || expires - fetched !== ttl || row.expiresAtMs !== expires) throw Error();
-    const product = sanitizeDetail(payload.data.product, request.productId);
+    const product = sanitizeDetail(payload.data.product, request.productId, true);
     if (JSON.stringify(product) !== JSON.stringify(payload.data.product) || JSON.stringify(mismatches(product, request.options)) !== JSON.stringify(payload.selectionMismatch) || Buffer.byteLength(JSON.stringify(payload)) > MAX_DETAIL_BYTES) throw Error();
     if (kind === 'presentation' && (payload.status !== 'presentation_only' || payload.error !== 'DETAIL_REFRESH_UNAVAILABLE' || JSON.stringify(presentation(product)) !== JSON.stringify(product))) throw Error();
     if (kind === 'detail' && (payload.status !== 'fresh' || payload.error !== null)) throw Error();
