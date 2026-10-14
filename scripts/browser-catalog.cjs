@@ -9,9 +9,20 @@ const engines = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const checks = [];
 const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=', 'base64');
-const product = (context, n) => ({id:`${context}-${n}`,title:`Fixture ${context} shoes ${n}`,brands:[{id:'fixture',name:'Nike'}],
-  category:{slug:'shoes',title:'Shoes'},images:[{url:'https://cdn.trychannel3.com/fixture.png'}],
-  offers:[{url:'https://shop.example.com/fixture',domain:'shop.example.com',availability:'InStock',condition:'new',price:{price:45,currency:'USD'}}]});
+const sources=Object.freeze({
+ Nike:['Nike','nike.com','nike'],adidas:['adidas','adidas.com','adidas'],
+ "Levi's":["Levi's",'levi.com','levis'],"e.l.f. cosmetics":['e.l.f. Cosmetics','elfcosmetics.com','elf'],
+ Sephora:['Sephora Collection','sephora.com','sephora'],"TJ Maxx":['Other','tjmaxx.tjx.com','tjmaxx'],
+ "Levi's men":["Levi's",'levi.com','levismen'],"Nike women":['Nike','nike.com','nikewomen'],
+ 'Nike accessories':['Nike','nike.com','nikeaccessories'],'Nike sports':['Nike','nike.com','nikesports']
+});
+const featuredQueries=['Nike','adidas',"Levi's",'e.l.f. cosmetics','Sephora','TJ Maxx'];
+const product = (context, n, query) => {
+  const [brand,domain,tag]=sources[query]||['Nike','nike.com','generic'];
+  return {id:`${context}-${tag}-${n}`,title:`Fixture ${context} shoes ${n}`,brands:[{id:'fixture',name:brand}],
+   category:{slug:'shoes',title:'Shoes'},images:[{url:'https://cdn.trychannel3.com/fixture.png'}],
+   offers:[{url:'https://buy.trychannel3.com/fixture',domain,availability:'InStock',condition:'new',price:{price:45,currency:'USD'}}]};
+};
 
 async function run(engine) {
   const browser = await engines[engine].launch();
@@ -33,15 +44,18 @@ async function run(engine) {
       const headers = {'access-control-allow-origin':'https://anox.app','content-type':'application/json'};
       if (url.pathname === '/catalog/search') {
         const q = url.searchParams.get('q'), section = url.searchParams.get('section'), cursor = url.searchParams.get('page_token');
-        const key = q || section;
+        const key = featuredQueries.includes(q) ? 'featured' : q || section;
         calls.push({q,section,cursor});
         if (key === 'slow') await slowResponse;
         if (key === 'failure') return route.fulfill({status:503,headers,body:JSON.stringify({error:'catalog_unavailable'})});
         if (key === 'expired' && cursor) return route.fulfill({status:410,headers,body:JSON.stringify({error:'catalog_cursor_expired'})});
-        const page = cursor === null ? 1 : cursor === `fixture-${key}-2` ? 2 : cursor === `fixture-${key}-3` ? 3 : 0;
+        const cursorKey=q||section;
+        const page = cursor === null ? 1 : cursor === `fixture-${cursorKey}-2` ? 2 : cursor === `fixture-${cursorKey}-3` ? 3 : 0;
         assert.ok(page, 'cursor stayed in its original query context');
-        const start = page === 1 ? 0 : page === 2 ? 23 : 46, size = page === 3 ? 4 : 24, now = Date.now();
-        const body = {provider:'channel3',data:{products:Array.from({length:size}, (_, n)=>product(key,start+n)),next_page_token:page<3?`fixture-${key}-${page+1}`:null},
+        const mixed=featuredQueries.includes(q);
+        const start = mixed ? (page-1)*4 : page===1?0:page===2?23:46,
+          size = mixed?4:(page===3?4:24), now = Date.now();
+        const body = {provider:'channel3',data:{products:Array.from({length:size}, (_, n)=>product(key,start+n,q)),next_page_token:page<3?`fixture-${cursorKey}-${page+1}`:null},
           fetchedAt:new Date(now).toISOString(),expiresAt:new Date(now+(q?300000:600000)).toISOString()};
         return route.fulfill({headers,body:JSON.stringify(body)}).catch(error=>{if(key!=='slow')throw error;});
       }
@@ -63,7 +77,8 @@ async function run(engine) {
 
     await page.goto('https://anox.app/#shop');
     await count(24);
-    assert.deepEqual(calls,[{q:null,section:'featured',cursor:null}]);
+    assert.deepEqual(calls.map(c=>c.q),featuredQueries);
+    assert.ok(calls.every(c=>c.section===null&&c.cursor===null));
     assert.ok((await cards().allTextContents()).every(text=>text.includes('Check current price on product page')&&!text.includes('$45.00')));
     assert.equal(await cards().locator('[data-retailer-link]').count(),0);
     assert.equal(await page.locator('[data-filter="maxPrice"],[data-filter="available"],[data-v2-filter="size"],[data-v2-filter="color"]').count(),0);
@@ -74,21 +89,24 @@ async function run(engine) {
     await page.locator('[data-clear-filters]').last().click();await count(24);assert.equal(calls.length,1);
     add('legacy price-filter URLs disclose unavailable data and recover without extra upstream requests');
     add('empty storefront requests one lazy discovery section');
-    await page.locator('[data-live-load-more]').click();await count(47);
-    await page.locator('[data-live-load-more]').click();await count(50);
+    await page.locator('[data-live-load-more]').click();await count(48);
+    await page.locator('[data-live-load-more]').click();await count(72);
     assert.equal(await page.locator('[data-live-load-more]').count(),0);
-    assert.deepEqual(calls.map(c=>c.cursor),[null,'fixture-featured-2','fixture-featured-3']);
+    assert.equal(calls.length,18);
+    assert.deepEqual(calls.slice(0,6).map(c=>c.q),featuredQueries);
+    assert.deepEqual(calls.slice(6,12).map(c=>c.cursor),featuredQueries.map(q=>`fixture-${q}-2`));
+    assert.deepEqual(calls.slice(12,18).map(c=>c.cursor),featuredQueries.map(q=>`fixture-${q}-3`));
     const identities=await cards().evaluateAll(nodes=>nodes.map(n=>n.querySelector('a[href*="product/"]')?.getAttribute('href')));
-    assert.equal(new Set(identities).size,50);
+    assert.equal(new Set(identities).size,72);
     assert.ok((await cards().evaluateAll(nodes=>nodes.map(n=>n.querySelectorAll('img').length))).every(n=>n===1));
     add('three pages render with stable deduplication and one image per card');
 
     await page.locator('[data-discovery-section="men"]').first().click();await inContext('men');
-    assert.deepEqual(calls.at(-1),{q:null,section:'men',cursor:null});
+    assert.deepEqual(calls.at(-1),{q:"Levi's men",section:null,cursor:null});
     await page.locator('[data-discovery-section="women"]').first().click();await inContext('women');
-    assert.deepEqual(calls.at(-1),{q:null,section:'women',cursor:null});
+    assert.deepEqual(calls.at(-1),{q:'Nike women',section:null,cursor:null});
     const before=calls.length;
-    await nav('shop?section=featured');await count(50);assert.equal(calls.length,before);
+    await nav('shop?section=featured');await count(72);assert.equal(calls.length,before);
     add('sections have independent results and retain their own pagination');
 
     await nav('search?q=sneakers');await inContext('sneakers');
