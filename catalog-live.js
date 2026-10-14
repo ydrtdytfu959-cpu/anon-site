@@ -231,7 +231,32 @@
   // four approved brands, or a fresh offer identifies an approved retailer.
   // Titles and search terms are NEVER evidence of brand or retailer identity.
   const APPROVED_BRANDS=Object.freeze({nike:"Nike",adidas:"Adidas",levis:"Levi's",elf:"e.l.f. Cosmetics",elfcosmetics:"e.l.f. Cosmetics"});
-  const APPROVED_RETAILERS=Object.freeze(["sephora.com","www.sephora.com","tjmaxx.com","www.tjmaxx.com","tjmaxx.tjx.com","www.tjmaxx.tjx.com"]);
+  // Strict direct retailer attribution, not any marketplace carrying a branded item.
+  // Buy links are Channel3-managed HTTPS redirects, never an invented store URL.
+  const OFFICIAL_STORES=Object.freeze({
+    Nike:["nike.com","www.nike.com"],
+    Adidas:["adidas.com","www.adidas.com"],
+    "Levi's":["levi.com","www.levi.com"],
+    "e.l.f. Cosmetics":["elfcosmetics.com","www.elfcosmetics.com"],
+    Sephora:["sephora.com","www.sephora.com"],
+    "TJ Maxx":["tjmaxx.tjx.com","www.tjmaxx.tjx.com","tjmaxx.com","www.tjmaxx.com"]
+  });
+  const FEATURED_SOURCES=Object.freeze([
+    ["Nike","Nike"],["Adidas","adidas"],["Levi's","Levi's"],
+    ["e.l.f. Cosmetics","e.l.f. cosmetics"],["Sephora","Sephora"],["TJ Maxx","TJ Maxx"]
+  ]);
+  const SECTION_QUERIES=Object.freeze({
+    men:"Levi's men",women:"Nike women",shoes:"adidas",clothing:"Levi's",
+    beauty:"e.l.f. cosmetics",accessories:"Nike accessories",sports:"Nike sports",brands:"Sephora"
+  });
+  const OFFICIAL_DOMAINS=new Set(Object.values(OFFICIAL_STORES).flat());
+  function officialOffers(raw) {
+    return (Array.isArray(raw?.offers)?raw.offers:[]).filter(offer=>{
+      const domain=stringValue(offer?.domain).toLowerCase();
+      const url=safeHttpsUrl(offer?.url);
+      return OFFICIAL_DOMAINS.has(domain)&&url&&new URL(url).hostname.toLowerCase()==="buy.trychannel3.com";
+    });
+  }
   function approvedBrand(raw){
     for(const entry of (Array.isArray(raw?.brands)?raw.brands:[]).slice(0,16)){
       const name=stringValue(entry?.name).normalize("NFKC").toLowerCase().replace(/[^a-z0-9]/g,"");
@@ -239,22 +264,30 @@
     }
     return null;
   }
-  function approvedRetailerOffers(raw){
-    return (Array.isArray(raw?.offers)?raw.offers:[]).filter(offer=>
-      APPROVED_RETAILERS.includes(stringValue(offer?.domain).toLowerCase())&&
-      !!safeHttpsUrl(offer?.url)
-    );
+  function approvedRetailerOffers(raw){return officialOffers(raw).filter(o=>
+    OFFICIAL_STORES.Sephora.includes(stringValue(o.domain).toLowerCase())||
+    OFFICIAL_STORES["TJ Maxx"].includes(stringValue(o.domain).toLowerCase())
+  );}
+  function approvedOfficialOffers(raw) {
+    const brand=approvedBrand(raw);
+    if(!brand&&!approvedRetailerOffers(raw).length)return [];
+    // A Nike label sold by an unapproved reseller is not a Nike-store item.
+    return officialOffers(raw).filter(offer=>!brand||
+      OFFICIAL_STORES[brand].includes(stringValue(offer.domain).toLowerCase()));
   }
   function normalizeChannel3Product(raw,index=0,fetchedAt=new Date().toISOString()){
     if(!raw||typeof raw!=="object"||Array.isArray(raw))return null;
     const id=stringValue(raw.id),title=stringValue(raw.title);if(!/^[A-Za-z0-9_-]{1,80}$/.test(id)||!title||title.length>200)return null;
-    const approved=approvedBrand(raw);
-    if(!approved&&!approvedRetailerOffers(raw).length)return null;
+    const official=approvedOfficialOffers(raw);
+    if(!official.length)return null;
+    const approved=approvedBrand(raw),retailer=stringValue(official[0].domain).toLowerCase();
+    const label=Object.entries(OFFICIAL_STORES).find(([,domains])=>domains.includes(retailer))?.[0];
+    if(!label)return null;
     // Ignore volatile fields even from an older backend during rollout.
     const name=localized(title,title);
     const media=(Array.isArray(raw.images)?raw.images:[]).slice(0,1).flatMap(image=>{const url=trustedImageUrl(firstValue(image?.cleaned_url,image?.url));if(!url)return [];return [{url,alt:localized(stringValue(image?.alt_text)||title,title),width:420,height:390}];});
     const category=channel3Category(raw),kind=safeKey(firstValue(raw?.category?.slug,raw?.category?.title,category),"product").toLowerCase();
-    return {id,slug:id,name,brand:approved||channel3Brand(raw),category,kind:/^[a-z][a-z-]{0,29}$/.test(kind)?kind:"product",currency:"USD",priceCents:null,presentationOnly:true,
+    return {id,slug:id,name,brand:label,category,kind:/^[a-z][a-z-]{0,29}$/.test(kind)?kind:"product",currency:"USD",priceCents:null,presentationOnly:true,
       compareAtPriceCents:null,weightGrams:0,variantDetailsKnown:false,stock:null,variants:[],media,
       description:localized(firstValue(raw.description,Array.isArray(raw.key_features)?raw.key_features.join(". "):"",title),title),updatedAt:fetchedAt,
       availability:"unknown",
@@ -302,7 +335,9 @@
   function buildChannel3Url(options = {}) {
     const { q, section, limit, cursor, filters } = channel3Options(options);
     const params = new URLSearchParams();
-    if (q) params.set("q", q); else params.set("section", section);
+    if (q) params.set("q", q);
+    else if(section!=="featured") params.set("q",SECTION_QUERIES[section]);
+    else params.set("section", section);
     params.set("limit", String(limit));
     if (cursor !== null) params.set("page_token", cursor);
     if (Object.keys(filters).length) params.set("filters", JSON.stringify(filters));
@@ -327,9 +362,55 @@
     return { q, section, limit, items, total: null, nextCursor, fetchedAt, expiresAt, invalidCount: raw.length - items.length };
   }
 
+  function parseMixedCursor(value){
+    if(value===null)return Array(6).fill(null);
+    let obj;try{obj=JSON.parse(value);}catch{throw catalogError("catalog_cursor_invalid",400);}
+    if(!record(obj)||obj.v!==1||!Array.isArray(obj.c)||obj.c.length!==6||
+       obj.c.some(v=>v!==null&&(typeof v!=="string"||v.length>1024)))throw catalogError("catalog_cursor_invalid",400);
+    return obj.c;
+  }
+  function shuffleRoundRobin(groups){
+    const order=groups.map((_,i)=>i);
+    for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+    const items=[];for(let pos=0;pos<4;pos++)for(const i of order)if(groups[i][pos])items.push(groups[i][pos]);
+    return items;
+  }
+  async function fetchMixedPage(normalized,signal){
+    const cursors=parseMixedCursor(normalized.cursor);
+    const groups=Array(6).fill(null).map(()=>[]);
+    const next=cursors.slice();let errors=0,firstDate=null,lastDate=null;
+    // Three simultaneous reads at most; two bounded waves, no unbounded prefetch.
+    for(let start=0;start<6;start+=3){
+      const results=await Promise.allSettled(FEATURED_SOURCES.slice(start,start+3).map(async([,query],offset)=>{
+        const i=start+offset;
+        if(cursors[i]==="")return null;
+        const url=buildChannel3Url({q:query,limit:4,cursor:cursors[i],filters:normalized.filters});
+        const page=parseChannel3Page(await readJson(url,signal,channel3Provider.timeoutMs),{q:query,limit:4});
+        return page;
+      }));
+      results.forEach((res,k)=>{
+        const i=start+k;
+        if(res.status==="rejected"){errors++;next[i]=cursors[i];return;}
+        if(!res.value){next[i]="";return;}
+        groups[i]=res.value.items;
+        next[i]=res.value.nextCursor??"";
+        firstDate=firstDate&&Date.parse(firstDate)<Date.parse(res.value.fetchedAt)?firstDate:res.value.fetchedAt;
+        lastDate=lastDate&&Date.parse(lastDate)<Date.parse(res.value.expiresAt)?lastDate:res.value.expiresAt;
+      });
+    }
+    if(signal?.aborted)throw catalogError("catalog_aborted");
+    if(errors===6)throw catalogError("catalog_unavailable",503);
+    const items=shuffleRoundRobin(groups);
+    // Keep partially successful results; never invent a cursor when all six are exhausted.
+    const nextCursor=next.every(v=>v==="")?null:JSON.stringify({v:1,c:next});
+    return {q:"",section:"featured",limit:normalized.limit,items,total:null,nextCursor,
+      fetchedAt:firstDate||new Date().toISOString(),expiresAt:lastDate||new Date(Date.now()+60000).toISOString(),
+      invalidCount:0,partialErrors:errors};
+  }
   async function fetchChannel3Page(options = {}) {
     const normalized = channel3Options(options);
     try {
+      if(!normalized.q&&normalized.section==="featured")return await fetchMixedPage(normalized,options.signal);
       return parseChannel3Page(await readJson(buildChannel3Url(normalized), options.signal, channel3Provider.timeoutMs), normalized);
     } catch (error) {
       // The backend classifies unusable continuations without exposing provider diagnostics.
@@ -419,9 +500,9 @@
       if (!name.trim() || name.length > 80 || ["__proto__", "constructor", "prototype"].includes(name)) throw catalogError("catalog_payload");
       structuredAttributes[name] = detailList(values, 64).map(value => detailString(value, 1000, true));
     }
-    const approved=approvedBrand(raw), approvedOffers=approvedRetailerOffers(raw);
-    if(!approved&&!approvedOffers.length)throw catalogError("catalog_not_approved",403);
-    const offers = detailList(approved?raw.offers:approvedOffers, 64).filter(record).flatMap(offer => {
+    const official=approvedOfficialOffers(raw);
+    if(!official.length)throw catalogError("catalog_not_approved",403);
+    const offers = detailList(official, 64).filter(record).flatMap(offer => {
       const url = detailUrl(offer.url, "buy.trychannel3.com"), merchantDomain = typeof offer.domain === "string" ? offer.domain.toLowerCase() : "";
       if (!fresh || !url || merchantDomain.length > 253 || !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(merchantDomain)) return [];
       const currency = offer.price?.currency === "USD" ? "USD" : null;
