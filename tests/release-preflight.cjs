@@ -12,9 +12,10 @@ function fixture(){
  s.monitoring={
    snsSubscriptions:[{TopicArn:topic,Protocol:'email',Endpoint:'anox@anox.app',SubscriptionArn:topic+':fb537f7f-8d3b-4bd0-9e9e-3af446542f8f'}],
    cloudwatchAlarms:names.map(AlarmName=>({AlarmName,StateValue:'OK',ActionsEnabled:true,AlarmActions:[topic]})),
+   budget:{BudgetName:'synthetic-5-dollar-budget',BudgetType:'COST',TimeUnit:'MONTHLY',BudgetLimit:{Amount:'5.00',Unit:'USD'}},
    budgetNotifications:[
-     {NotificationType:'ACTUAL',ComparisonOperator:'GREATER_THAN',Threshold:80,NotificationState:'OK'},
-     {NotificationType:'FORECASTED',ComparisonOperator:'GREATER_THAN',Threshold:100,NotificationState:'OK'}
+     {BudgetName:'synthetic-5-dollar-budget',NotificationType:'ACTUAL',ComparisonOperator:'GREATER_THAN',Threshold:80,NotificationState:'OK'},
+     {BudgetName:'synthetic-5-dollar-budget',NotificationType:'FORECASTED',ComparisonOperator:'GREATER_THAN',Threshold:100,NotificationState:'OK'}
    ]
  };
  s.expectedIntegrationUris={catalog:'arn:aws:lambda:us-east-2:427064007352:function:AnoX-Channel3-Catalog',commerce:'arn:aws:lambda:us-east-2:427064007352:function:AnoX-Commerce-commerce'};
@@ -78,7 +79,13 @@ test('release rejects missing or unhealthy actual and forecasted AWS budget warn
    s=>s.monitoring.budgetNotifications=[],
    s=>s.monitoring.budgetNotifications[0].Threshold=100,
    s=>s.monitoring.budgetNotifications[1].NotificationState='ALARM',
-   s=>s.monitoring.budgetNotifications[1].NotificationType='ACTUAL'
+   s=>s.monitoring.budgetNotifications[1].NotificationType='ACTUAL',
+   s=>s.monitoring.budget.BudgetLimit.Amount='500',
+   s=>s.monitoring.budget.BudgetLimit.Unit='EUR',
+   s=>s.monitoring.budget.BudgetType='USAGE',
+   s=>s.monitoring.budget.TimeUnit='DAILY',
+   s=>delete s.monitoring.budget,
+   s=>s.monitoring.budgetNotifications[0].BudgetName='different-budget'
  ]){
    const s=fixture();mutation(s);const r=assess(s,options);
    assert.equal(r.ready,false);assert.ok(r.gates.some(g=>g.code==='BUDGET_NOTIFICATIONS'));
@@ -90,7 +97,8 @@ test('frontend must expose precisely approved response headers; backend may stag
    s=>s.api.CorsConfiguration.ExposeHeaders.push('*'),
    s=>s.api.CorsConfiguration.ExposeHeaders=['Retry-After'],
    s=>s.api.CorsConfiguration.ExposeHeaders='Retry-After',
-   s=>s.api.CorsConfiguration.ExposeHeaders.push(null)
+   s=>s.api.CorsConfiguration.ExposeHeaders.push(null),
+   s=>s.api.CorsConfiguration.ExposeHeaders.push('retry-after')
  ]){
    const s=fixture();mutation(s);const r=assess(s,options);
    assert.equal(r.ready,false);assert.ok(r.gates.some(g=>g.code==='CORS_EXPOSE_HEADERS'));
