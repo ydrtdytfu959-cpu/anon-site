@@ -5874,7 +5874,10 @@ function renderRoute({focus=true}={}){
           case "help":renderHelp();break;
           case "debug":if(DEVELOPER_MODE)renderDeveloperTests();else renderHelp();break;
           case "product":{
-            if(channel3Id(route)){renderChannel3Product();break;}
+            if(channel3Id(route)){
+              if(channel3Id(route).startsWith('cj-nike-')){renderCjNikeProduct();break;}
+              renderChannel3Product();break;
+            }
             let slug;
             try{slug=decodeURIComponent(route.path.slice(8));}catch{slug="";}
             const product=productBy(slug);
@@ -6261,6 +6264,47 @@ selectionRevision=selectionCart.state.revision;
 let detailView={key:'',id:'',status:'idle',detail:null,options:{},quantity:1,view:0,merchant:'',condition:null,editing:null,controller:null,error:'',busy:false};
 let commerceCapabilitiesStatus='idle';
 const commerceOrders={key:'',status:'idle',orders:[],order:null,error:'',epoch:0};
+// A CJ-origin item is not a Channel3 product. Its detail route preserves
+// native Astra styling but never invents variants, pricing, or checkout.
+let cjNikeDetail={id:'',status:'idle',record:null,controller:null};
+function renderCjNikeProduct(){
+  const id=channel3Id(),pid=id.slice('cj-nike-'.length);
+  if(!/^[A-Za-z0-9_-]{1,80}$/.test(pid)){
+    $('main').innerHTML=pageShell(tx('رابط المنتج غير صالح','Invalid product link'),'',routeLink('shop',navLabel('shop'),'btn secondary'));
+    return;
+  }
+  if(cjNikeDetail.id!==id){
+    cjNikeDetail.controller?.abort();
+    const controller=new AbortController();
+    cjNikeDetail={id,status:'loading',record:null,controller};
+    void window.AnoXLiveCatalog.getCjNikePreviewProduct(pid,{signal:controller.signal}).then(record=>{
+      if(cjNikeDetail.id===id&&!controller.signal.aborted){cjNikeDetail.record=record;cjNikeDetail.status='ready';}
+    }).catch(()=>{
+      if(cjNikeDetail.id===id&&!controller.signal.aborted)cjNikeDetail.status='unavailable';
+    }).finally(()=>{
+      if(cjNikeDetail.id===id&&channel3Id()===id)renderCjNikeProduct();
+    });
+  }
+  if(cjNikeDetail.status==='loading'){
+    $('main').innerHTML=pageShell(tx('جاري تحميل المنتج','Loading product'),'',liveCatalogStateMessage('loading'));return;
+  }
+  if(cjNikeDetail.status!=='ready'||!cjNikeDetail.record){
+    $('main').innerHTML=pageShell(tx('تعذر تحميل المنتج','Product unavailable'),
+      tx('حاول فتح المنتج لاحقًا.','Please try again later.'),
+      routeLink('shop',navLabel('shop'),'btn secondary'));return;
+  }
+  const product=cjNikeDetail.record;
+  const source=product.officialUrl;
+  const photo=product.media?.[0]?.url||'';
+  pageTitle(localized(product.name));
+  $('main').innerHTML='<div class="v2-pdp-page v2-container"><article class="v2-product-detail">'+
+    '<div class="v2-product-gallery">'+(photo?'<img class="provider-art" src="'+esc(photo)+'" loading="lazy" decoding="async" width="540" height="500" alt="'+esc(localized(product.name))+'">':'')+'</div>'+
+    '<div class="v2-product-information"><p class="v2-pdp-brand">Nike</p><h1>'+esc(localized(product.name))+'</h1>'+
+    '<p class="fine">'+esc(tx('منتج من متجر Nike الرسمي. افتح الموقع للتحقق من السعر والخيارات والتوافر الحالي.','From the official Nike store. Open Nike to check current price, options and availability.'))+'</p>'+
+    '<p>'+esc(localized(product.description))+'</p>'+
+    '<div class="v2-pdp-actions"><a class="btn primary" href="'+esc(source)+'" target="_blank" rel="noopener noreferrer" data-retailer-link="cj-nike">'+
+    esc(tx('عرض لدى Nike الرسمي','View at official Nike'))+'</a></div></div></article></div>';
+}
 function channel3Id(route=currentRoute()){
   const raw=route.path.startsWith('product/channel3/')?route.path.slice(17):route.path.startsWith('product/channel3-live--')?route.path.slice(23):'';
   return /^[A-Za-z0-9_-]{1,80}$/.test(raw)?raw:'';
