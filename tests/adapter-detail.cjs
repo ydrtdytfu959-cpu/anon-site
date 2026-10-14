@@ -55,6 +55,9 @@ test('actual catalog handler and browser adapter agree on fresh and presentation
   const handler=createHandler({store,upstreamDetail:async()=>{if(failed)throw Error('offline fixture');return product();}}),event={requestContext:{http:{method:'GET'}},rawPath:'/catalog/channel3/products/shoe_1',rawQueryString:'option_Color=Red'};
   const response=await handler(event);assert.equal(response.statusCode,200);const fresh=api.parseChannel3Detail(JSON.parse(response.body),'shoe_1',{options:{Color:'Red'}});
   assert.equal(fresh.images.length,12);assert.equal(fresh.offers[0].priceCents,9995);assert.deepEqual(fresh.selectionMismatch,[{name:'Color',requested:'Red',effective:'Navy Blue'}]);
-  failed=true;const fallbackResponse=await handler(event);assert.equal(fallbackResponse.statusCode,200);const fallback=api.parseChannel3Detail(JSON.parse(fallbackResponse.body),'shoe_1',{options:{Color:'Red'}});
-  assert.equal(fallback.freshness.status,'presentation_only');assert.deepEqual(fallback.offers,[]);assert.equal(fallback.images.length,12);assert.equal(fallback.variants.options[0].values[0].availability,'unknown');
+  failed=true;const fallbackResponse=await handler(event);assert.equal(fallbackResponse.statusCode,200);
+  // The production fallback contains no current seller identity or fresh offer.
+  // The official-only storefront must not resurrect unverifiable purchase options.
+  assert.throws(()=>api.parseChannel3Detail(JSON.parse(fallbackResponse.body),'shoe_1',{options:{Color:'Red'}}),
+    e=>e.code==='catalog_not_approved');
 });
