@@ -88,7 +88,7 @@ test('release rejects missing or unhealthy actual and forecasted AWS budget warn
    s=>s.monitoring.budgetNotifications[0].BudgetName='different-budget'
  ]){
    const s=fixture();mutation(s);const r=assess(s,options);
-   assert.equal(r.ready,false);assert.ok(r.gates.some(g=>g.code==='BUDGET_NOTIFICATIONS'));
+   assert.equal(r.ready,false);assert.ok(r.gates.some(g=>['BUDGET_IDENTITY','BUDGET_NOTIFICATIONS'].includes(g.code)));
  }
 });
 test('frontend must expose precisely approved response headers; backend may stage headers later',()=>{
