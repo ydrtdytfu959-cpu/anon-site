@@ -9,13 +9,39 @@ function adapter(fetch = async () => { throw Error('Unexpected network request')
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../catalog-live.js'), 'utf8'), context);
   return context.module.exports;
 }
-const product = (id = 'p1', patch = {}) => ({ id, title: 'Running shoe', brands: [{ id: 'b1', name: 'Brand' }],
+const product = (id = 'p1', patch = {}) => ({ id, title: 'Running shoe', brands: [{ id: 'b1', name: 'Nike' }],
   images: [{ cleaned_url: 'https://cdn.trychannel3.com/clean.jpg', url: 'https://cdn.trychannel3.com/main.jpg' }],
   offers: [{ url: 'https://buy.trychannel3.com/p1', domain: 'shop.com', availability: 'InStock', condition: 'new', price: { price: 45.99, currency: 'USD' } }], ...patch });
 function envelope(products = [product()], next = null, patch = {}) {
   const now = Date.now();
   return { provider: 'channel3', data: { products, next_page_token: next }, fetchedAt: new Date(now - 60000).toISOString(), expiresAt: new Date(now + 240000).toISOString(), ...patch };
 }
+
+test('AnoX limits discovery to four approved product brands and two trusted retailer domains',()=>{
+  const api=adapter();
+  const accepted=[
+    product('nike',{brands:[{name:'Nike'}]}),
+    product('adidas',{brands:[{name:'ADIDAS'}]}),
+    product('levis',{brands:[{name:'Levi\u2019s'}]}),
+    product('elf',{brands:[{name:'e.l.f. Cosmetics'}]}),
+    product('sephora',{brands:[{name:'Other'}],offers:[{domain:'www.sephora.com',url:'https://buy.trychannel3.com/sephora',price:{currency:'USD',price:12}}]}),
+    product('tjmaxx',{brands:[{name:'Other'}],offers:[{domain:'tjmaxx.tjx.com',url:'https://buy.trychannel3.com/tjx',price:{currency:'USD',price:12}}]})
+  ];
+  const rejected=[
+    product('arbitrary',{brands:[{name:'Other'}]}),
+    product('empty',{brands:[]}),
+    product('sneaky',{title:'Nike Sephora TJ Maxx',brands:[{name:'Other'}]}),
+    product('spoof',{brands:[{name:'Other'}],offers:[{domain:'sephora.com.evil.example',url:'https://buy.trychannel3.com/evil',price:{currency:'USD',price:12}}]}),
+    product('missing-proof',{brands:[{name:'Other'}],offers:[{domain:'sephora.com',url:'http://invalid.example/a',price:{currency:'USD',price:12}}]})
+  ];
+  const page=api.parseChannel3Page(envelope([...accepted,...rejected], 'next'));
+  assert.deepEqual(page.items.map(p=>p.id),accepted.map(p=>p.id));
+  assert.equal(page.invalidCount,rejected.length);
+  assert.equal(page.nextCursor,'next');
+  assert.equal(page.total,null);
+  assert.equal(page.items.find(p=>p.id==='levis').brand,"Levi's");
+  assert.equal(page.items.find(p=>p.id==='elf').brand,'e.l.f. Cosmetics');
+});
 
 test('discovery and query requests stay distinct and opaque cursors round-trip unmodified', () => {
   const api = adapter();

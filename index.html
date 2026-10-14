@@ -9,7 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3">
   <meta name="robots" content="index,follow">
   <meta name="description" content="AnoX — اكتشف المنتجات، وقارن التفاصيل وتكلفة وصولها التقديرية إلى الجزائر.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-IBAvhsH1VOuulvvzzcQ9QCOQISvKzm6/nT4Af6dq5zI=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — U.S. products for Algeria">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-B+e3DB6finr90F3BuGqhrLb4NWs0DtcuDye+MPbowTE=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — U.S. products for Algeria">
   <meta property="og:description" content="AnoX LLC — discover U.S. products and discuss purchasing and fulfillment to Algeria.">
   <meta property="og:url" content="https://anox.app/">
   <title>AnoX — اختيارات أبعد. تكلفة أوضح.</title>
@@ -1632,6 +1632,25 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     const brands=Array.isArray(raw?.brands)?raw.brands:[];
     return stringValue(brands.find(entry=>stringValue(entry?.name))?.name)||"Brand";
   }
+  // Approved AnoX brands and merchants. Retailer identity comes from Channel3
+  // offer.domain, never a product title, search term or affiliate-link host.
+  const APPROVED_BRANDS=Object.freeze({nike:"Nike",adidas:"Adidas",levis:"Levi's",elf:"e.l.f. Cosmetics",elfcosmetics:"e.l.f. Cosmetics"});
+  const APPROVED_RETAILERS=Object.freeze(["sephora.com","www.sephora.com","tjmaxx.tjx.com","www.tjmaxx.tjx.com","tjmaxx.com","www.tjmaxx.com"]);
+  function approvedBrand(raw) {
+    const brands=Array.isArray(raw?.brands)?raw.brands:[];
+    for(const entry of brands.slice(0,16)){
+      const name=stringValue(entry?.name);
+      const key=name.normalize("NFKC").toLowerCase().replace(/[^a-z0-9]/g,"");
+      if(Object.hasOwn(APPROVED_BRANDS,key))return APPROVED_BRANDS[key];
+    }
+    return null;
+  }
+  function approvedRetailerOffers(raw) {
+    return (Array.isArray(raw?.offers)?raw.offers:[]).filter(offer=>{
+      const domain=stringValue(offer?.domain).toLowerCase();
+      return APPROVED_RETAILERS.includes(domain) && !!safeHttpsUrl(offer?.url);
+    });
+  }
   function channel3Offer(raw){
     const offers=(Array.isArray(raw?.offers)?raw.offers:[]).filter(offer=>{
       const currency=stringValue(offer?.price?.currency).toUpperCase(),price=numberValue(offer?.price?.price);
@@ -1658,12 +1677,15 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
   function normalizeChannel3Product(raw,index=0,fetchedAt=new Date().toISOString()){
     if(!raw||typeof raw!=="object"||Array.isArray(raw))return null;
     const id=stringValue(raw.id),title=stringValue(raw.title);if(!/^[A-Za-z0-9_-]{1,80}$/.test(id)||!title||title.length>200)return null;
-    const offer=channel3Offer(raw);if(!offer)return null;
+    const branded=approvedBrand(raw), retailerOffers=approvedRetailerOffers(raw);
+    if(!branded&&!retailerOffers.length)return null;
+    // Unapproved product brands are allowed only through a verified approved retailer.
+    const offer=channel3Offer(branded?raw:{...raw,offers:retailerOffers});if(!offer)return null;
     const priceCents=cents(offer.price?.price);if(priceCents===null)return null;
     const compareAtPriceCents=cents(offer.price?.compare_at_price),inStock=String(offer.availability).toLowerCase()==="instock",variantInfo=channel3Variants(raw,inStock),name=localized(title,title);
     const media=(Array.isArray(raw.images)?raw.images:[]).slice(0,1).flatMap(image=>{const url=trustedImageUrl(firstValue(image?.cleaned_url,image?.url));if(!url)return [];return [{url,alt:localized(stringValue(image?.alt_text)||title,title),width:420,height:390}];});
     const category=channel3Category(raw),kind=safeKey(firstValue(raw?.category?.slug,raw?.category?.title,category),"product").toLowerCase();
-    return {id,slug:id,name,brand:channel3Brand(raw),category,kind:/^[a-z][a-z-]{0,29}$/.test(kind)?kind:"product",currency:"USD",priceCents,
+    return {id,slug:id,name,brand:branded||channel3Brand(raw),category,kind:/^[a-z][a-z-]{0,29}$/.test(kind)?kind:"product",currency:"USD",priceCents,
       compareAtPriceCents:compareAtPriceCents!==null&&compareAtPriceCents>priceCents?compareAtPriceCents:null,weightGrams:0,variantDetailsKnown:variantInfo.known,
       stock:variantInfo.variants.reduce((sum,variant)=>sum+variant.stock,0),variants:variantInfo.variants,media,
       description:localized(firstValue(raw.description,Array.isArray(raw.key_features)?raw.key_features.join(". "):"",title),title),updatedAt:fetchedAt,
