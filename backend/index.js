@@ -210,6 +210,16 @@ function sanitizeProduct(input) {
   output.images = url ? [{url, alt_text: cleanString(image.alt_text, 200)}] : [];
   const category = object(input.category) ? input.category : {};
   output.category = {slug: cleanString(category.slug, 100), title: cleanString(category.title, 100), path: (Array.isArray(category.path) ? category.path : []).slice(0, 6).filter(object).map(part => ({slug: cleanString(part.slug, 100), title: cleanString(part.title, 100)}))};
+  // Store only official seller identity, not offers, links, prices or stock.
+  // The source domain must be evidenced by an HTTPS Channel3 redirect.
+  const hosts=new Set(['nike.com','www.nike.com','adidas.com','www.adidas.com',
+    'levi.com','www.levi.com','elfcosmetics.com','www.elfcosmetics.com',
+    'sephora.com','www.sephora.com','tjmaxx.com','www.tjmaxx.com',
+    'tjmaxx.tjx.com','www.tjmaxx.tjx.com']);
+  output.sellerDomains=[...new Set((Array.isArray(input.offers)?input.offers:[]).slice(0,8)
+    .filter(o=>object(o)&&hosts.has(String(o.domain||'').toLowerCase())&&
+      safeUrl(o.url,'buy.trychannel3.com'))
+    .map(o=>String(o.domain).toLowerCase()))].slice(0,6);
   // Search pages are presentation-only. Volatile offers, prices, stock and
   // variants are retrieved fresh only when a user opens product detail.
   output.key_features = (Array.isArray(input.key_features) ? input.key_features : []).slice(0, 8).filter(value => typeof value === 'string').map(value => value.slice(0, 200));
