@@ -9,7 +9,7 @@ const engines = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const checks = [];
 const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=', 'base64');
-const product = (context, n) => ({id:`${context}-${n}`,title:`Fixture ${context} shoes ${n}`,brands:[{id:'fixture',name:'Fixture'}],
+const product = (context, n) => ({id:`${context}-${n}`,title:`Fixture ${context} shoes ${n}`,brands:[{id:'fixture',name:'Nike'}],
   category:{slug:'shoes',title:'Shoes'},images:[{url:'https://cdn.trychannel3.com/fixture.png'}],
   offers:[{url:'https://shop.example.com/fixture',domain:'shop.example.com',availability:'InStock',condition:'new',price:{price:45,currency:'USD'}}]});
 
