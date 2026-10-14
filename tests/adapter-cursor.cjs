@@ -32,6 +32,7 @@ test('AnoX limits discovery to four approved product brands and two trusted reta
     product('empty',{brands:[]}),
     product('sneaky',{title:'Nike Sephora TJ Maxx',brands:[{name:'Other'}]}),
     product('spoof',{brands:[{name:'Other'}],offers:[{domain:'sephora.com.evil.example',url:'https://buy.trychannel3.com/evil',price:{currency:'USD',price:12}}]}),
+    product('spoofed-redirect',{brands:[{name:'Other'}],offers:[{domain:'sephora.com',url:'https://unrelated.example/buy',price:{currency:'USD',price:12}}]}),
     product('missing-proof',{brands:[{name:'Other'}],offers:[{domain:'sephora.com',url:'http://invalid.example/a',price:{currency:'USD',price:12}}]})
   ];
   const page=api.parseChannel3Page(envelope([...accepted,...rejected], 'next'));
