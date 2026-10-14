@@ -56,8 +56,9 @@ test('actual catalog handler and browser adapter agree on fresh and presentation
   const response=await handler(event);assert.equal(response.statusCode,200);const fresh=api.parseChannel3Detail(JSON.parse(response.body),'shoe_1',{options:{Color:'Red'}});
   assert.equal(fresh.images.length,12);assert.equal(fresh.offers[0].priceCents,9995);assert.deepEqual(fresh.selectionMismatch,[{name:'Color',requested:'Red',effective:'Navy Blue'}]);
   failed=true;const fallbackResponse=await handler(event);assert.equal(fallbackResponse.statusCode,200);
-  // The production fallback contains no current seller identity or fresh offer.
-  // The official-only storefront must not resurrect unverifiable purchase options.
-  assert.throws(()=>api.parseChannel3Detail(JSON.parse(fallbackResponse.body),'shoe_1',{options:{Color:'Red'}}),
-    e=>e.code==='catalog_not_approved');
+  // Offline fallback retains verified official seller identity, not prices or offer links.
+  const fallback=api.parseChannel3Detail(JSON.parse(fallbackResponse.body),'shoe_1',{options:{Color:'Red'}});
+  assert.equal(fallback.freshness.status,'presentation_only');
+  assert.deepEqual(fallback.offers,[]);
+  assert.equal(fallback.images.length,12);
 });
