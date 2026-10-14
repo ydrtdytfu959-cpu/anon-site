@@ -38,7 +38,7 @@ test('Astra mixes six official stores per featured page with bounded independent
  const calls=[];
  const api=adapter(async url=>{
    const u=new URL(url),term=u.searchParams.get('q'),i=terms.indexOf(term),cursor=u.searchParams.get('page_token');
-   assert.ok(i>=0);assert.equal(u.searchParams.get('limit'),'4');assert.equal(u.searchParams.has('section'),false);
+   assert.ok(i>=0);assert.equal(u.searchParams.get('limit'),'24');assert.equal(u.searchParams.has('section'),false);
    calls.push({term,cursor});
    return new Response(JSON.stringify(envelope(Array.from({length:4},(_,n)=>product('store'+i+'-'+(cursor?4+n:n),{
      brands:[{name:brands[i]}],offers:[{url:'https://buy.trychannel3.com/item',domain:domains[i]}]
@@ -52,6 +52,65 @@ test('Astra mixes six official stores per featured page with bounded independent
  assert.deepEqual(calls.slice(6).map(c=>c.cursor),terms.map((_,i)=>'next-'+i));
  assert.equal(new Set([...first.items,...second.items].map(p=>p.id)).size,48);
  await assert.rejects(api.fetchChannel3Page({section:'featured',cursor:'{"v":1,"c":[null]}'}),/catalog_cursor_invalid/);
+});
+
+test('mixed official discovery scans 24 upstream records and preserves every unused verified item',async()=>{
+ const terms=['Nike','adidas',"Levi's",'e.l.f. cosmetics','Sephora','TJ Maxx'];
+ const domains=['nike.com','adidas.com','levi.com','elfcosmetics.com','sephora.com','tjmaxx.tjx.com'];
+ const brands=['Nike','Adidas',"Levi's",'e.l.f. Cosmetics','Sephora Collection','Other'];
+ const calls=[],api=adapter(async url=>{
+   const u=new URL(url),i=terms.indexOf(u.searchParams.get('q'));
+   assert.ok(i>=0);
+   assert.equal(u.searchParams.get('limit'),'24');
+   calls.push({i,cursor:u.searchParams.get('page_token')});
+   const raw=Array.from({length:24},(_,n)=>product('valid-'+i+'-'+n,{
+     brands:[{name:brands[i]}],offers:[{domain:domains[i],url:'https://buy.trychannel3.com/official'}]
+   }));
+   return new Response(JSON.stringify(envelope(raw,null)),{headers:{'content-type':'application/json'}});
+ });
+ const seen=[];
+ let cursor=null;
+ for(let batch=0;batch<6;batch++){
+   const page=await api.fetchChannel3Page({section:'featured',limit:24,cursor});
+   assert.equal(page.items.length,24);
+   assert.equal(new Set(page.items.map(p=>p.brand)).size,6);
+   seen.push(...page.items.map(p=>p.id));
+   if(batch<5)assert.ok(page.nextCursor);
+   else assert.equal(page.nextCursor,null);
+   cursor=page.nextCursor;
+ }
+ assert.equal(seen.length,144);
+ assert.equal(new Set(seen).size,144,'accepted products were not skipped or duplicated');
+ assert.equal(calls.length,36,'one bounded six-source read per mixed page, not unbounded fanout');
+ assert.ok(calls.every(call=>call.cursor===null),'unconsumed source pages keep original cursor');
+});
+
+test('mixed discovery keeps only independently verified merchant offers across the full source page',async()=>{
+ const terms=['Nike','adidas',"Levi's",'e.l.f. cosmetics','Sephora','TJ Maxx'];
+ const hosts=['nike.com','adidas.com','levi.com','elfcosmetics.com','sephora.com','tjmaxx.tjx.com'];
+ const brands=['Nike','Adidas',"Levi's",'e.l.f. Cosmetics','Sephora Collection','Other'];
+ const api=adapter(async url=>{
+   const i=terms.indexOf(new URL(url).searchParams.get('q'));
+   assert.ok(i>=0);
+   const raw=Array.from({length:24},(_,n)=>product('search-'+i+'-'+n,{
+     brands:[{name:brands[i]}],offers:[{domain:n===23?hosts[i]:'reseller.example',url:'https://buy.trychannel3.com/retailer'}]
+   }));
+   return new Response(JSON.stringify(envelope(raw,null)),{headers:{'content-type':'application/json'}});
+ });
+ const response=await api.fetchChannel3Page({section:'featured',limit:24});
+ assert.equal(response.items.length,6);
+ assert.equal(new Set(response.items.map(x=>x.brand)).size,6);
+ assert.equal(response.nextCursor,null);
+ assert.ok(response.items.every(x=>x.priceCents===null&&x.presentationOnly));
+});
+
+test('mixed cursor rejects arbitrary offsets, obsolete cursors and expired cached pages without provider calls',async()=>{
+ const api=adapter(async()=>{throw Error('Unexpected network call')});
+ const valid={v:2,c:Array(6).fill(null),o:Array(6).fill(0),until:Date.now()-1000};
+ await assert.rejects(api.fetchChannel3Page({section:'featured',cursor:JSON.stringify(valid)}),/catalog_cursor_expired/);
+ const malformed={...valid,until:Date.now()+60000,o:[25,0,0,0,0,0]};
+ await assert.rejects(api.fetchChannel3Page({section:'featured',cursor:JSON.stringify(malformed)}),/catalog_cursor_invalid/);
+ await assert.rejects(api.fetchChannel3Page({section:'featured',cursor:JSON.stringify({v:1,c:Array(6).fill(null)})}),/catalog_cursor_invalid/);
 });
 
 test('Astra cached presentation cards retain official seller identity without offer links',()=>{
