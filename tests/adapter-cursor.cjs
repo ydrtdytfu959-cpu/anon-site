@@ -46,11 +46,26 @@ test('AnoX limits discovery to four approved product brands and two trusted reta
 test('discovery and query requests stay distinct and opaque cursors round-trip unmodified', () => {
   const api = adapter();
   let url = new URL(api.buildChannel3Url({ section: 'shoes', limit: 24 }));
-  assert.equal(url.searchParams.get('section'), 'shoes');
-  assert.equal(url.searchParams.has('q'), false);
+  assert.equal(url.searchParams.get('q'), 'adidas');
+  assert.equal(url.searchParams.has('section'), false);
   assert.equal(url.searchParams.get('limit'), '24');
   url = new URL(api.buildChannel3Url());
-  assert.equal(url.searchParams.get('section'), 'featured');
+  assert.equal(url.searchParams.get('q'), 'Nike');
+  assert.equal(url.searchParams.has('section'), false);
+  for (const [section, term] of Object.entries({
+    featured:'Nike', men:"Levi's men", women:'Nike women',
+    shoes:'adidas', clothing:"Levi's", beauty:'e.l.f. cosmetics',
+    accessories:'Nike accessories', sports:'Nike sports', brands:'Sephora'
+  })) {
+    const request = new URL(api.buildChannel3Url({ section }));
+    assert.equal(request.searchParams.get('q'), term, section);
+    assert.equal(request.searchParams.has('section'), false, section);
+    assert.equal(request.searchParams.get('limit'), '24');
+  }
+  assert.equal(api.parseChannel3Page(envelope(), {section:'beauty'}).section,'beauty');
+  const sectionCursor = new URL(api.buildChannel3Url({section:'beauty',cursor:'opaque +/='}));
+  assert.equal(sectionCursor.searchParams.get('q'),'e.l.f. cosmetics');
+  assert.equal(sectionCursor.searchParams.get('page_token'),'opaque +/=');
   const cursor = ' token +/=_%?&#العربية ';
   url = new URL(api.buildChannel3Url({ q: ' black shoes ', cursor, filters: { availability: ['OutOfStock', 'InStock'] } }));
   assert.equal(url.searchParams.get('q'), 'black shoes');

@@ -9,7 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3">
   <meta name="robots" content="index,follow">
   <meta name="description" content="AnoX — اكتشف المنتجات، وقارن التفاصيل وتكلفة وصولها التقديرية إلى الجزائر.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-B+e3DB6finr90F3BuGqhrLb4NWs0DtcuDye+MPbowTE=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — U.S. products for Algeria">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-DMF85JiWnKZI21FGvXKamiFTkpyQm94L6C2Ln3fXJNo=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — U.S. products for Algeria">
   <meta property="og:description" content="AnoX LLC — discover U.S. products and discuss purchasing and fulfillment to Algeria.">
   <meta property="og:url" content="https://anox.app/">
   <title>AnoX — اختيارات أبعد. تكلفة أوضح.</title>
@@ -1416,6 +1416,14 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
   const provider = Object.freeze({id:"nike-live", merchant:"Nike", mode:"live", transport:"api", sourceType:"affiliate-feed", authorization:Object.freeze({status:"unverified",evidence:null}), approvedLive:false, imageHosts:Object.freeze(["static.nike.com"]), merchantHosts:Object.freeze(["nike.com","www.nike.com"]), staleAfterMs:86400000});
   const channel3Provider = Object.freeze({id:"channel3-live", merchant:"Channel3", mode:"live", transport:"api", pagination:"cursor", timeoutMs:18000, sourceType:"catalog-api", authorization:Object.freeze({status:"provider-terms",evidence:"Channel3 customer output"}), approvedLive:false, imageHosts:Object.freeze(["cdn.trychannel3.com"]), merchantHosts:Object.freeze(["buy.trychannel3.com"]), staleAfterMs:86400000});
   const CHANNEL3_SECTIONS = Object.freeze(["featured","men","women","shoes","clothing","beauty","accessories","sports","brands"]);
+  // Channel3 generic discovery is not limited to AnoX's approved sources:
+  // actual production pages returned 24 unrelated brands and zero accepted
+  // products. Use single bounded source-specific queries; no background fanout.
+  const CHANNEL3_CURATED_QUERIES = Object.freeze({
+    featured:"Nike", men:"Levi's men", women:"Nike women",
+    shoes:"adidas", clothing:"Levi's", beauty:"e.l.f. cosmetics",
+    accessories:"Nike accessories", sports:"Nike sports", brands:"Sephora"
+  });
   const MAX_BYTES=2*1024*1024;
   let retryAt=0;
   const DEFAULT_LIMIT = 24;
@@ -1734,7 +1742,10 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
   function buildChannel3Url(options = {}) {
     const { q, section, limit, cursor, filters } = channel3Options(options);
     const params = new URLSearchParams();
-    if (q) params.set("q", q); else params.set("section", section);
+    // Keep the UI section stable while searching within approved source terms.
+    // The same query is used for every continuation token in this section.
+    if (q) params.set("q", q);
+    else params.set("q", CHANNEL3_CURATED_QUERIES[section]);
     params.set("limit", String(limit));
     if (cursor !== null) params.set("page_token", cursor);
     if (Object.keys(filters).length) params.set("filters", JSON.stringify(filters));
@@ -5237,7 +5248,7 @@ function renderHome() {
     '<section class="anox-home-hero anox-home-shell" aria-labelledby="anox-home-title"><div class="anox-home-intro"><p class="anox-home-eyebrow">'+esc(tx('من أمريكا إلى الجزائر','FROM THE US TO ALGERIA'))+'</p><h1 id="anox-home-title"><span>'+esc(tx('اختيارات أبعد.','Good finds.'))+'</span><span>'+esc(tx('تكلفة أوضح.','A clearer cost.'))+'</span></h1><p class="anox-home-description">'+esc(tx('اكتشف منتجات من أمريكا، وتواصل معنا لمراجعة تكلفة شرائها وإيصالها إلى الجزائر.','Discover U.S. products and contact us to review purchasing and fulfillment costs to Algeria.'))+'</p>'+routeLink('shop',tx('استكشف المنتجات','Explore products'),'v2-primary-link')+'</div><figure class="anox-home-visual">'+V2HeroPicture()+'</figure></section>'+
     '<div class="anox-home-shell">'+(categories.length?'<nav class="anox-home-categories" aria-label="'+esc(tx('تسوّق حسب الفئة','Shop by category'))+'"><span>'+esc(tx('تسوّق حسب الفئة','Shop by category'))+'</span><div>'+categories.map(key=>routeLink('shop?category='+encodeURIComponent(key),v2CategoryLabel(key),'anox-home-category')).join('')+'</div></nav>':'')+
     discoveryNavigation('home')+liveContextNotice()+catalogBlock+liveLoadMoreMarkup('')+
-    '<section class="anox-home-request"><div><h2>Estée Lauder Advanced Night Repair Discovery Set</h2><p>'+esc(tx('متاح لدى Macy’s بسعر 55 دولارًا. قد تحصل AnoX على عمولة من الروابط المؤهلة.','Available at Macy’s for $55. AnoX may earn a commission from qualifying links.'))+'</p></div><a href="https://sovrn.co/11xlid1" target="_blank" rel="sponsored noopener noreferrer" class="v2-inline-link">'+esc(tx('عرض لدى Macy’s','View at Macy’s'))+'</a></section>'+    '<section class="anox-home-request" aria-labelledby="anox-request-title"><div><h2 id="anox-request-title">'+esc(tx('لديك منتج آخر في بالك؟','Something else in mind?'))+'</h2><p>'+esc(tx('راسلنا برابط المنتج والخيارات التي تبحث عنها.','Email us the product link and the options you need.'))+'</p></div>'+routeLink('request',tx('أضف رابط منتج','Add a product link'),'v2-inline-link')+'</section></div></div>';
+    '<section class="anox-home-request" aria-labelledby="anox-request-title"><div><h2 id="anox-request-title">'+esc(tx('لديك منتج آخر في بالك؟','Something else in mind?'))+'</h2><p>'+esc(tx('راسلنا برابط المنتج والخيارات التي تبحث عنها.','Email us the product link and the options you need.'))+'</p></div>'+routeLink('request',tx('أضف رابط منتج','Add a product link'),'v2-inline-link')+'</section></div></div>';
 }
 
 function V2HeroPicture(){

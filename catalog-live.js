@@ -11,6 +11,14 @@
   const provider = Object.freeze({id:"nike-live", merchant:"Nike", mode:"live", transport:"api", sourceType:"affiliate-feed", authorization:Object.freeze({status:"unverified",evidence:null}), approvedLive:false, imageHosts:Object.freeze(["static.nike.com"]), merchantHosts:Object.freeze(["nike.com","www.nike.com"]), staleAfterMs:86400000});
   const channel3Provider = Object.freeze({id:"channel3-live", merchant:"Channel3", mode:"live", transport:"api", pagination:"cursor", timeoutMs:18000, sourceType:"catalog-api", authorization:Object.freeze({status:"provider-terms",evidence:"Channel3 customer output"}), approvedLive:false, imageHosts:Object.freeze(["cdn.trychannel3.com"]), merchantHosts:Object.freeze(["buy.trychannel3.com"]), staleAfterMs:86400000});
   const CHANNEL3_SECTIONS = Object.freeze(["featured","men","women","shoes","clothing","beauty","accessories","sports","brands"]);
+  // Channel3 generic discovery is not limited to AnoX's approved sources:
+  // actual production pages returned 24 unrelated brands and zero accepted
+  // products. Use single bounded source-specific queries; no background fanout.
+  const CHANNEL3_CURATED_QUERIES = Object.freeze({
+    featured:"Nike", men:"Levi's men", women:"Nike women",
+    shoes:"adidas", clothing:"Levi's", beauty:"e.l.f. cosmetics",
+    accessories:"Nike accessories", sports:"Nike sports", brands:"Sephora"
+  });
   const MAX_BYTES=2*1024*1024;
   let retryAt=0;
   const DEFAULT_LIMIT = 24;
@@ -329,7 +337,10 @@
   function buildChannel3Url(options = {}) {
     const { q, section, limit, cursor, filters } = channel3Options(options);
     const params = new URLSearchParams();
-    if (q) params.set("q", q); else params.set("section", section);
+    // Keep the UI section stable while searching within approved source terms.
+    // The same query is used for every continuation token in this section.
+    if (q) params.set("q", q);
+    else params.set("q", CHANNEL3_CURATED_QUERIES[section]);
     params.set("limit", String(limit));
     if (cursor !== null) params.set("page_token", cursor);
     if (Object.keys(filters).length) params.set("filters", JSON.stringify(filters));

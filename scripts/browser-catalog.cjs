@@ -8,6 +8,12 @@ const assert = require('node:assert/strict');
 const engines = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const checks = [];
+const curatedTerms = Object.freeze({
+  Nike:'featured', "Levi's men":'men', 'Nike women':'women',
+  adidas:'shoes', "Levi's":'clothing', 'e.l.f. cosmetics':'beauty',
+  'Nike accessories':'accessories', 'Nike sports':'sports', Sephora:'brands'
+});
+
 const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=', 'base64');
 const product = (context, n) => ({id:`${context}-${n}`,title:`Fixture ${context} shoes ${n}`,brands:[{id:'fixture',name:'Nike'}],
   category:{slug:'shoes',title:'Shoes'},images:[{url:'https://cdn.trychannel3.com/fixture.png'}],
@@ -33,7 +39,7 @@ async function run(engine) {
       const headers = {'access-control-allow-origin':'https://anox.app','content-type':'application/json'};
       if (url.pathname === '/catalog/search') {
         const q = url.searchParams.get('q'), section = url.searchParams.get('section'), cursor = url.searchParams.get('page_token');
-        const key = q || section;
+        const key = section || curatedTerms[q] || q;
         calls.push({q,section,cursor});
         if (key === 'slow') await slowResponse;
         if (key === 'failure') return route.fulfill({status:503,headers,body:JSON.stringify({error:'catalog_unavailable'})});
@@ -63,7 +69,7 @@ async function run(engine) {
 
     await page.goto('https://anox.app/#shop');
     await count(24);
-    assert.deepEqual(calls,[{q:null,section:'featured',cursor:null}]);
+    assert.deepEqual(calls,[{q:'Nike',section:null,cursor:null}]);
     add('empty storefront requests one lazy discovery section');
     await page.locator('[data-live-load-more]').click();await count(47);
     await page.locator('[data-live-load-more]').click();await count(50);
@@ -75,9 +81,9 @@ async function run(engine) {
     add('three pages render with stable deduplication and one image per card');
 
     await page.locator('[data-discovery-section="men"]').first().click();await inContext('men');
-    assert.deepEqual(calls.at(-1),{q:null,section:'men',cursor:null});
+    assert.deepEqual(calls.at(-1),{q:"Levi's men",section:null,cursor:null});
     await page.locator('[data-discovery-section="women"]').first().click();await inContext('women');
-    assert.deepEqual(calls.at(-1),{q:null,section:'women',cursor:null});
+    assert.deepEqual(calls.at(-1),{q:'Nike women',section:null,cursor:null});
     const before=calls.length;
     await nav('shop?section=featured');await count(50);assert.equal(calls.length,before);
     add('sections have independent results and retain their own pagination');
