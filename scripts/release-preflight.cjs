@@ -3,6 +3,8 @@
 // Offline prerequisite assessment only: no AWS client, upload, deployment,
 // payment capability, or authority to override an independent release review.
 const fs=require('node:fs');
+const OPERATIONAL_TOPIC='arn:aws:sns:us-east-2:427064007352:AnoX-Operational-Alerts';
+const REQUIRED_OPERATIONAL_ALARMS=Object.freeze(['AnoX-Channel3-Catalog-Errors','AnoX-Channel3-Catalog-Throttles','AnoX-Payment-Webhook-Errors','AnoX-API-Gateway-5xx','AnoX-Regional-Lambda-Concurrency-High']);
 const ROUTES=Object.freeze(['GET /commerce/capabilities','POST /commerce/quotes','POST /commerce/checkout-attempts','GET /commerce/orders','GET /commerce/orders/{orderId}','POST /commerce/orders/{orderId}/cancel','POST /commerce/orders/{orderId}/refund','GET /catalog/channel3/products/{id}']);
 function assess(input,{now=Date.now(),reservedConcurrency=2,phase='frontend'}={}){
  const s=input&&typeof input==='object'&&!Array.isArray(input)?input:{};
@@ -21,6 +23,43 @@ function assess(input,{now=Date.now(),reservedConcurrency=2,phase='frontend'}={}
  if(JSON.stringify(cors?.AllowOrigins)!==JSON.stringify(['https://anox.app'])||cors?.AllowCredentials!==false||!strings(cors?.AllowMethods)||JSON.stringify([...cors.AllowMethods].sort())!==JSON.stringify(['GET','OPTIONS','POST','PUT']))add('CORS_POLICY','P0','Origin/credentials/method drift must be reviewed; never broaden origin as a workaround.');
  const headers=strings(cors?.AllowHeaders)?cors.AllowHeaders.map(h=>h.toLowerCase()):[];
  if(!['authorization','content-type'].every(h=>headers.includes(h))||(phase==='frontend'&&!headers.includes('idempotency-key'))||headers.some(h=>!['authorization','content-type','idempotency-key'].includes(h)))add('CORS_HEADERS','P0','The frontend requires the approved Idempotency-Key preflight policy without unrelated header changes.');
+
+ // Evidence is operator supplied, not an AWS attestation. A boolean alone is not
+ // enough: the deployment reviewer must collect each record from AWS directly.
+ const exposes=strings(cors?.ExposeHeaders)?cors.ExposeHeaders.map(h=>h.toLowerCase()):[];
+ if((cors?.ExposeHeaders!==undefined&&!strings(cors.ExposeHeaders))||
+    exposes.some(h=>!['idempotency-replayed','retry-after'].includes(h))||
+    new Set(exposes).size!==exposes.length||
+    (phase==='frontend'&&!['idempotency-replayed','retry-after'].every(h=>exposes.includes(h))))
+   add('CORS_EXPOSE_HEADERS','P0','Require only the two approved replay/retry response headers before frontend promotion.');
+ const monitoring=record(s.monitoring)?s.monitoring:{};
+ const subscriptions=Array.isArray(monitoring.snsSubscriptions)?monitoring.snsSubscriptions:[];
+ const confirmed=subscriptions.some(sub=>record(sub)&&sub.TopicArn===OPERATIONAL_TOPIC&&
+   sub.Protocol==='email'&&sub.Endpoint==='anox@anox.app'&&
+   typeof sub.SubscriptionArn==='string'&&
+   sub.SubscriptionArn.startsWith(OPERATIONAL_TOPIC+':')&&
+   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sub.SubscriptionArn.slice(OPERATIONAL_TOPIC.length+1)));
+ if(!confirmed)add('SNS_CONFIRMATION','P1','Confirm the operational SNS email subscription from live AWS; PendingConfirmation is not enough.');
+ const alarms=Array.isArray(monitoring.cloudwatchAlarms)?monitoring.cloudwatchAlarms:[];
+ if(REQUIRED_OPERATIONAL_ALARMS.some(name=>{
+   const matches=alarms.filter(a=>record(a)&&a.AlarmName===name);
+   return matches.length!==1||matches[0].StateValue!=='OK'||
+     matches[0].ActionsEnabled!==true||!Array.isArray(matches[0].AlarmActions)||
+     !matches[0].AlarmActions.includes(OPERATIONAL_TOPIC);
+ }))add('MONITORING_COVERAGE','P1','Verify all five operational alarms are healthy, enabled, and wired to the confirmed SNS topic.');
+ // Explicitly scope warning evidence to the reviewed USD 5 monthly COST budget.
+ // Populate BudgetName on each normalized notification from the same AWS budget query.
+ const budget=record(monitoring.budget)?monitoring.budget:null;
+ const budgetName=typeof budget?.BudgetName==='string'&&budget.BudgetName.trim()?budget.BudgetName:null;
+ if(!budgetName||budget.BudgetType!=='COST'||budget.TimeUnit!=='MONTHLY'||
+    Number(budget.BudgetLimit?.Amount)!==5||budget.BudgetLimit?.Unit!=='USD')
+   add('BUDGET_IDENTITY','P1','Verify the named monthly USD 5 COST budget, not unrelated account budgets.');
+ const notifications=Array.isArray(monitoring.budgetNotifications)?monitoring.budgetNotifications:[];
+ const hasBudget=(type,threshold)=>notifications.some(n=>record(n)&&budgetName&&n.BudgetName===budgetName&&
+   n.NotificationType===type&&n.ComparisonOperator==='GREATER_THAN'&&
+   n.Threshold===threshold&&n.NotificationState==='OK');
+ if(!hasBudget('ACTUAL',80)||!hasBudget('FORECASTED',100))
+   add('BUDGET_NOTIFICATIONS','P1','Verify actual 80% and forecasted 100% budget warnings; warnings do not cap spending.');
  const routes=Array.isArray(s.routes)?s.routes.filter(record):[],missing=[];
  const integrations=Array.isArray(s.integrations)?s.integrations.filter(record):[];
  const expected=s.expectedIntegrationUris;
