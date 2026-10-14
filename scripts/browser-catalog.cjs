@@ -44,7 +44,8 @@ async function run(engine) {
       const headers = {'access-control-allow-origin':'https://anox.app','content-type':'application/json'};
       if (url.pathname === '/catalog/search') {
         const q = url.searchParams.get('q'), section = url.searchParams.get('section'), cursor = url.searchParams.get('page_token');
-        const key = featuredQueries.includes(q) ? 'featured' : q || section;
+        const sectionOfQuery={"Levi's men":'men',"Nike women":'women',"Nike accessories":'accessories',"Nike sports":'sports'};
+        const key = featuredQueries.includes(q) ? 'featured' : sectionOfQuery[q] || q || section;
         calls.push({q,section,cursor});
         if (key === 'slow') await slowResponse;
         if (key === 'failure') return route.fulfill({status:503,headers,body:JSON.stringify({error:'catalog_unavailable'})});
