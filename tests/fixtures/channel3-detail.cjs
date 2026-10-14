@@ -1,6 +1,6 @@
 'use strict';
 const product = (patch = {}) => ({
-  id:'shoe_1',title:'Real shoe',description:'Full description '.repeat(150),brands:[{id:'b1',name:'Example'}],
+  id:'shoe_1',title:'Real shoe',description:'Full description '.repeat(150),brands:[{id:'b1',name:'Nike'}],
   images:Array.from({length:12},(_,i)=>({url:`https://cdn.trychannel3.com/${i}.jpg`,cleaned_url:null,alt_text:'View '+i,is_main_image:i===0,shot_type:'detail'})),
   category:{slug:'shoes',title:'Shoes',path:[{slug:'shoes',title:'Shoes'}],has_children:false},gender:null,age:'adult',
   offers:[{domain:'example.com',url:'https://buy.trychannel3.com/tracked?a=1',price:{price:99.95,currency:'USD',compare_at_price:120},availability:'InStock',condition:'new',max_commission_rate:0.05,dimensions:{length:null,width:null,height:null,weight:{number:0.5,unit:'kg'}}}],
