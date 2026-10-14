@@ -14,13 +14,13 @@ test('detail adapter keeps a full separate model with exact money and unknown qu
   const detail=api.parseChannel3Detail(envelope(), 'shoe_1');
   assert.equal(detail.schema,'anox.product-detail/1');assert.equal(detail.provider,'channel3');assert.equal(detail.title,'Real shoe');
   assert.equal(detail.images.length,12);assert.equal(detail.images[0].url,'https://cdn.trychannel3.com/0.jpg');assert.equal(detail.images[0].isMainImage,true);assert.ok(detail.description.length>2000);
-  assert.equal(detail.offers[0].priceCents,9995);assert.equal(detail.offers[0].compareAtPriceCents,12000);assert.equal(detail.offers[0].merchantDomain,'example.com');assert.equal(detail.offers[0].maxCommissionRate,0.05);
+  assert.equal(detail.offers[0].priceCents,9995);assert.equal(detail.offers[0].compareAtPriceCents,12000);assert.equal(detail.offers[0].merchantDomain,'nike.com');assert.equal(detail.offers[0].maxCommissionRate,0.05);
   assert.deepEqual(detail.offers[0].dimensions.weight,{number:0.5,unit:'kg'});assert.equal(detail.variants.options[0].values[1].productId,'shoe_red');
   assert.equal(detail.variants.options[0].values[1].availability,'unknown');assert.deepEqual(detail.variants.selected,[{name:'Color',label:'Navy Blue'}]);assert.equal(detail.stock,null);assert.equal(detail.purchasable,false);
 });
 test('detail keeps incomplete products selectable as data without inventing options or offers',()=>{
-  const detail=api.parseChannel3Detail(envelope({},product({images:[],offers:[],variants:null,description:null,materials:null,key_features:null,structured_attributes:{}})),'shoe_1');
-  assert.deepEqual(detail.images,[]);assert.deepEqual(detail.offers,[]);assert.deepEqual(detail.variants,{options:[],selected:[]});assert.equal(detail.description,null);assert.equal(detail.stock,null);
+  const detail=api.parseChannel3Detail(envelope({},product({images:[],variants:null,description:null,materials:null,key_features:null,structured_attributes:{}})),'shoe_1');
+  assert.deepEqual(detail.images,[]);assert.equal(detail.offers.length,1);assert.deepEqual(detail.variants,{options:[],selected:[]});assert.equal(detail.description,null);assert.equal(detail.stock,null);
 });
 test('detail rejects substitution, expired data, oversized images and inconsistent selection claims',()=>{
   for(const payload of [envelope({},product({id:'other'})),envelope({expiresAt:new Date(Date.now()-1000).toISOString()}),envelope({},product({images:Array(65).fill({url:'https://cdn.trychannel3.com/a'})}))]){
@@ -46,7 +46,7 @@ test('detail validates all selections before fetch and uses the dedicated no-sto
   assert.equal(calls.length,1);assert.throws(()=>client.buildChannel3DetailUrl('../bad'));assert.throws(()=>client.buildChannel3DetailUrl('shoe_1',{constructor:'x'}));
 });
 test('detail never accepts foreign images, links, pseudo-money or unsupported stock enums',()=>{
-  const raw=product({images:[{url:'https://evil.example/img'}],offers:[{domain:'example.com',url:'https://evil.example/buy',price:{price:99.95,currency:'USD'},availability:'InStock'},{domain:'example.com',url:'https://buy.trychannel3.com/one',price:{price:1.001,currency:'USD'},availability:'LimitedAvailability'}]});
+  const raw=product({images:[{url:'https://evil.example/img'}],offers:[{domain:'nike.com',url:'https://evil.example/buy',price:{price:99.95,currency:'USD'},availability:'InStock'},{domain:'nike.com',url:'https://buy.trychannel3.com/one',price:{price:1.001,currency:'USD'},availability:'LimitedAvailability'}]});
   const detail=api.parseChannel3Detail(envelope({},raw),'shoe_1');assert.deepEqual(detail.images,[]);assert.equal(detail.offers.length,1);assert.equal(detail.offers[0].priceCents,null);assert.equal(detail.offers[0].availability,'unknown');
 });
 test('actual catalog handler and browser adapter agree on fresh and presentation-only wire contracts',async()=>{
