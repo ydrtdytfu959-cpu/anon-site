@@ -229,7 +229,7 @@
     if(!photo||new URL(photo).hostname.toLowerCase()!=="static.nike.com")return null;
     const name=localized(title,title);
     const category=categoryFor({category:title});
-    return {id:"cj-nike-"+id,slug:"cj-nike-"+id,officialUrl:url,name,brand:"Nike",category,kind:"product",currency:"USD",
+    return {id:"cj-nike-"+id,slug:"cj-nike-"+id,officialUrl:url,sourceIndex:index,name,brand:"Nike",category,kind:"product",currency:"USD",
       priceCents:null,compareAtPriceCents:null,presentationOnly:true,weightGrams:0,
       variantDetailsKnown:false,stock:null,variants:[],media:[{url:photo,alt:name,width:420,height:390}],
       description:localized(firstValue(raw.description,title),title),updatedAt:fetchedAt,
@@ -505,7 +505,9 @@
       }
     }
     const consumed=used[6]||0;
-    const nextJ=state.j+consumed;
+    const nextJ=cj?(consumed<cj.items.length?
+      (consumed?cj.items[consumed-1].sourceIndex+1:Math.min(state.j+24,5000)):
+      (cj.nextOffset??Math.min(state.j+24,5000))):state.j;
     const cjMore=cj?nextJ<5000&&(consumed<cj.items.length||cj.nextOffset!==null):state.jMore;
     // A source failure preserves its last cursor for an explicit later retry.
     const nextCursor=next.every(v=>v==="")&&!cjMore?null:JSON.stringify({
