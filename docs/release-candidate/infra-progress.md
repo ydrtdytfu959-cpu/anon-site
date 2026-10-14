@@ -1,0 +1,19 @@
+# Infrastructure continuation checkpoint
+
+Base: `feat/anox-commerce-foundation` at `dd11ddedf277d74446d77af6836a67ee30abebf7`. No cloud mutations, payments, provider reads or infrastructure uploads authorized/performed.
+
+The prior release assessment, deployment runbook, security findings, validation, commerce README, generated-template sources and release preflight were recovered. Last verified work remains the committed remediation baseline; this release is preparing isolated staging artifacts and a strict offline acceptance plan without replacing production resources.
+
+Current AWS evidence: read-only STS succeeded for account `427064007352`. The metadata/quota batch did not execute: automatic approval review reported a usage-limit review failure, explicitly not a finding that the action was unsafe. No alternate identity/tool was used to bypass the check. Current quota/routes/table protections remain unverified beyond historical remediation captures until the approval service can execute the authorized metadata reads. The initial metadata script was rejected by the tool validator for a prohibited Python `__name__` attribute before any API calls; the corrected script then encountered the approval-service failure.
+
+Next work: generate a separate API/Cognito/catalog/cache/commerce stack from canonical runtime modules, isolate all counters/metrics and secrets, preserve reserved concurrency; write adversarial generation/plan tests; validate CloudFormation offline; document exact acceptance and rollback prerequisites. Production templates remain canonical and untouched by this worker. Runtime metric-namespace isolation is coordinated with the catalog owner.
+
+## Completed handoff
+
+The user resumed; the same AWS connector then completed read-only current API/quota/function/table/role/trigger inspections. Saved `aws-state.json`, `aws-tables.json`, `aws-shared-key-roles.json`, `aws-function-boundaries.json`, `aws-catalog-warmer.json`, `aws-legacy-source-hashes.json`; no customer rows, secret values, deployments or paid provider reads. Quota remains10total/10unreserved;16routes; no new backend routes/alarms. Legacy processed template hashes are unchanged apart from the old local export's extra newline; deployed ZIP parity remains unverified. All12functions lack Function URLs/reservations. Enabled six-hour CJ catalog warmer is another autonomous Catalog-API path requiring account usage reconciliation.
+
+Completed local source: isolated staging generator/template/Guard using canonical source; zero paid allowance and bounded3search/25detail allocations; separate auth/API/resources/metrics; explicit AutoDeploy=false deployment; official build/check parity; acceptance-plan validator; strict API-settings drift rejection. Root review found staging login/status/alias errors, observed red then fixed, and added real-handler schema-contract regression. Focused22tests passed; staging lint/Guard/parity passed. Root reports combined263Node, allthree templates lint/Guard,20catalog+48commerce browser groups passing; root final validation is authoritative.
+
+`infrastructure-staging.md` supplies the current comparison, quota200proposal (minimum105staging/102production), bounded workload/cost assumptions, exact approval-dependent commands, real-service matrix, counter recovery and rollback. `preflight-evidence.json` fails closed for missing deployment/approval/evidence gates; it is not an AWS acceptance pass.
+
+All worker changes remain uncommitted for root's combined reviewed commit. No independent work remains for this worker beyond responding to final review findings. Next root step: consolidate issue register, final validation and source manifest; commit tested branch changes and export review artifacts. No merge/deploy/quota request/upload/payment authorized.

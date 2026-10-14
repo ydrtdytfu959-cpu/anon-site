@@ -1,0 +1,680 @@
+{
+  "status": "success",
+  "stdout": "",
+  "return_value": {
+    "capturedAt": "2026-10-13T23:34:14.230173+00:00",
+    "tables": {
+      "AnoX-Channel3-Catalog-CatalogCache-GGLNCMZC7CSK": {
+        "DescribeTable": {
+          "Table": {
+            "AttributeDefinitions": [
+              {
+                "AttributeName": "pk",
+                "AttributeType": "S"
+              }
+            ],
+            "TableName": "AnoX-Channel3-Catalog-CatalogCache-GGLNCMZC7CSK",
+            "KeySchema": [
+              {
+                "AttributeName": "pk",
+                "KeyType": "HASH"
+              }
+            ],
+            "TableStatus": "ACTIVE",
+            "CreationDateTime": "2026-10-08T04:06:44.901000+00:00",
+            "ProvisionedThroughput": {
+              "NumberOfDecreasesToday": 0,
+              "ReadCapacityUnits": 0,
+              "WriteCapacityUnits": 0
+            },
+            "TableSizeBytes": 0,
+            "ItemCount": 0,
+            "TableArn": "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Channel3-Catalog-CatalogCache-GGLNCMZC7CSK",
+            "TableId": "13259681-c213-4ad3-9591-2b2c5d495a45",
+            "BillingModeSummary": {
+              "BillingMode": "PAY_PER_REQUEST",
+              "LastUpdateToPayPerRequestDateTime": "2026-10-08T04:06:44.901000+00:00"
+            },
+            "SSEDescription": {
+              "Status": "ENABLED",
+              "SSEType": "KMS",
+              "KMSMasterKeyArn": "arn:aws:kms:us-east-2:427064007352:key/c0a9a56e-ac0c-4238-8425-6a4314dd94c0"
+            },
+            "DeletionProtectionEnabled": false,
+            "WarmThroughput": {
+              "ReadUnitsPerSecond": 12000,
+              "WriteUnitsPerSecond": 4000,
+              "Status": "ACTIVE"
+            }
+          }
+        },
+        "DescribeTimeToLive": {
+          "TimeToLiveDescription": {
+            "TimeToLiveStatus": "ENABLED",
+            "AttributeName": "expiresAt"
+          }
+        },
+        "DescribeContinuousBackups": {
+          "ContinuousBackupsDescription": {
+            "ContinuousBackupsStatus": "ENABLED",
+            "PointInTimeRecoveryDescription": {
+              "PointInTimeRecoveryStatus": "DISABLED"
+            }
+          }
+        }
+      },
+      "AnoX-Orders": {
+        "DescribeTable": {
+          "Table": {
+            "AttributeDefinitions": [
+              {
+                "AttributeName": "createdAt",
+                "AttributeType": "S"
+              },
+              {
+                "AttributeName": "orderId",
+                "AttributeType": "S"
+              },
+              {
+                "AttributeName": "userId",
+                "AttributeType": "S"
+              }
+            ],
+            "TableName": "AnoX-Orders",
+            "KeySchema": [
+              {
+                "AttributeName": "orderId",
+                "KeyType": "HASH"
+              }
+            ],
+            "TableStatus": "ACTIVE",
+            "CreationDateTime": "2026-09-12T01:34:35.125000+00:00",
+            "ProvisionedThroughput": {
+              "NumberOfDecreasesToday": 0,
+              "ReadCapacityUnits": 0,
+              "WriteCapacityUnits": 0
+            },
+            "TableSizeBytes": 13828,
+            "ItemCount": 13,
+            "TableArn": "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Orders",
+            "TableId": "9a15f0cb-c6c1-4bb8-b574-36ff07b2fd54",
+            "BillingModeSummary": {
+              "BillingMode": "PAY_PER_REQUEST",
+              "LastUpdateToPayPerRequestDateTime": "2026-09-12T01:34:35.125000+00:00"
+            },
+            "GlobalSecondaryIndexes": [
+              {
+                "IndexName": "UserOrdersByCreatedAt",
+                "KeySchema": [
+                  {
+                    "AttributeName": "userId",
+                    "KeyType": "HASH"
+                  },
+                  {
+                    "AttributeName": "createdAt",
+                    "KeyType": "RANGE"
+                  }
+                ],
+                "Projection": {
+                  "ProjectionType": "ALL"
+                },
+                "IndexStatus": "ACTIVE",
+                "ProvisionedThroughput": {
+                  "NumberOfDecreasesToday": 0,
+                  "ReadCapacityUnits": 0,
+                  "WriteCapacityUnits": 0
+                },
+                "IndexSizeBytes": 1368,
+                "ItemCount": 1,
+                "IndexArn": "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Orders/index/UserOrdersByCreatedAt",
+                "WarmThroughput": {
+                  "ReadUnitsPerSecond": 12000,
+                  "WriteUnitsPerSecond": 4000,
+                  "Status": "ACTIVE"
+                }
+              }
+            ],
+            "TableClassSummary": {
+              "TableClass": "STANDARD"
+            },
+            "DeletionProtectionEnabled": false,
+            "WarmThroughput": {
+              "ReadUnitsPerSecond": 12000,
+              "WriteUnitsPerSecond": 4000,
+              "Status": "ACTIVE"
+            }
+          }
+        },
+        "DescribeTimeToLive": {
+          "TimeToLiveDescription": {
+            "TimeToLiveStatus": "DISABLED"
+          }
+        },
+        "DescribeContinuousBackups": {
+          "ContinuousBackupsDescription": {
+            "ContinuousBackupsStatus": "ENABLED",
+            "PointInTimeRecoveryDescription": {
+              "PointInTimeRecoveryStatus": "ENABLED",
+              "RecoveryPeriodInDays": 35,
+              "EarliestRestorableDateTime": "2026-09-18T03:56:58+00:00",
+              "LatestRestorableDateTime": "2026-10-13T23:29:12.881000+00:00"
+            }
+          }
+        }
+      },
+      "AnoX-Payments": {
+        "DescribeTable": {
+          "Table": {
+            "AttributeDefinitions": [
+              {
+                "AttributeName": "orderId",
+                "AttributeType": "S"
+              },
+              {
+                "AttributeName": "paymentId",
+                "AttributeType": "S"
+              }
+            ],
+            "TableName": "AnoX-Payments",
+            "KeySchema": [
+              {
+                "AttributeName": "paymentId",
+                "KeyType": "HASH"
+              }
+            ],
+            "TableStatus": "ACTIVE",
+            "CreationDateTime": "2026-09-18T03:56:39.533000+00:00",
+            "ProvisionedThroughput": {
+              "NumberOfDecreasesToday": 0,
+              "ReadCapacityUnits": 0,
+              "WriteCapacityUnits": 0
+            },
+            "TableSizeBytes": 6859,
+            "ItemCount": 15,
+            "TableArn": "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Payments",
+            "TableId": "b665e807-f581-4707-93ff-063961b94c32",
+            "BillingModeSummary": {
+              "BillingMode": "PAY_PER_REQUEST",
+              "LastUpdateToPayPerRequestDateTime": "2026-09-18T03:56:39.533000+00:00"
+            },
+            "GlobalSecondaryIndexes": [
+              {
+                "IndexName": "OrderIdIndex",
+                "KeySchema": [
+                  {
+                    "AttributeName": "orderId",
+                    "KeyType": "HASH"
+                  }
+                ],
+                "Projection": {
+                  "ProjectionType": "ALL"
+                },
+                "IndexStatus": "ACTIVE",
+                "ProvisionedThroughput": {
+                  "NumberOfDecreasesToday": 0,
+                  "ReadCapacityUnits": 0,
+                  "WriteCapacityUnits": 0
+                },
+                "IndexSizeBytes": 6439,
+                "ItemCount": 15,
+                "IndexArn": "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Payments/index/OrderIdIndex",
+                "WarmThroughput": {
+                  "ReadUnitsPerSecond": 12000,
+                  "WriteUnitsPerSecond": 4000,
+                  "Status": "ACTIVE"
+                }
+              }
+            ],
+            "DeletionProtectionEnabled": false,
+            "WarmThroughput": {
+              "ReadUnitsPerSecond": 12000,
+              "WriteUnitsPerSecond": 4000,
+              "Status": "ACTIVE"
+            }
+          }
+        },
+        "DescribeTimeToLive": {
+          "TimeToLiveDescription": {
+            "TimeToLiveStatus": "ENABLED",
+            "AttributeName": "expiresAt"
+          }
+        },
+        "DescribeContinuousBackups": {
+          "ContinuousBackupsDescription": {
+            "ContinuousBackupsStatus": "ENABLED",
+            "PointInTimeRecoveryDescription": {
+              "PointInTimeRecoveryStatus": "ENABLED",
+              "RecoveryPeriodInDays": 35,
+              "EarliestRestorableDateTime": "2026-09-18T03:56:58+00:00",
+              "LatestRestorableDateTime": "2026-10-13T23:29:12.844000+00:00"
+            }
+          }
+        }
+      },
+      "AnoX-Products": {
+        "DescribeTable": {
+          "Table": {
+            "AttributeDefinitions": [
+              {
+                "AttributeName": "advertiserId",
+                "AttributeType": "S"
+              },
+              {
+                "AttributeName": "lastUpdated",
+                "AttributeType": "S"
+              },
+              {
+                "AttributeName": "productId",
+                "AttributeType": "S"
+              }
+            ],
+            "TableName": "AnoX-Products",
+            "KeySchema": [
+              {
+                "AttributeName": "productId",
+                "KeyType": "HASH"
+              }
+            ],
+            "TableStatus": "ACTIVE",
+            "CreationDateTime": "2026-09-22T04:09:11.546000+00:00",
+            "ProvisionedThroughput": {
+              "NumberOfDecreasesToday": 0,
+              "ReadCapacityUnits": 0,
+              "WriteCapacityUnits": 0
+            },
+            "TableSizeBytes": 1328541,
+            "ItemCount": 898,
+            "TableArn": "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Products",
+            "TableId": "95eaf70c-f497-43bc-899d-cb415e3727a9",
+            "BillingModeSummary": {
+              "BillingMode": "PAY_PER_REQUEST",
+              "LastUpdateToPayPerRequestDateTime": "2026-09-22T04:09:11.546000+00:00"
+            },
+            "GlobalSecondaryIndexes": [
+              {
+                "IndexName": "AdvertiserUpdatedIndex",
+                "KeySchema": [
+                  {
+                    "AttributeName": "advertiserId",
+                    "KeyType": "HASH"
+                  },
+                  {
+                    "AttributeName": "lastUpdated",
+                    "KeyType": "RANGE"
+                  }
+                ],
+                "Projection": {
+                  "ProjectionType": "ALL"
+                },
+                "IndexStatus": "ACTIVE",
+                "ProvisionedThroughput": {
+                  "NumberOfDecreasesToday": 0,
+                  "ReadCapacityUnits": 0,
+                  "WriteCapacityUnits": 0
+                },
+                "IndexSizeBytes": 1328541,
+                "ItemCount": 898,
+                "IndexArn": "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Products/index/AdvertiserUpdatedIndex",
+                "WarmThroughput": {
+                  "ReadUnitsPerSecond": 12000,
+                  "WriteUnitsPerSecond": 4000,
+                  "Status": "ACTIVE"
+                }
+              }
+            ],
+            "SSEDescription": {
+              "Status": "ENABLED",
+              "SSEType": "KMS",
+              "KMSMasterKeyArn": "arn:aws:kms:us-east-2:427064007352:key/c0a9a56e-ac0c-4238-8425-6a4314dd94c0"
+            },
+            "DeletionProtectionEnabled": false,
+            "WarmThroughput": {
+              "ReadUnitsPerSecond": 12000,
+              "WriteUnitsPerSecond": 4000,
+              "Status": "ACTIVE"
+            }
+          }
+        },
+        "DescribeTimeToLive": {
+          "TimeToLiveDescription": {
+            "TimeToLiveStatus": "DISABLED"
+          }
+        },
+        "DescribeContinuousBackups": {
+          "ContinuousBackupsDescription": {
+            "ContinuousBackupsStatus": "ENABLED",
+            "PointInTimeRecoveryDescription": {
+              "PointInTimeRecoveryStatus": "ENABLED",
+              "RecoveryPeriodInDays": 35,
+              "EarliestRestorableDateTime": "2026-09-22T04:09:32+00:00",
+              "LatestRestorableDateTime": "2026-10-13T23:29:13.887000+00:00"
+            }
+          }
+        }
+      },
+      "AnoX-Shipments": {
+        "DescribeTable": {
+          "Table": {
+            "AttributeDefinitions": [
+              {
+                "AttributeName": "orderId",
+                "AttributeType": "S"
+              },
+              {
+                "AttributeName": "shipmentId",
+                "AttributeType": "S"
+              }
+            ],
+            "TableName": "AnoX-Shipments",
+            "KeySchema": [
+              {
+                "AttributeName": "shipmentId",
+                "KeyType": "HASH"
+              }
+            ],
+            "TableStatus": "ACTIVE",
+            "CreationDateTime": "2026-09-18T03:56:39.878000+00:00",
+            "ProvisionedThroughput": {
+              "NumberOfDecreasesToday": 0,
+              "ReadCapacityUnits": 0,
+              "WriteCapacityUnits": 0
+            },
+            "TableSizeBytes": 3595,
+            "ItemCount": 1,
+            "TableArn": "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Shipments",
+            "TableId": "0fc27db6-b4a2-4937-b2ed-e7bc8285c951",
+            "BillingModeSummary": {
+              "BillingMode": "PAY_PER_REQUEST",
+              "LastUpdateToPayPerRequestDateTime": "2026-09-18T03:56:39.878000+00:00"
+            },
+            "GlobalSecondaryIndexes": [
+              {
+                "IndexName": "OrderIdIndex",
+                "KeySchema": [
+                  {
+                    "AttributeName": "orderId",
+                    "KeyType": "HASH"
+                  }
+                ],
+                "Projection": {
+                  "ProjectionType": "ALL"
+                },
+                "IndexStatus": "ACTIVE",
+                "ProvisionedThroughput": {
+                  "NumberOfDecreasesToday": 0,
+                  "ReadCapacityUnits": 0,
+                  "WriteCapacityUnits": 0
+                },
+                "IndexSizeBytes": 3595,
+                "ItemCount": 1,
+                "IndexArn": "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Shipments/index/OrderIdIndex",
+                "WarmThroughput": {
+                  "ReadUnitsPerSecond": 12000,
+                  "WriteUnitsPerSecond": 4000,
+                  "Status": "ACTIVE"
+                }
+              }
+            ],
+            "DeletionProtectionEnabled": false,
+            "WarmThroughput": {
+              "ReadUnitsPerSecond": 12000,
+              "WriteUnitsPerSecond": 4000,
+              "Status": "ACTIVE"
+            }
+          }
+        },
+        "DescribeTimeToLive": {
+          "TimeToLiveDescription": {
+            "TimeToLiveStatus": "DISABLED"
+          }
+        },
+        "DescribeContinuousBackups": {
+          "ContinuousBackupsDescription": {
+            "ContinuousBackupsStatus": "ENABLED",
+            "PointInTimeRecoveryDescription": {
+              "PointInTimeRecoveryStatus": "ENABLED",
+              "RecoveryPeriodInDays": 35,
+              "EarliestRestorableDateTime": "2026-09-18T03:56:59+00:00",
+              "LatestRestorableDateTime": "2026-10-13T23:29:14.030000+00:00"
+            }
+          }
+        }
+      },
+      "AnoX-TrackingEvents": {
+        "DescribeTable": {
+          "Table": {
+            "AttributeDefinitions": [
+              {
+                "AttributeName": "eventAt",
+                "AttributeType": "S"
+              },
+              {
+                "AttributeName": "shipmentId",
+                "AttributeType": "S"
+              }
+            ],
+            "TableName": "AnoX-TrackingEvents",
+            "KeySchema": [
+              {
+                "AttributeName": "shipmentId",
+                "KeyType": "HASH"
+              },
+              {
+                "AttributeName": "eventAt",
+                "KeyType": "RANGE"
+              }
+            ],
+            "TableStatus": "ACTIVE",
+            "CreationDateTime": "2026-09-18T03:56:40.363000+00:00",
+            "ProvisionedThroughput": {
+              "NumberOfDecreasesToday": 0,
+              "ReadCapacityUnits": 0,
+              "WriteCapacityUnits": 0
+            },
+            "TableSizeBytes": 1239,
+            "ItemCount": 4,
+            "TableArn": "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-TrackingEvents",
+            "TableId": "323cea5d-2e03-4886-b0b7-bbaf75053c3e",
+            "BillingModeSummary": {
+              "BillingMode": "PAY_PER_REQUEST",
+              "LastUpdateToPayPerRequestDateTime": "2026-09-18T03:56:40.363000+00:00"
+            },
+            "DeletionProtectionEnabled": false,
+            "WarmThroughput": {
+              "ReadUnitsPerSecond": 12000,
+              "WriteUnitsPerSecond": 4000,
+              "Status": "ACTIVE"
+            }
+          }
+        },
+        "DescribeTimeToLive": {
+          "TimeToLiveDescription": {
+            "TimeToLiveStatus": "DISABLED"
+          }
+        },
+        "DescribeContinuousBackups": {
+          "ContinuousBackupsDescription": {
+            "ContinuousBackupsStatus": "ENABLED",
+            "PointInTimeRecoveryDescription": {
+              "PointInTimeRecoveryStatus": "ENABLED",
+              "RecoveryPeriodInDays": 35,
+              "EarliestRestorableDateTime": "2026-09-18T03:56:59+00:00",
+              "LatestRestorableDateTime": "2026-10-13T23:29:13.933000+00:00"
+            }
+          }
+        }
+      },
+      "AnoX-Users": {
+        "DescribeTable": {
+          "Table": {
+            "AttributeDefinitions": [
+              {
+                "AttributeName": "userId",
+                "AttributeType": "S"
+              }
+            ],
+            "TableName": "AnoX-Users",
+            "KeySchema": [
+              {
+                "AttributeName": "userId",
+                "KeyType": "HASH"
+              }
+            ],
+            "TableStatus": "ACTIVE",
+            "CreationDateTime": "2026-09-18T03:56:39.200000+00:00",
+            "ProvisionedThroughput": {
+              "NumberOfDecreasesToday": 0,
+              "ReadCapacityUnits": 0,
+              "WriteCapacityUnits": 0
+            },
+            "TableSizeBytes": 295,
+            "ItemCount": 2,
+            "TableArn": "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Users",
+            "TableId": "213f4b77-9a0a-456e-b4d8-3ef61ec93e9e",
+            "BillingModeSummary": {
+              "BillingMode": "PAY_PER_REQUEST",
+              "LastUpdateToPayPerRequestDateTime": "2026-09-18T03:56:39.200000+00:00"
+            },
+            "DeletionProtectionEnabled": false,
+            "WarmThroughput": {
+              "ReadUnitsPerSecond": 12000,
+              "WriteUnitsPerSecond": 4000,
+              "Status": "ACTIVE"
+            }
+          }
+        },
+        "DescribeTimeToLive": {
+          "TimeToLiveDescription": {
+            "TimeToLiveStatus": "DISABLED"
+          }
+        },
+        "DescribeContinuousBackups": {
+          "ContinuousBackupsDescription": {
+            "ContinuousBackupsStatus": "ENABLED",
+            "PointInTimeRecoveryDescription": {
+              "PointInTimeRecoveryStatus": "ENABLED",
+              "RecoveryPeriodInDays": 35,
+              "EarliestRestorableDateTime": "2026-09-18T03:56:58+00:00",
+              "LatestRestorableDateTime": "2026-10-13T23:29:14.155000+00:00"
+            }
+          }
+        }
+      }
+    }
+  },
+  "api_calls": [
+    {
+      "service": "dynamodb",
+      "operation": "ListTables",
+      "status": "success",
+      "n_items": {
+        "TableNames": 7
+      }
+    },
+    {
+      "service": "dynamodb",
+      "operation": "DescribeTable",
+      "status": "success"
+    },
+    {
+      "service": "dynamodb",
+      "operation": "DescribeTimeToLive",
+      "status": "success"
+    },
+    {
+      "service": "dynamodb",
+      "operation": "DescribeContinuousBackups",
+      "status": "success"
+    },
+    {
+      "service": "dynamodb",
+      "operation": "DescribeTable",
+      "status": "success"
+    },
+    {
+      "service": "dynamodb",
+      "operation": "DescribeTimeToLive",
+      "status": "success"
+    },
+    {
+      "service": "dynamodb",
+      "operation": "DescribeContinuousBackups",
+      "status": "success"
+    },
+    {
+      "service": "dynamodb",
+      "operation": "DescribeTable",
+      "status": "success"
+    },
+    {
+      "service": "dynamodb",
+      "operation": "DescribeTimeToLive",
+      "status": "success"
+    },
+    {
+      "service": "dynamodb",
+      "operation": "DescribeContinuousBackups",
+      "status": "success"
+    },
+    {
+      "service": "dynamodb",
+      "operation": "DescribeTable",
+      "status": "success"
+    },
+    {
+      "service": "dynamodb",
+      "operation": "DescribeTimeToLive",
+      "status": "success"
+    },
+    {
+      "service": "dynamodb",
+      "operation": "DescribeContinuousBackups",
+      "status": "success"
+    },
+    {
+      "service": "dynamodb",
+      "operation": "DescribeTable",
+      "status": "success"
+    },
+    {
+      "service": "dynamodb",
+      "operation": "DescribeTimeToLive",
+      "status": "success"
+    },
+    {
+      "service": "dynamodb",
+      "operation": "DescribeContinuousBackups",
+      "status": "success"
+    },
+    {
+      "service": "dynamodb",
+      "operation": "DescribeTable",
+      "status": "success"
+    },
+    {
+      "service": "dynamodb",
+      "operation": "DescribeTimeToLive",
+      "status": "success"
+    },
+    {
+      "service": "dynamodb",
+      "operation": "DescribeContinuousBackups",
+      "status": "success"
+    },
+    {
+      "service": "dynamodb",
+      "operation": "DescribeTable",
+      "status": "success"
+    },
+    {
+      "service": "dynamodb",
+      "operation": "DescribeTimeToLive",
+      "status": "success"
+    },
+    {
+      "service": "dynamodb",
+      "operation": "DescribeContinuousBackups",
+      "status": "success"
+    }
+  ]
+}

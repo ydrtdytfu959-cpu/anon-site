@@ -1,0 +1,68 @@
+{
+  "checkedAt": "2026-10-13T01:54:45.181Z",
+  "scope": "Unauthenticated read/rejection/preflight probes only; no secrets, valid cart, payment or customer data; no cache-miss search",
+  "checks": [
+    {
+      "method": "GET",
+      "path": "/commerce/capabilities",
+      "status": 404,
+      "allowOrigin": null,
+      "allowHeaders": null,
+      "cacheControl": null,
+      "errorCode": "Not Found"
+    },
+    {
+      "method": "GET",
+      "path": "/catalog/channel3/products/anox-audit-missing",
+      "status": 404,
+      "allowOrigin": null,
+      "allowHeaders": null,
+      "cacheControl": null,
+      "errorCode": "Not Found"
+    },
+    {
+      "method": "GET",
+      "path": "/orders",
+      "status": 401,
+      "allowOrigin": "https://anox.app",
+      "allowHeaders": null,
+      "cacheControl": null,
+      "errorCode": "Unauthorized"
+    },
+    {
+      "method": "GET",
+      "path": "/payments",
+      "status": 401,
+      "allowOrigin": "https://anox.app",
+      "allowHeaders": null,
+      "cacheControl": null,
+      "errorCode": "Unauthorized"
+    },
+    {
+      "method": "POST",
+      "path": "/checkout-auth",
+      "status": 401,
+      "allowOrigin": "https://anox.app",
+      "allowHeaders": null,
+      "cacheControl": null,
+      "errorCode": "Unauthorized"
+    },
+    {
+      "method": "GET",
+      "path": "/catalog/search?page_token=anox-audit-unissued-token",
+      "status": 400,
+      "allowOrigin": "https://anox.app",
+      "allowHeaders": null,
+      "cacheControl": "no-store",
+      "errorCode": "INVALID_QUERY"
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/commerce/quotes",
+      "status": 204,
+      "allowOrigin": null,
+      "allowHeaders": null,
+      "cacheControl": null
+    }
+  ]
+}

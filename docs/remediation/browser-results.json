@@ -1,0 +1,381 @@
+{
+  "scope": "Local complete HTML and CSP, intercepted external network, commerce handler with transactional memory fixtures; not live AWS or payment proof",
+  "suites": [
+    {
+      "checks": [
+        {
+          "engine": "chromium",
+          "name": "empty storefront requests one lazy discovery section",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "name": "three pages render with stable deduplication and one image per card",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "name": "sections have independent results and retain their own pagination",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "name": "search resets cursor; stale responses cannot replace new results",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "name": "expired cursor keeps products and requires explicit restart",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "name": "upstream error offers deliberate retry without request loops",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "name": "browser runtime and production CSP remain valid",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "name": "existing self-tests: 135/135",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "name": "empty storefront requests one lazy discovery section",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "name": "three pages render with stable deduplication and one image per card",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "name": "sections have independent results and retain their own pagination",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "name": "search resets cursor; stale responses cannot replace new results",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "name": "expired cursor keeps products and requires explicit restart",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "name": "upstream error offers deliberate retry without request loops",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "name": "browser runtime and production CSP remain valid",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "name": "existing self-tests: 135/135",
+          "pass": true
+        }
+      ]
+    },
+    {
+      "checks": [
+        {
+          "engine": "chromium",
+          "mobile": false,
+          "name": "absent staged capabilities endpoint keeps quote/payment unavailable and never falls back to legacy checkout",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": false,
+          "name": "direct PDP hydration, full gallery, keyboard/swipe, real option refresh and safe saved metadata",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": false,
+          "name": "cart restores, edits, requests authenticated server quote and leaves unknown costs and payment unavailable",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": false,
+          "name": "cart edits and sign-out discard pending quotes and protected data",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": false,
+          "name": "relaxed options and missing requested merchant require deliberate acceptance",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": false,
+          "name": "merchant reload, distinct variant identity, ambiguous offers and unknown selected availability remain explicit",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": false,
+          "name": "failed gallery image recovers on explicit thumbnail retry without another product request",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": false,
+          "name": "incomplete data, deliberate error retry and late navigation response remain safe",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": false,
+          "name": "expiry clears price, availability and rotating offer URL without an upstream polling loop",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": false,
+          "name": "owned order route uses server payment state and rejects foreign or unsigned access",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": false,
+          "name": "explicit browser-data clearing erases the production cart through its serialized API",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": false,
+          "name": "responsive layout, runtime and strict production CSP pass",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": true,
+          "name": "absent staged capabilities endpoint keeps quote/payment unavailable and never falls back to legacy checkout",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": true,
+          "name": "direct PDP hydration, full gallery, keyboard/swipe, real option refresh and safe saved metadata",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": true,
+          "name": "cart restores, edits, requests authenticated server quote and leaves unknown costs and payment unavailable",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": true,
+          "name": "cart edits and sign-out discard pending quotes and protected data",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": true,
+          "name": "relaxed options and missing requested merchant require deliberate acceptance",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": true,
+          "name": "merchant reload, distinct variant identity, ambiguous offers and unknown selected availability remain explicit",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": true,
+          "name": "failed gallery image recovers on explicit thumbnail retry without another product request",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": true,
+          "name": "incomplete data, deliberate error retry and late navigation response remain safe",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": true,
+          "name": "expiry clears price, availability and rotating offer URL without an upstream polling loop",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": true,
+          "name": "owned order route uses server payment state and rejects foreign or unsigned access",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": true,
+          "name": "explicit browser-data clearing erases the production cart through its serialized API",
+          "pass": true
+        },
+        {
+          "engine": "chromium",
+          "mobile": true,
+          "name": "responsive layout, runtime and strict production CSP pass",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": false,
+          "name": "absent staged capabilities endpoint keeps quote/payment unavailable and never falls back to legacy checkout",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": false,
+          "name": "direct PDP hydration, full gallery, keyboard/swipe, real option refresh and safe saved metadata",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": false,
+          "name": "cart restores, edits, requests authenticated server quote and leaves unknown costs and payment unavailable",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": false,
+          "name": "cart edits and sign-out discard pending quotes and protected data",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": false,
+          "name": "relaxed options and missing requested merchant require deliberate acceptance",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": false,
+          "name": "merchant reload, distinct variant identity, ambiguous offers and unknown selected availability remain explicit",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": false,
+          "name": "failed gallery image recovers on explicit thumbnail retry without another product request",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": false,
+          "name": "incomplete data, deliberate error retry and late navigation response remain safe",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": false,
+          "name": "expiry clears price, availability and rotating offer URL without an upstream polling loop",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": false,
+          "name": "owned order route uses server payment state and rejects foreign or unsigned access",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": false,
+          "name": "explicit browser-data clearing erases the production cart through its serialized API",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": false,
+          "name": "responsive layout, runtime and strict production CSP pass",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": true,
+          "name": "absent staged capabilities endpoint keeps quote/payment unavailable and never falls back to legacy checkout",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": true,
+          "name": "direct PDP hydration, full gallery, keyboard/swipe, real option refresh and safe saved metadata",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": true,
+          "name": "cart restores, edits, requests authenticated server quote and leaves unknown costs and payment unavailable",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": true,
+          "name": "cart edits and sign-out discard pending quotes and protected data",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": true,
+          "name": "relaxed options and missing requested merchant require deliberate acceptance",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": true,
+          "name": "merchant reload, distinct variant identity, ambiguous offers and unknown selected availability remain explicit",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": true,
+          "name": "failed gallery image recovers on explicit thumbnail retry without another product request",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": true,
+          "name": "incomplete data, deliberate error retry and late navigation response remain safe",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": true,
+          "name": "expiry clears price, availability and rotating offer URL without an upstream polling loop",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": true,
+          "name": "owned order route uses server payment state and rejects foreign or unsigned access",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": true,
+          "name": "explicit browser-data clearing erases the production cart through its serialized API",
+          "pass": true
+        },
+        {
+          "engine": "firefox",
+          "mobile": true,
+          "name": "responsive layout, runtime and strict production CSP pass",
+          "pass": true
+        }
+      ]
+    }
+  ]
+}

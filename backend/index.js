@@ -1,8 +1,10 @@
 'use strict';
 const {createHash, randomUUID} = require('node:crypto');
 
-const VERSION = 1;
+// Version 2 deliberately expires pre-policy cache/cursor identities; spending keys stay period-only.
+const VERSION = 2;
 const SEARCH_TTL = 300_000, DISCOVERY_TTL = 600_000, CURSOR_TTL = 1_800_000;
+const DETAIL_TTL = 30_000, PRESENTATION_TTL = 3_600_000, MAX_DETAIL_BYTES = 256 * 1024;
 const MAX_PAGE_BYTES = 300 * 1024, MAX_UPSTREAM_BYTES = 2 * 1024 * 1024;
 const LEASE_MS = 25_000; // Longer than the Lambda's 20s invocation deadline.
 const SECTIONS = Object.freeze({
@@ -66,7 +68,151 @@ function parseRequest(event) {
   const key = 'page#' + hash([VERSION, contextHash, token ?? null]);
   return {mode, query, filters, limit, token, contextHash, key, ttl: q ? SEARCH_TTL : DISCOVERY_TTL};
 }
-function sanitizeProduct(input) {
+const detailId = value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,80}$/.test(value);
+const optionText = (value, max) => typeof value === 'string' && value.trim().length > 0 && value.length <= max && value.isWellFormed() && !/[\u0000-\u001f\u007f-\u009f]/.test(value);
+function detailOptions(input = {}) {
+  if (!object(input) || Object.keys(input).length > 8) fail(400, 'INVALID_OPTIONS');
+  const output = {};
+  for (const name of Object.keys(input).sort()) {
+    if (!optionText(name, 60) || ['__proto__', 'constructor', 'prototype'].includes(name) || !optionText(input[name], 80)) fail(400, 'INVALID_OPTIONS');
+    output[name] = input[name];
+  }
+  return output;
+}
+function parseDetail(event, startedAt) {
+  let productId, options, internal = false;
+  if (Object.hasOwn(event, 'operation')) {
+    if (event.operation !== 'commerce.product' || Object.keys(event).some(key => !['operation', 'productId', 'options'].includes(key))) fail(400, 'INVALID_OPERATION');
+    internal = true; productId = event.productId; options = detailOptions(event.options);
+  } else {
+    if (event?.requestContext?.http?.method !== 'GET') fail(405, 'METHOD_NOT_ALLOWED');
+    productId = /^\/catalog\/channel3\/products\/([A-Za-z0-9_-]{1,80})$/.exec(event.rawPath)?.[1];
+    let params = event.queryStringParameters || {};
+    if (typeof event.rawQueryString === 'string') {
+      if (Buffer.byteLength(event.rawQueryString) > 4096) fail(400, 'INVALID_OPTIONS');
+      try {decodeURIComponent(event.rawQueryString.replace(/\+/g, ' '));} catch {fail(400, 'INVALID_OPTIONS');}
+      params = Object.create(null);
+      for (const [key, value] of new URLSearchParams(event.rawQueryString)) {
+        if (Object.hasOwn(params, key)) fail(400, 'INVALID_OPTIONS');
+        params[key] = value;
+      }
+    }
+    if (!object(params)) fail(400, 'INVALID_OPTIONS');
+    const selected = Object.create(null);
+    for (const [key, value] of Object.entries(params)) {
+      if (!key.startsWith('option_')) fail(400, 'INVALID_OPTIONS');
+      selected[key.slice(7)] = value;
+    }
+    options = detailOptions(selected);
+  }
+  if (!detailId(productId)) fail(400, 'INVALID_PRODUCT');
+  const contextHash = hash([VERSION, 'channel3-detail', productId, options]);
+  return {mode:'detail', productId, options, internal, startedAt, contextHash, key:'detail#' + contextHash, presentationKey:'presentation#' + contextHash};
+}
+function detailText(value, max, required = false) {
+  if (value === undefined || value === null) {if (required) fail(502, 'UPSTREAM_INVALID'); return null;}
+  if (typeof value !== 'string' || value.length > max || !value.isWellFormed() || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value) || required && !value.trim()) fail(502, 'UPSTREAM_INVALID');
+  return value;
+}
+function detailArray(value, max) {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value) || value.length > max) fail(502, 'UPSTREAM_INVALID');
+  return value;
+}
+const availability = value => ['InStock', 'OutOfStock'].includes(value) ? value : null;
+const usdAmount = value => typeof value === 'number' && value >= 0 && value <= 1e6 && /^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(String(value)) ? value : null;
+function detailDimensions(value) {
+  if (!object(value)) return null;
+  return Object.fromEntries(['length', 'width', 'height', 'weight'].map(name => {
+    const field = value[name], units = name === 'weight' ? ['mg', 'g', 'kg', 'oz', 'lb'] : ['mm', 'cm', 'm', 'in', 'ft'];
+    return [name, object(field) && typeof field.number === 'number' && Number.isFinite(field.number) && field.number > 0 && field.number <= 1e9 && units.includes(field.unit) ? {number:field.number, unit:field.unit} : null];
+  }));
+}
+function sanitizeDetail(input, productId, trustedCache = false) {
+  if (!object(input) || input.id !== productId) fail(502, 'UPSTREAM_INVALID');
+  const output = {id:productId, title:detailText(input.title, 200, true), description:detailText(input.description, 60000)};
+  output.brands = detailArray(input.brands, 16).filter(object).map(brand => ({id:detailText(brand.id, 200, true), name:detailText(brand.name, 100, true)}));
+  output.images = detailArray(input.images, 64).filter(object).flatMap(image => {
+    const url = safeUrl(image.url, 'cdn.trychannel3.com');
+    return url ? [{url, cleaned_url:safeUrl(image.cleaned_url, 'cdn.trychannel3.com') || null, alt_text:detailText(image.alt_text, 500), is_main_image:image.is_main_image === true, shot_type:detailText(image.shot_type, 40)}] : [];
+  });
+  const category = input.category;
+  output.category = object(category) ? {slug:detailText(category.slug, 100), title:detailText(category.title, 100), path:detailArray(category.path, 16).filter(object).map(part => ({slug:detailText(part.slug, 100), title:detailText(part.title, 100)})), has_children:typeof category.has_children === 'boolean' ? category.has_children : null} : null;
+  output.gender = ['male', 'female'].includes(input.gender) ? input.gender : null;
+  output.age = ['newborn', 'infant', 'toddler', 'kids', 'adult'].includes(input.age) ? input.age : null;
+  for (const name of ['materials', 'key_features']) output[name] = detailArray(input[name], 64).map(value => detailText(value, 2000, true));
+  const attributes = input.structured_attributes ?? {};
+  if (!object(attributes) || Object.keys(attributes).length > 64) fail(502, 'UPSTREAM_INVALID');
+  output.structured_attributes = Object.create(null);
+  for (const [name, values] of Object.entries(attributes)) {
+    if (!optionText(name, 80) || ['__proto__', 'constructor', 'prototype'].includes(name)) fail(502, 'UPSTREAM_INVALID');
+    output.structured_attributes[name] = detailArray(values, 64).map(value => detailText(value, 1000, true));
+  }
+  output.offers = detailArray(input.offers, 64).filter(object).flatMap(offer => {
+    const url = safeUrl(offer.url, 'buy.trychannel3.com'), domain = typeof offer.domain === 'string' ? offer.domain.toLowerCase() : '';
+    if (!url || domain.length > 253 || !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(domain)) return [];
+    const amount = offer.price?.currency === 'USD' ? usdAmount(offer.price.price) : null;
+    return [{url, domain, price:amount === null ? null : {price:amount, currency:'USD', compare_at_price:usdAmount(offer.price.compare_at_price)}, availability:availability(offer.availability), condition:['new', 'used'].includes(offer.condition) ? offer.condition : null,
+      max_commission_rate:typeof offer.max_commission_rate === 'number' && offer.max_commission_rate >= 0 && offer.max_commission_rate <= 1 ? offer.max_commission_rate : null, dimensions:detailDimensions(offer.dimensions)}];
+  });
+  // Persist source-proven official seller identity across read-only
+  // presentation fallback, but never preserve stale prices or purchase links.
+  const officialHosts=new Set(['nike.com','www.nike.com','adidas.com','www.adidas.com',
+    'levi.com','www.levi.com','elfcosmetics.com','www.elfcosmetics.com',
+    'sephora.com','www.sephora.com','tjmaxx.com','www.tjmaxx.com',
+    'tjmaxx.tjx.com','www.tjmaxx.tjx.com']);
+  const sources=trustedCache&&Array.isArray(input.sellerDomains)
+    ? input.sellerDomains.slice(0,6).filter(domain=>typeof domain==='string'&&officialHosts.has(domain))
+    : output.offers.filter(offer=>officialHosts.has(offer.domain)).map(offer=>offer.domain);
+  output.sellerDomains=[...new Set(sources)].slice(0,6);
+  output.variants = null;
+  if (input.variants !== undefined && input.variants !== null) {
+    if (!object(input.variants)) fail(502, 'UPSTREAM_INVALID');
+    const names = new Set();
+    const options = detailArray(input.variants.options, 8).map(option => {
+      if (!object(option) || !optionText(option.name, 60) || names.has(option.name) || ['__proto__', 'constructor', 'prototype'].includes(option.name)) fail(502, 'UPSTREAM_INVALID');
+      names.add(option.name); const labels = new Set();
+      return {name:option.name, values:detailArray(option.values, 120).map(value => {
+        if (!object(value) || !optionText(value.label, 80) || labels.has(value.label) || typeof value.exists !== 'boolean') fail(502, 'UPSTREAM_INVALID');
+        labels.add(value.label);
+        return {label:value.label, exists:value.exists, available:availability(value.available), thumbnail_url:safeUrl(value.thumbnail_url, 'cdn.trychannel3.com') || null, product_id:detailId(value.product_id) ? value.product_id : null};
+      })};
+    });
+    const selectedNames = new Set();
+    const selected = detailArray(input.variants.selected, 8).map(value => {
+      const option = object(value) && options.find(option => option.name === value.name);
+      if (!option || selectedNames.has(value.name) || !option.values.some(entry => entry.label === value.label)) fail(502, 'UPSTREAM_INVALID');
+      selectedNames.add(value.name); return {name:value.name, label:value.label};
+    });
+    output.variants = {options, selected};
+  }
+  if (Buffer.byteLength(JSON.stringify(output)) > MAX_DETAIL_BYTES) fail(502, 'UPSTREAM_INVALID');
+  return output;
+}
+function mismatches(product, options) {
+  const effective = new Map((product.variants?.selected || []).map(value => [value.name, value.label]));
+  return Object.entries(options).filter(([name, label]) => effective.get(name) !== label).map(([name, requested]) => ({name, requested, effective:effective.get(name) ?? null}));
+}
+function presentation(product) {
+  const result = structuredClone(product); result.offers = [];
+  for (const option of result.variants?.options || []) for (const value of option.values) value.available = null;
+  return result;
+}
+function validateDetailRow(row, request, kind, now) {
+  if (row == null) return null;
+  try {
+    const payload = row.payload, ttl = kind === 'detail' ? DETAIL_TTL : PRESENTATION_TTL;
+    if (row.kind !== kind || row.version !== VERSION || row.contextHash !== request.contextHash || !object(payload) || Object.keys(payload).some(key => !['provider', 'data', 'fetchedAt', 'expiresAt', 'status', 'error', 'selectionMismatch'].includes(key)) || payload.provider !== 'channel3' || !object(payload.data) || Object.keys(payload.data).length !== 1) throw Error();
+    const fetched = Date.parse(payload.fetchedAt), expires = Date.parse(payload.expiresAt);
+    if (!Number.isFinite(fetched) || !Number.isFinite(expires) || fetched > now + 60000 || expires - fetched !== ttl || row.expiresAtMs !== expires) throw Error();
+    const product = sanitizeDetail(payload.data.product, request.productId, true);
+    if (JSON.stringify(product) !== JSON.stringify(payload.data.product) || JSON.stringify(mismatches(product, request.options)) !== JSON.stringify(payload.selectionMismatch) || Buffer.byteLength(JSON.stringify(payload)) > MAX_DETAIL_BYTES) throw Error();
+    if (kind === 'presentation' && (payload.status !== 'presentation_only' || payload.error !== 'DETAIL_REFRESH_UNAVAILABLE' || JSON.stringify(presentation(product)) !== JSON.stringify(product))) throw Error();
+    if (kind === 'detail' && (payload.status !== 'fresh' || payload.error !== null)) throw Error();
+    return expires > now && (kind === 'presentation' || fetched > request.startedAt) ? payload : null;
+  } catch {fail(503, 'CACHE_UNAVAILABLE');}
+}
+function sanitizeProduct(input, trustedCache = false) {
   if (!object(input) || typeof input.id !== 'string' || !/^[A-Za-z0-9_-]{1,80}$/.test(input.id) || typeof input.title !== 'string' || !input.title.trim() || input.title.length > 200) return null;
   const output = {id: input.id, title: input.title, description: cleanString(input.description, 2000)};
   output.brands = (Array.isArray(input.brands) ? input.brands : []).slice(0, 4).filter(object).map(brand => ({id: cleanString(brand.id, 200), name: cleanString(brand.name, 100)}));
@@ -74,27 +220,30 @@ function sanitizeProduct(input) {
   output.images = url ? [{url, alt_text: cleanString(image.alt_text, 200)}] : [];
   const category = object(input.category) ? input.category : {};
   output.category = {slug: cleanString(category.slug, 100), title: cleanString(category.title, 100), path: (Array.isArray(category.path) ? category.path : []).slice(0, 6).filter(object).map(part => ({slug: cleanString(part.slug, 100), title: cleanString(part.title, 100)}))};
-  output.offers = (Array.isArray(input.offers) ? input.offers : []).slice(0, 8).filter(object).flatMap(offer => {
-    const url = safeUrl(offer.url, 'buy.trychannel3.com'), price = offer.price;
-    if (!url || !object(price) || typeof price.price !== 'number' || !Number.isFinite(price.price) || price.price < 0 || price.price > 1e9 || price.currency !== 'USD') return [];
-    const clean = {url, domain: cleanString(offer.domain, 200), price: {price: price.price, currency: 'USD'}, availability: cleanString(offer.availability, 40), condition: cleanString(offer.condition, 40)};
-    if (typeof price.compare_at_price === 'number' && Number.isFinite(price.compare_at_price) && price.compare_at_price >= 0 && price.compare_at_price <= 1e9) clean.price.compare_at_price = price.compare_at_price;
-    return [clean];
-  });
-  const variants = object(input.variants) ? input.variants : {};
-  output.variants = {
-    options: (Array.isArray(variants.options) ? variants.options : []).slice(0, 4).filter(object).map(option => ({name: cleanString(option.name, 60), values: (Array.isArray(option.values) ? option.values : []).slice(0, 60).filter(object).map(value => ({label: cleanString(value.label, 80), exists: value.exists === true}))})),
-    selected: (Array.isArray(variants.selected) ? variants.selected : []).slice(0, 8).filter(object).map(value => ({name: cleanString(value.name, 60), label: cleanString(value.label, 80)}))
-  };
+  // Store only official seller identity, not offers, links, prices or stock.
+  // The source domain must be evidenced by an HTTPS Channel3 redirect.
+  const hosts=new Set(['nike.com','www.nike.com','adidas.com','www.adidas.com',
+    'levi.com','www.levi.com','elfcosmetics.com','www.elfcosmetics.com',
+    'sephora.com','www.sephora.com','tjmaxx.com','www.tjmaxx.com',
+    'tjmaxx.tjx.com','www.tjmaxx.tjx.com']);
+  const verified=trustedCache&&Array.isArray(input.sellerDomains)
+    ? input.sellerDomains.slice(0,6).filter(v=>typeof v==='string'&&hosts.has(v))
+    : (Array.isArray(input.offers)?input.offers:[]).slice(0,8)
+      .filter(o=>object(o)&&hosts.has(String(o.domain||'').toLowerCase())&&
+        safeUrl(o.url,'buy.trychannel3.com'))
+      .map(o=>String(o.domain).toLowerCase());
+  output.sellerDomains=[...new Set(verified)].slice(0,6);
+  // Search pages are presentation-only. Volatile offers, prices, stock and
+  // variants are retrieved fresh only when a user opens product detail.
   output.key_features = (Array.isArray(input.key_features) ? input.key_features : []).slice(0, 8).filter(value => typeof value === 'string').map(value => value.slice(0, 200));
   return output;
 }
-function sanitizePage(input, request) {
+function sanitizePage(input, request, trustedCache = false) {
   if (!object(input) || !Array.isArray(input.products) || input.products.length > request.limit) fail(502, 'UPSTREAM_INVALID');
   const token = input.next_page_token;
   if (token !== null && !tokenValid(token)) fail(502, 'UPSTREAM_INVALID');
   if (token !== null && token === request.token) fail(502, 'UPSTREAM_INVALID');
-  const products = input.products.map(sanitizeProduct).filter(Boolean);
+  const products = input.products.map(p=>sanitizeProduct(p,trustedCache)).filter(Boolean);
   return {products, next_page_token: token};
 }
 function validateCached(row, request, now) {
@@ -102,15 +251,15 @@ function validateCached(row, request, now) {
   if (row.kind !== 'page' || row.version !== VERSION || row.contextHash !== request.contextHash || !object(row.payload) || row.payload.provider !== 'channel3' || Object.keys(row.payload).some(key => !['provider', 'data', 'fetchedAt', 'expiresAt'].includes(key))) fail(503, 'CACHE_UNAVAILABLE');
   const fetched = Date.parse(row.payload.fetchedAt), expires = Date.parse(row.payload.expiresAt);
   if (!Number.isFinite(fetched) || !Number.isFinite(expires) || fetched > now + 60_000 || expires <= fetched || expires - fetched > request.ttl || row.expiresAtMs !== expires) fail(503, 'CACHE_UNAVAILABLE');
-  let sanitized;try {sanitized = sanitizePage(row.payload.data, request);} catch {fail(503, 'CACHE_UNAVAILABLE');}
+  let sanitized;try {sanitized = sanitizePage(row.payload.data, request, true);} catch {fail(503, 'CACHE_UNAVAILABLE');}
   if (JSON.stringify(sanitized) !== JSON.stringify(row.payload.data) || Buffer.byteLength(JSON.stringify(row.payload)) > MAX_PAGE_BYTES) fail(503, 'CACHE_UNAVAILABLE');
   return expires > now ? row.payload : null;
 }
 function proxyResponse(statusCode, payload) {
   return {statusCode, headers: {'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': 'https://anox.app', 'X-Content-Type-Options': 'nosniff'}, body: JSON.stringify(payload)};
 }
-function createHandler({store, upstream, now = Date.now, sleep = ms => new Promise(resolve => setTimeout(resolve, ms)), metric = () => {}}) {
-  const pending = new Map();
+function createHandler({store, upstream, upstreamDetail = upstream?.detail, now = Date.now, sleep = ms => new Promise(resolve => setTimeout(resolve, ms)), metric = () => {}}) {
+  const pending = new Map(); let sequence = 0;
   const emit = name => {try {metric(name);} catch {}};
   async function load(request) {
     let chainExpires = now() + CURSOR_TTL, count = 0;
@@ -156,7 +305,7 @@ function createHandler({store, upstream, now = Date.now, sleep = ms => new Promi
         requireActiveChain();
         const raw = await upstream(input, {expiresAt: chainExpires}); data = sanitizePage(raw, request); rawCount = raw.products.length;
         if (!rawCount && data.next_page_token !== null) fail(502, 'UPSTREAM_INVALID');
-      } catch (error) {emit('upstream_failure'); if (error instanceof SafeError && error.status === 410) throw error; fail(502, 'UPSTREAM_UNAVAILABLE');}
+      } catch (error) {emit('upstream_failure'); if (error instanceof SafeError && [410, 429, 503].includes(error.status)) throw error; fail(502, 'UPSTREAM_UNAVAILABLE');}
       const fetched = now(), expires = Math.min(fetched + request.ttl, chainExpires);
       if (expires <= fetched) fail(410, 'CURSOR_EXPIRED');
       data.products = data.products.slice(0, 500 - count);
@@ -172,20 +321,112 @@ function createHandler({store, upstream, now = Date.now, sleep = ms => new Promi
       try {await store.release(request.key, owner);} catch {emit('cache_error');}
     }
   }
-  return async function handler(event) {
-    try {
-      const request = parseRequest(event);
-      let work = pending.get(request.key);
-      if (!work) {
-        if (pending.size >= 100) fail(503, 'CACHE_BUSY');
-        work = load(request); pending.set(request.key, work);
-        const done = () => {if (pending.get(request.key) === work) pending.delete(request.key);};
-        work.then(done, done);
+  async function loadDetail(request, fetched) {
+    const read = async () => validateDetailRow(await store.get(request.key), request, 'detail', now());
+    const exchanged = await read();
+    if (exchanged) {emit('detail_coalesced'); return exchanged;}
+    const owner = randomUUID();
+    if (!await store.acquire(request.key, owner, now(), now() + LEASE_MS)) {
+      emit('cache_contention'); const until = now() + 6000;
+      for (let attempt = 0; attempt < 20 && now() + 1800 <= until; attempt++) {
+        await sleep(300); if (now() + 1500 > until) break;
+        const ready = await read(); if (ready) {emit('detail_coalesced'); return ready;}
       }
-      return proxyResponse(200, await work);
+      fail(503, 'CACHE_BUSY');
+    }
+    try {
+      const raced = await read(); if (raced) {emit('detail_coalesced'); return raced;}
+      let product;
+      try {product = sanitizeDetail(await upstreamDetail({productId:request.productId, options:request.options}), request.productId);}
+      catch (error) {
+        emit('upstream_failure');
+        if (error?.code === 'PRODUCT_NOT_FOUND') fail(404, 'PRODUCT_NOT_FOUND');
+        if (['UPSTREAM_BUDGET_EXCEEDED', 'UPSTREAM_RATE_LIMITED', 'UPSTREAM_BUDGET_UNAVAILABLE'].includes(error?.code)) fail(error.code === 'UPSTREAM_BUDGET_UNAVAILABLE' ? 503 : 429, error.code);
+        fail(503, 'DETAIL_REFRESH_UNAVAILABLE');
+      }
+      // Stop admitting local waiters when the upstream result is complete, even
+      // if its durable publication is still pending. A later view needs new data.
+      fetched();
+      const fetchedAt = now(), selectionMismatch = mismatches(product, request.options);
+      const payload = {provider:'channel3', data:{product}, fetchedAt:new Date(fetchedAt).toISOString(), expiresAt:new Date(fetchedAt + DETAIL_TTL).toISOString(), status:'fresh', error:null, selectionMismatch};
+      if (Buffer.byteLength(JSON.stringify(payload)) > MAX_DETAIL_BYTES) fail(503, 'DETAIL_REFRESH_UNAVAILABLE');
+      const fallback = {...payload, data:{product:presentation(product)}, expiresAt:new Date(fetchedAt + PRESENTATION_TTL).toISOString(), status:'presentation_only', error:'DETAIL_REFRESH_UNAVAILABLE'};
+      const row = {kind:'detail', version:VERSION, contextHash:request.contextHash, expiresAtMs:fetchedAt + DETAIL_TTL, payload};
+      await store.publish(request.key, owner, row, null, now(), [{key:request.presentationKey, value:{...row, kind:'presentation', expiresAtMs:fetchedAt + PRESENTATION_TTL, payload:fallback}}]);
+      emit('detail_fresh'); return payload;
+    } finally {try {await store.release(request.key, owner);} catch {emit('cache_error');}}
+  }
+  return async function handler(event) {
+    let request;
+    try {
+      if (!object(event)) fail(400, 'INVALID_REQUEST');
+      request = Object.hasOwn(event, 'operation') || event.rawPath?.startsWith('/catalog/channel3/products') ? parseDetail(event, now()) : parseRequest(event);
+      request.order = ++sequence;
+      let entry = pending.get(request.key);
+      while (request.mode === 'detail' && entry?.fetched) {
+        await entry.work.catch(() => {});
+        entry = pending.get(request.key);
+      }
+      if (!entry) {
+        if (pending.size >= 100) fail(503, 'CACHE_BUSY');
+        const created = {fetched:false};
+        created.work = request.mode === 'detail' ? loadDetail(request, () => {created.fetched = true; created.fetchedOrder = ++sequence;}) : load(request);
+        pending.set(request.key, created); entry = created;
+        const done = () => {if (pending.get(request.key) === created) pending.delete(request.key);};
+        created.work.then(done, done);
+      }
+      let payload;
+      try {
+        payload = await entry.work;
+        // The first waiter's timestamp cannot confer freshness on a later one.
+        // A local sequence also distinguishes requests within one clock tick.
+        if (request.mode === 'detail' && !(entry.fetchedOrder > request.order || Date.parse(payload.fetchedAt) > request.startedAt)) fail(503, 'CACHE_BUSY');
+      }
+      catch (error) {
+        if (request.mode !== 'detail' || request.internal || !['DETAIL_REFRESH_UNAVAILABLE', 'CACHE_BUSY', 'UPSTREAM_BUDGET_EXCEEDED', 'UPSTREAM_RATE_LIMITED', 'UPSTREAM_BUDGET_UNAVAILABLE'].includes(error?.code)) throw error;
+        payload = validateDetailRow(await store.get(request.presentationKey), request, 'presentation', now());
+        if (!payload) throw error;
+        emit('presentation_fallback');
+      }
+      return request.internal ? payload : proxyResponse(200, payload);
     } catch (error) {
-      if (error instanceof SafeError) return proxyResponse(error.status, {error: error.code});
-      emit('cache_error'); return proxyResponse(503, {error: 'CACHE_UNAVAILABLE'});
+      const status = error instanceof SafeError ? error.status : 503, code = error instanceof SafeError ? error.code : 'CACHE_UNAVAILABLE';
+      if (!(error instanceof SafeError)) emit('cache_error');
+      return request?.internal ? {statusCode:status, error:code} : proxyResponse(status, {error:code});
+    }
+  };
+}
+function createBudget({store, now = Date.now, budgetMonth = '', freeSearchMonthlyCredits = 0, paidSearchMonthlyCredits = 0, paidUsageEnabled = false,
+  searchDailyLimit = 0, detailMonthlyLimit = 0, detailDailyLimit = 0, totalDailyLimit = 1000, perSecondLimit = 5}) {
+  const bounded = (value, max) => Number.isSafeInteger(value) && value >= 0 && value <= max;
+  if (typeof budgetMonth !== 'string' || (budgetMonth !== '' && !/^20[0-9]{2}-(?:0[1-9]|1[0-2])$/.test(budgetMonth)) ||
+    !bounded(freeSearchMonthlyCredits, 1000) || !bounded(paidSearchMonthlyCredits, 1000000) || typeof paidUsageEnabled !== 'boolean' ||
+    (paidSearchMonthlyCredits > 0 && !paidUsageEnabled) || !bounded(detailMonthlyLimit, 310000) ||
+    ![searchDailyLimit, detailDailyLimit, totalDailyLimit].every(limit => bounded(limit, 10000)) ||
+    !bounded(perSecondLimit, 10) || perSecondLimit < 1 || typeof store?.reserve !== 'function') throw Error('INVALID_BUDGET_CONFIG');
+  return async kind => {
+    if (!['search', 'detail'].includes(kind)) fail(503, 'UPSTREAM_BUDGET_UNAVAILABLE');
+    const time = now(), day = new Date(time).toISOString().slice(0, 10), month = day.slice(0, 7), second = Math.floor(time / 1000);
+    // Allocation is a reviewed application budget, never an inferred provider balance.
+    // Requiring renewal prevents silently assuming a new free allowance at rollover.
+    if (!budgetMonth || budgetMonth !== month) fail(503, 'UPSTREAM_BUDGET_UNAVAILABLE');
+    const monthlyLimit = kind === 'search' ? freeSearchMonthlyCredits + paidSearchMonthlyCredits : detailMonthlyLimit;
+    const dailyLimit = kind === 'search' ? searchDailyLimit : detailDailyLimit;
+    if (!monthlyLimit || !dailyLimit || !totalDailyLimit) fail(429, 'UPSTREAM_BUDGET_EXCEEDED');
+    const dayExpiry = Math.floor(Date.parse(day + 'T00:00:00.000Z') / 1000) + 172800;
+    // Period-only identities do not reset when limits or other settings change.
+    const monthExpiry = Math.floor(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5)), 1) / 1000) + 90 * 86400;
+    try {
+      await store.reserve({counters:[
+        {key:`budget#month#${month}#${kind}`, limit:monthlyLimit, expiresAt:monthExpiry},
+        {key:`budget#${day}#${kind}`, limit:dailyLimit, expiresAt:dayExpiry},
+        {key:`budget#${day}#all`, limit:totalDailyLimit, expiresAt:dayExpiry},
+        {key:`rate#${second}`, limit:perSecondLimit, expiresAt:second + 120, rate:true}
+      ]});
+      return {validUntil:(second + 1) * 1000};
+    } catch (error) {
+      if (error instanceof SafeError) throw error;
+      fail(503, 'UPSTREAM_BUDGET_UNAVAILABLE');
     }
   };
 }
@@ -208,12 +449,26 @@ function createDynamoStore({client, commands, table}) {
         return true;
       } catch (error) {if (error.name === 'ConditionalCheckFailedException') return false; throw error;}
     },
-    async publish(pk, owner, page, cursor, now) {
+    async publish(pk, owner, page, cursor, now, extra = []) {
       const writes = [{Put: {TableName: table, Item: item(pk, page)}}];
       if (cursor) writes.push({Put: {TableName: table, Item: item(cursor.key, cursor.value)}});
+      for (const row of extra) writes.push({Put:{TableName:table, Item:item(row.key, row.value)}});
       writes.push({Delete: {TableName: table, Key: key('lease#' + pk), ConditionExpression: '#owner = :owner AND leaseUntil > :now',
         ExpressionAttributeNames: {'#owner': 'owner'}, ExpressionAttributeValues: {':owner': {S: owner}, ':now': {N: String(now)}}}});
       await send(new TransactWriteItemsCommand({ClientRequestToken: owner, TransactItems: writes}));
+    },
+    async reserve({counters}) {
+      const counter = ({key:pk, limit, expiresAt}) => ({Update:{TableName:table, Key:key(pk), UpdateExpression:'SET expiresAt = :expires ADD #used :one',
+        ConditionExpression:':limit > :zero AND (attribute_not_exists(#used) OR (attribute_type(#used, :number) AND #used >= :zero AND #used < :limit))', ExpressionAttributeNames:{'#used':'used'},
+        ExpressionAttributeValues:{':expires':{N:String(expiresAt)}, ':one':{N:'1'}, ':zero':{N:'0'}, ':number':{S:'N'}, ':limit':{N:String(limit)}}}});
+      try {await send(new TransactWriteItemsCommand({ClientRequestToken:randomUUID(), TransactItems:counters.map(counter)}));}
+      catch (error) {
+        if (error.name === 'TransactionCanceledException') {
+          const rejected = error.CancellationReasons?.findIndex(row => row?.Code === 'ConditionalCheckFailed');
+          if (rejected >= 0 && rejected < counters.length) fail(429, counters[rejected].rate ? 'UPSTREAM_RATE_LIMITED' : 'UPSTREAM_BUDGET_EXCEEDED');
+        }
+        fail(503, 'UPSTREAM_BUDGET_UNAVAILABLE');
+      }
     },
     async release(pk, owner) {
       try {await send(new DeleteItemCommand({TableName: table, Key: key('lease#' + pk), ConditionExpression: '#owner = :owner', ExpressionAttributeNames: {'#owner': 'owner'}, ExpressionAttributeValues: {':owner': {S: owner}}}));}
@@ -221,7 +476,7 @@ function createDynamoStore({client, commands, table}) {
     }
   };
 }
-function createUpstream({fetch: transport = globalThis.fetch, getSecret, now = Date.now, timeoutMs = 10_000, metric = () => {}}) {
+function createUpstream({fetch: transport = globalThis.fetch, getSecret, reserve = async () => {}, now = Date.now, timeoutMs = 10_000, metric = () => {}}) {
   let secret = '', secretUntil = 0, secretPending = null;
   async function apiKey(signal) {
     if (secret && secretUntil > now()) return secret;
@@ -237,17 +492,36 @@ function createUpstream({fetch: transport = globalThis.fetch, getSecret, now = D
     }
     return secretPending;
   }
-  return async (input, {expiresAt} = {}) => {
+  async function request(input, {expiresAt} = {}, detail = false) {
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeoutMs);
     let response;
     try {
       const key = await apiKey(controller.signal);
       controller.signal.throwIfAborted();
       if (expiresAt !== undefined && now() >= expiresAt) fail(410, 'CURSOR_EXPIRED');
-      try {metric('upstream_request');} catch {}
-      response = await transport('https://api.trychannel3.com/v1/search', {method: 'POST', headers: {'Content-Type': 'application/json', 'x-api-key': key}, body: JSON.stringify(input), signal: controller.signal, redirect: 'error'});
+      try {
+        const reservation = await reserve(detail ? 'detail' : 'search');
+        if (reservation?.validUntil !== undefined && now() >= reservation.validUntil) fail(429, 'UPSTREAM_RATE_LIMITED');
+      }
+      catch (error) {
+        const code = ['UPSTREAM_BUDGET_EXCEEDED', 'UPSTREAM_RATE_LIMITED'].includes(error?.code) ? error.code : 'UPSTREAM_BUDGET_UNAVAILABLE';
+        try {metric(code === 'UPSTREAM_BUDGET_EXCEEDED' ? 'budget_exceeded' : code === 'UPSTREAM_RATE_LIMITED' ? 'rate_limited' : 'budget_error');} catch {}
+        fail(code === 'UPSTREAM_BUDGET_UNAVAILABLE' ? 503 : 429, code);
+      }
+      controller.signal.throwIfAborted();
+      if (expiresAt !== undefined && now() >= expiresAt) fail(410, 'CURSOR_EXPIRED');
+      let url = 'https://api.trychannel3.com/v1/search';
+      const init = {method:detail ? 'GET' : 'POST', headers:{'Content-Type':'application/json', 'x-api-key':key}, signal:controller.signal, redirect:'error'};
+      if (detail) {
+        const params = new URLSearchParams({country:'US', currency:'USD', language:'en'});
+        for (const [name, value] of Object.entries(input.options)) params.set('option_' + name, value);
+        url = 'https://api.trychannel3.com/v1/products/' + encodeURIComponent(input.productId) + '?' + params.toString();
+      } else init.body = JSON.stringify(input);
+      try {metric('upstream_request'); metric(detail ? 'product_detail_request' : 'search_credit_request');} catch {}
+      response = await transport(url, init);
       if (!response.ok) {
         await response.body?.cancel();
+        if (detail && response.status === 404) fail(404, 'PRODUCT_NOT_FOUND');
         if (input.page_token !== undefined && [400, 404, 410, 422].includes(response.status)) fail(410, 'CURSOR_INVALID');
         fail(502, 'UPSTREAM_UNAVAILABLE');
       }
@@ -266,13 +540,20 @@ function createUpstream({fetch: transport = globalThis.fetch, getSecret, now = D
       } catch (error) {await reader.cancel().catch(() => {}); throw error;}
     } catch (error) {if (error instanceof SafeError) throw error; fail(502, 'UPSTREAM_UNAVAILABLE');}
     finally {clearTimeout(timer); controller.abort();}
+  }
+  const search = (input, options) => request(input, options);
+  search.detail = input => {
+    if (!detailId(input?.productId)) fail(400, 'INVALID_PRODUCT');
+    return request({productId:input.productId, options:detailOptions(input.options)}, {}, true);
   };
+  return search;
 }
-function createMetric({log = line => console.log(line), now = Date.now} = {}) {
-  const names = new Set(['cache_hit', 'cache_miss', 'upstream_request', 'upstream_failure', 'cache_contention', 'cache_error']);
+function createMetric({log = line => console.log(line), now = Date.now, namespace = 'AnoX/Catalog'} = {}) {
+  if (!['AnoX/Catalog','AnoX/Staging/Catalog'].includes(namespace)) throw Error('INVALID_METRIC_CONFIG');
+  const names = new Set(['cache_hit', 'cache_miss', 'upstream_request', 'upstream_failure', 'cache_contention', 'cache_error', 'search_credit_request', 'product_detail_request', 'detail_fresh', 'detail_coalesced', 'presentation_fallback', 'budget_exceeded', 'rate_limited', 'budget_error']);
   return name => {
     if (!names.has(name)) return;
-    log(JSON.stringify({_aws: {Timestamp: now(), CloudWatchMetrics: [{Namespace: 'AnoX/Catalog', Dimensions: [['Service']], Metrics: [{Name: name, Unit: 'Count'}]}]}, Service: 'Channel3Catalog', event: name, [name]: 1}));
+    log(JSON.stringify({_aws: {Timestamp: now(), CloudWatchMetrics: [{Namespace: namespace, Dimensions: [['Service']], Metrics: [{Name: name, Unit: 'Count'}]}]}, Service: 'Channel3Catalog', event: name, [name]: 1}));
   };
 }
 let runtimeHandler;
@@ -286,10 +567,27 @@ async function handler(event) {
     const client = new dynamo.DynamoDBClient(config), secretClient = new secrets.SecretsManagerClient(config);
     const table = process.env.CACHE_TABLE, secretId = process.env.CHANNEL3_SECRET_ID;
     if (!table || !secretId) return proxyResponse(503, {error: 'CACHE_UNAVAILABLE'});
-    const metric = createMetric();
-    runtimeHandler = createHandler({store: createDynamoStore({client, commands: dynamo, table}), metric,
-      upstream: createUpstream({metric, getSecret: async signal => (await secretClient.send(new secrets.GetSecretValueCommand({SecretId: secretId}), {abortSignal: signal})).SecretString})});
+    let metric;
+    try {metric = createMetric({namespace:process.env.METRIC_NAMESPACE ?? 'AnoX/Catalog'});}
+    catch {return proxyResponse(503,{error:'CATALOG_CONFIG_UNAVAILABLE'});}
+    const store = createDynamoStore({client, commands:dynamo, table});
+    let reserve;
+    try {
+      if (!['true', 'false'].includes(process.env.PAID_USAGE_ENABLED ?? 'false')) throw Error('INVALID_BUDGET_CONFIG');
+      const number = (name, fallback = 0) => {
+        const raw = process.env[name];
+        if (raw === undefined) return fallback;
+        if (!/^(?:0|[1-9][0-9]*)$/.test(raw)) throw Error('INVALID_BUDGET_CONFIG');
+        return Number(raw);
+      };
+      reserve = createBudget({store, budgetMonth:process.env.BUDGET_MONTH ?? '', freeSearchMonthlyCredits:number('FREE_SEARCH_MONTHLY_CREDITS'),
+        paidSearchMonthlyCredits:number('PAID_SEARCH_MONTHLY_CREDITS'), paidUsageEnabled:process.env.PAID_USAGE_ENABLED === 'true', searchDailyLimit:number('SEARCH_DAILY_LIMIT'),
+        detailMonthlyLimit:number('DETAIL_MONTHLY_LIMIT'), detailDailyLimit:number('DETAIL_DAILY_LIMIT'), totalDailyLimit:number('TOTAL_DAILY_LIMIT', 1000), perSecondLimit:number('UPSTREAM_PER_SECOND_LIMIT', 5)});
+    }
+    catch {try {metric('budget_error');} catch {} return proxyResponse(503, {error:'UPSTREAM_BUDGET_UNAVAILABLE'});}
+    runtimeHandler = createHandler({store, metric,
+      upstream:createUpstream({metric, reserve, getSecret:async signal => (await secretClient.send(new secrets.GetSecretValueCommand({SecretId:secretId}), {abortSignal:signal})).SecretString})});
   }
   return runtimeHandler(event);
 }
-module.exports = {handler, createHandler, createUpstream, createDynamoStore, createMetric};
+module.exports = {handler, createHandler, createUpstream, createDynamoStore, createMetric, createBudget};

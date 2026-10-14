@@ -1,0 +1,42 @@
+let tables = Resources.*[ Type == 'AWS::DynamoDB::Table' ]
+let routes = Resources.*[ Type == 'AWS::ApiGatewayV2::Route' ]
+let permissions = Resources.*[ Type == 'AWS::Lambda::Permission' ]
+rule retained_encrypted_recoverable_state when %tables !empty {
+  %tables {
+    DeletionPolicy == 'Retain'
+    UpdateReplacePolicy == 'Retain'
+    Properties.BillingMode == 'PAY_PER_REQUEST'
+    Properties.SSESpecification.SSEEnabled == true
+    Properties.DeletionProtectionEnabled == true
+    Properties.PointInTimeRecoverySpecification.PointInTimeRecoveryEnabled == true
+    Properties.TimeToLiveSpecification.AttributeName == 'ttl'
+  }
+}
+rule constrained_runtime {
+  Resources.CommerceFunction.Properties.Runtime == 'nodejs24.x'
+  Resources.CommerceFunction.Properties.Timeout == 18
+  Resources.CommerceFunction.Properties.ReservedConcurrentExecutions is_struct
+  Resources.CommerceIntegration.Properties.PayloadFormatVersion == '2.0'
+  Resources.CommerceRole.Properties.Policies.*.PolicyDocument.Statement.* {
+    Effect == 'Allow'
+    Resource is_struct
+    Action[*] IN ['dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:UpdateItem', 'dynamodb:Query', 'dynamodb:ConditionCheckItem', 'lambda:InvokeFunction', 'logs:CreateLogStream', 'logs:PutLogEvents']
+  }
+}
+rule only_namespaced_routes when %routes !empty {
+  %routes.Properties.RouteKey == /^(GET|POST) \/commerce\/.+$/
+  Resources.CapabilitiesRoute.Properties.AuthorizationType == 'NONE'
+  Resources.QuotesRoute.Properties.AuthorizationType == 'JWT'
+  Resources.AttemptsRoute.Properties.AuthorizationType == 'JWT'
+  Resources.OrdersRoute.Properties.AuthorizationType == 'JWT'
+  Resources.OrderRoute.Properties.AuthorizationType == 'JWT'
+  Resources.CancelRoute.Properties.AuthorizationType == 'JWT'
+  Resources.RefundRoute.Properties.AuthorizationType == 'JWT'
+}
+rule scoped_api_invoke when %permissions !empty {
+  %permissions.Properties {
+    Principal == 'apigateway.amazonaws.com'
+    SourceAccount is_struct
+    SourceArn is_struct
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "evidenceKind": "offline_simulation",
+  "includes": "Real quote handler, validation, concurrency scheduler and in-memory transaction adapter",
+  "excludes": "Network, AWS IAM/DynamoDB/Cold-start latency, actual Channel3 billing, production deployment and payment operations",
+  "scenarios": [
+    {
+      "simulatedReadLatencyMs": 100,
+      "distinctSelections": 1,
+      "lines": 1,
+      "elapsedMs": 105,
+      "statusCode": 201,
+      "detailCalls": 1,
+      "maximumConcurrentReads": 1,
+      "persistedRecords": 1,
+      "audits": 1
+    },
+    {
+      "simulatedReadLatencyMs": 100,
+      "distinctSelections": 5,
+      "lines": 10,
+      "elapsedMs": 206,
+      "statusCode": 201,
+      "detailCalls": 5,
+      "maximumConcurrentReads": 3,
+      "persistedRecords": 1,
+      "audits": 1
+    },
+    {
+      "simulatedReadLatencyMs": 1000,
+      "distinctSelections": 5,
+      "lines": 10,
+      "elapsedMs": 2004,
+      "statusCode": 201,
+      "detailCalls": 5,
+      "maximumConcurrentReads": 3,
+      "persistedRecords": 1,
+      "audits": 1
+    },
+    {
+      "simulatedReadLatencyMs": 4000,
+      "distinctSelections": 5,
+      "lines": 10,
+      "elapsedMs": 8003,
+      "statusCode": 201,
+      "detailCalls": 5,
+      "maximumConcurrentReads": 3,
+      "persistedRecords": 1,
+      "audits": 1
+    },
+    {
+      "simulatedReadLatencyMs": 5000,
+      "distinctSelections": 5,
+      "lines": 10,
+      "elapsedMs": 9005,
+      "statusCode": 503,
+      "detailCalls": 5,
+      "maximumConcurrentReads": 3,
+      "persistedRecords": 0,
+      "audits": 0
+    },
+    {
+      "simulatedReadLatencyMs": 100,
+      "distinctSelections": 6,
+      "lines": 6,
+      "elapsedMs": 0,
+      "statusCode": 422,
+      "detailCalls": 0,
+      "maximumConcurrentReads": 0,
+      "persistedRecords": 0,
+      "audits": 0
+    }
+  ]
+}

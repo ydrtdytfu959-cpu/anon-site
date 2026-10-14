@@ -1,0 +1,1423 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "NOT APPROVED: isolated AnoX Release A review stack. Independent API, Cognito, tables and runtimes; no payments or production bindings.",
+  "Parameters": {
+    "Channel3SecretArn": {
+      "Type": "String",
+      "AllowedPattern": "^arn:aws:secretsmanager:us-east-2:427064007352:secret:AnoX/Channel3/Staging-[A-Za-z0-9]{6}$",
+      "Description": "Separately approved staging-only credential ARN. No default; do not share a production credential or create a secret without approval."
+    },
+    "BudgetMonth": {
+      "Type": "String",
+      "Default": "",
+      "AllowedPattern": "^(|20[0-9]{2}-(0[1-9]|1[0-2]))$",
+      "Description": "Explicit UTC allocation month YYYY-MM; empty or elapsed month disables upstream calls. Renew only after provider usage and other consumers are reconciled."
+    },
+    "FreeSearchMonthlyCredits": {
+      "Type": "Number",
+      "Default": 0,
+      "MinValue": 0,
+      "MaxValue": 3,
+      "Description": "Verified remaining monthly free search credits allocated to this service, not the provider account balance. Default zero."
+    },
+    "PaidUsageEnabled": {
+      "Type": "String",
+      "Default": "false",
+      "AllowedValues": [
+        "false"
+      ],
+      "Description": "Explicit opt-in for separately approved paid search credits; does not allocate credits by itself."
+    },
+    "PaidSearchMonthlyCredits": {
+      "Type": "Number",
+      "Default": 0,
+      "MinValue": 0,
+      "MaxValue": 0,
+      "Description": "Explicit paid search credit allocation for BudgetMonth, requires PaidUsageEnabled=true. Zero by default; no automatic renewal."
+    },
+    "SearchDailyLimit": {
+      "Type": "Number",
+      "Default": 0,
+      "MinValue": 0,
+      "MaxValue": 3,
+      "Description": "Search request attempts per UTC day within the approved monthly allocation. Zero disables new upstream searches, not cached pages."
+    },
+    "DetailMonthlyLimit": {
+      "Type": "Number",
+      "Default": 0,
+      "MinValue": 0,
+      "MaxValue": 25,
+      "Description": "Explicit product-detail request allocation for BudgetMonth; product retrieval currently has zero listed credit cost, but consumes account request quota."
+    },
+    "DetailDailyLimit": {
+      "Type": "Number",
+      "Default": 0,
+      "MinValue": 0,
+      "MaxValue": 25,
+      "Description": "Product-detail attempts per UTC day within the monthly request allocation. Zero disables new detail requests."
+    },
+    "TotalDailyLimit": {
+      "Type": "Number",
+      "Default": 0,
+      "MinValue": 0,
+      "MaxValue": 28,
+      "Description": "Shared daily request cap across both classes; not the provider free monthly allowance or a paid spending allocation."
+    },
+    "UpstreamPerSecondLimit": {
+      "Type": "Number",
+      "Default": 2,
+      "MinValue": 1,
+      "MaxValue": 2,
+      "Description": "Shared fixed-window request cap per second across search and detail."
+    },
+    "ExistingAlarmTopicArn": {
+      "Type": "String",
+      "AllowedPattern": "^arn:aws:sns:us-east-2:427064007352:AnoX-Staging-[A-Za-z0-9_-]+$",
+      "Description": "Approved dedicated staging notification topic with verified delivery. No default."
+    },
+    "ReservedConcurrency": {
+      "Type": "Number",
+      "Default": 2,
+      "MinValue": 1,
+      "MaxValue": 5,
+      "Description": "Bounds downstream pressure; account concurrency quota must be checked."
+    },
+    "StagingCatalogConcurrency": {
+      "Type": "Number",
+      "Default": 3,
+      "MinValue": 1,
+      "MaxValue": 3,
+      "Description": "Dedicated staging catalog reservation; commerce default 2 plus catalog 3 require at least 105 initially available concurrency."
+    }
+  },
+  "Conditions": {
+    "HasAlarmTopic": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "ExistingAlarmTopicArn"
+            },
+            ""
+          ]
+        }
+      ]
+    }
+  },
+  "Resources": {
+    "CatalogCache": {
+      "Type": "AWS::DynamoDB::Table",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "BillingMode": "PAY_PER_REQUEST",
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "pk",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "pk",
+            "KeyType": "HASH"
+          }
+        ],
+        "TimeToLiveSpecification": {
+          "AttributeName": "expiresAt",
+          "Enabled": true
+        },
+        "SSESpecification": {
+          "SSEEnabled": true
+        },
+        "DeletionProtectionEnabled": true,
+        "PointInTimeRecoverySpecification": {
+          "PointInTimeRecoveryEnabled": true
+        },
+        "Tags": [
+          {
+            "Key": "Service",
+            "Value": "AnoX-Channel3-Catalog"
+          }
+        ]
+      }
+    },
+    "Channel3Role": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "Channel3CatalogRuntime",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "secretsmanager:GetSecretValue"
+                  ],
+                  "Resource": {
+                    "Ref": "Channel3SecretArn"
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:UpdateItem"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "CatalogCache",
+                      "Arn"
+                    ]
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}-catalog:*"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "Channel3Function": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": {
+          "Fn::Sub": "${AWS::StackName}-catalog"
+        },
+        "Runtime": "nodejs24.x",
+        "Handler": "index.handler",
+        "Timeout": 20,
+        "MemorySize": 256,
+        "Role": {
+          "Fn::GetAtt": [
+            "Channel3Role",
+            "Arn"
+          ]
+        },
+        "Environment": {
+          "Variables": {
+            "CHANNEL3_SECRET_ID": {
+              "Ref": "Channel3SecretArn"
+            },
+            "CACHE_TABLE": {
+              "Ref": "CatalogCache"
+            },
+            "BUDGET_MONTH": {
+              "Ref": "BudgetMonth"
+            },
+            "FREE_SEARCH_MONTHLY_CREDITS": {
+              "Ref": "FreeSearchMonthlyCredits"
+            },
+            "PAID_USAGE_ENABLED": {
+              "Ref": "PaidUsageEnabled"
+            },
+            "PAID_SEARCH_MONTHLY_CREDITS": {
+              "Ref": "PaidSearchMonthlyCredits"
+            },
+            "SEARCH_DAILY_LIMIT": {
+              "Ref": "SearchDailyLimit"
+            },
+            "DETAIL_MONTHLY_LIMIT": {
+              "Ref": "DetailMonthlyLimit"
+            },
+            "DETAIL_DAILY_LIMIT": {
+              "Ref": "DetailDailyLimit"
+            },
+            "TOTAL_DAILY_LIMIT": {
+              "Ref": "TotalDailyLimit"
+            },
+            "UPSTREAM_PER_SECOND_LIMIT": {
+              "Ref": "UpstreamPerSecondLimit"
+            },
+            "METRIC_NAMESPACE": "AnoX/Staging/Catalog"
+          }
+        },
+        "Code": {
+          "ZipFile": "'use strict';\nconst {createHash, randomUUID} = require('node:crypto');\n\n// Version 2 deliberately expires pre-policy cache/cursor identities; spending keys stay period-only.\nconst VERSION = 2;\nconst SEARCH_TTL = 300_000, DISCOVERY_TTL = 600_000, CURSOR_TTL = 1_800_000;\nconst DETAIL_TTL = 30_000, PRESENTATION_TTL = 3_600_000, MAX_DETAIL_BYTES = 256 * 1024;\nconst MAX_PAGE_BYTES = 300 * 1024, MAX_UPSTREAM_BYTES = 2 * 1024 * 1024;\nconst LEASE_MS = 25_000; // Longer than the Lambda's 20s invocation deadline.\nconst SECTIONS = Object.freeze({\n  featured: 'popular fashion', men: \"men's fashion\", women: \"women's fashion\",\n  shoes: 'shoes', clothing: 'clothing', beauty: 'beauty products',\n  accessories: 'fashion accessories', sports: 'sportswear', brands: 'fashion brands'\n});\nclass SafeError extends Error {\n  constructor(status, code) {super(code); this.status = status; this.code = code;}\n}\nconst fail = (status, code) => {throw new SafeError(status, code);};\nconst object = value => value !== null && typeof value === 'object' && !Array.isArray(value);\nconst hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');\nconst cleanString = (value, max) => typeof value === 'string' ? value.slice(0, max) : '';\nconst tokenValid = value => typeof value === 'string' && value.length > 0 && value.length <= 8192 && value.isWellFormed() && !/[\\u0000-\\u001f\\u007f]/.test(value);\nconst cursorKey = (context, token) => 'cursor#' + hash([VERSION, context, token]);\nfunction safeUrl(value, host) {\n  if (typeof value !== 'string' || value.length > 2048) return '';\n  try {const url = new URL(value); return url.protocol === 'https:' && url.hostname === host && !url.username && !url.password && !url.port ? url.href : '';}\n  catch {return '';}\n}\nfunction filtersFor(raw) {\n  if (raw === undefined) return {};\n  if (typeof raw !== 'string' || Buffer.byteLength(raw) > 2048) fail(400, 'INVALID_FILTERS');\n  let input; try {input = JSON.parse(raw);} catch {fail(400, 'INVALID_FILTERS');}\n  if (!object(input) || Object.keys(input).some(key => !['conditions', 'availability'].includes(key))) fail(400, 'INVALID_FILTERS');\n  const output = {};\n  for (const key of ['availability', 'conditions']) {\n    if (!(key in input)) continue;\n    const allowed = key === 'conditions' ? ['new', 'used'] : ['InStock', 'OutOfStock'];\n    if (!Array.isArray(input[key]) || !input[key].length || input[key].length > 2 || input[key].some(value => !allowed.includes(value))) fail(400, 'INVALID_FILTERS');\n    output[key] = [...new Set(input[key])].sort();\n  }\n  return output;\n}\nfunction parseRequest(event) {\n  if (event?.requestContext?.http?.method !== 'GET') fail(405, 'METHOD_NOT_ALLOWED');\n  if (event.rawPath && event.rawPath !== '/catalog/search') fail(404, 'NOT_FOUND');\n  let params = event.queryStringParameters || {};\n  if (!object(params)) fail(400, 'INVALID_QUERY');\n  if (typeof event.rawQueryString === 'string') {\n    if (Buffer.byteLength(event.rawQueryString) > 32768) fail(400, 'INVALID_QUERY');\n    // URLSearchParams replaces invalid UTF-8 with U+FFFD. Reject malformed\n    // encoding instead of charging for a silently changed query or cursor.\n    try {decodeURIComponent(event.rawQueryString.replace(/\\+/g, ' '));} catch {fail(400, 'INVALID_QUERY');}\n    const parsed = new URLSearchParams(event.rawQueryString), seen = new Set();\n    params = Object.create(null);\n    for (const [key, value] of parsed) {if (seen.has(key)) fail(400, 'INVALID_QUERY'); seen.add(key); params[key] = value;}\n  }\n  if (Object.keys(params).some(key => !['q', 'section', 'limit', 'filters', 'page_token'].includes(key)) || Object.values(params).some(value => typeof value !== 'string')) fail(400, 'INVALID_QUERY');\n  // Normalize search text only; opaque cursors must remain byte-for-byte intact.\n  const q = (params.q || '').normalize('NFC').trim().replace(/\\s+/gu, ' '), section = params.section || '';\n  if (q.length > 100 || !(params.q || '').isWellFormed() || /[\\u0000-\\u001f\\u007f]/.test(params.q || '') || (q && section) || (!q && !Object.hasOwn(SECTIONS, section))) fail(400, 'INVALID_QUERY');\n  if (section && !Object.hasOwn(SECTIONS, section)) fail(400, 'INVALID_QUERY');\n  const limit = params.limit === undefined ? 24 : Number(params.limit);\n  if (!Number.isInteger(limit) || limit < 1 || limit > 24 || (params.limit !== undefined && !/^\\d{1,2}$/.test(params.limit))) fail(400, 'INVALID_LIMIT');\n  const filters = filtersFor(params.filters), token = params.page_token;\n  if (token !== undefined && !tokenValid(token)) fail(400, 'CURSOR_INVALID');\n  const mode = q ? 'search' : 'discovery', query = q || SECTIONS[section];\n  const contextHash = hash([VERSION, 'channel3', mode, section, query, filters, limit]);\n  const key = 'page#' + hash([VERSION, contextHash, token ?? null]);\n  return {mode, query, filters, limit, token, contextHash, key, ttl: q ? SEARCH_TTL : DISCOVERY_TTL};\n}\nconst detailId = value => typeof value === 'string' && /^[A-Za-z0-9_-]{1,80}$/.test(value);\nconst optionText = (value, max) => typeof value === 'string' && value.trim().length > 0 && value.length <= max && value.isWellFormed() && !/[\\u0000-\\u001f\\u007f-\\u009f]/.test(value);\nfunction detailOptions(input = {}) {\n  if (!object(input) || Object.keys(input).length > 8) fail(400, 'INVALID_OPTIONS');\n  const output = {};\n  for (const name of Object.keys(input).sort()) {\n    if (!optionText(name, 60) || ['__proto__', 'constructor', 'prototype'].includes(name) || !optionText(input[name], 80)) fail(400, 'INVALID_OPTIONS');\n    output[name] = input[name];\n  }\n  return output;\n}\nfunction parseDetail(event, startedAt) {\n  let productId, options, internal = false;\n  if (Object.hasOwn(event, 'operation')) {\n    if (event.operation !== 'commerce.product' || Object.keys(event).some(key => !['operation', 'productId', 'options'].includes(key))) fail(400, 'INVALID_OPERATION');\n    internal = true; productId = event.productId; options = detailOptions(event.options);\n  } else {\n    if (event?.requestContext?.http?.method !== 'GET') fail(405, 'METHOD_NOT_ALLOWED');\n    productId = /^\\/catalog\\/channel3\\/products\\/([A-Za-z0-9_-]{1,80})$/.exec(event.rawPath)?.[1];\n    let params = event.queryStringParameters || {};\n    if (typeof event.rawQueryString === 'string') {\n      if (Buffer.byteLength(event.rawQueryString) > 4096) fail(400, 'INVALID_OPTIONS');\n      try {decodeURIComponent(event.rawQueryString.replace(/\\+/g, ' '));} catch {fail(400, 'INVALID_OPTIONS');}\n      params = Object.create(null);\n      for (const [key, value] of new URLSearchParams(event.rawQueryString)) {\n        if (Object.hasOwn(params, key)) fail(400, 'INVALID_OPTIONS');\n        params[key] = value;\n      }\n    }\n    if (!object(params)) fail(400, 'INVALID_OPTIONS');\n    const selected = Object.create(null);\n    for (const [key, value] of Object.entries(params)) {\n      if (!key.startsWith('option_')) fail(400, 'INVALID_OPTIONS');\n      selected[key.slice(7)] = value;\n    }\n    options = detailOptions(selected);\n  }\n  if (!detailId(productId)) fail(400, 'INVALID_PRODUCT');\n  const contextHash = hash([VERSION, 'channel3-detail', productId, options]);\n  return {mode:'detail', productId, options, internal, startedAt, contextHash, key:'detail#' + contextHash, presentationKey:'presentation#' + contextHash};\n}\nfunction detailText(value, max, required = false) {\n  if (value === undefined || value === null) {if (required) fail(502, 'UPSTREAM_INVALID'); return null;}\n  if (typeof value !== 'string' || value.length > max || !value.isWellFormed() || /[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]/.test(value) || required && !value.trim()) fail(502, 'UPSTREAM_INVALID');\n  return value;\n}\nfunction detailArray(value, max) {\n  if (value === undefined || value === null) return [];\n  if (!Array.isArray(value) || value.length > max) fail(502, 'UPSTREAM_INVALID');\n  return value;\n}\nconst availability = value => ['InStock', 'OutOfStock'].includes(value) ? value : null;\nconst usdAmount = value => typeof value === 'number' && value >= 0 && value <= 1e6 && /^(?:0|[1-9]\\d*)(?:\\.\\d{1,2})?$/.test(String(value)) ? value : null;\nfunction detailDimensions(value) {\n  if (!object(value)) return null;\n  return Object.fromEntries(['length', 'width', 'height', 'weight'].map(name => {\n    const field = value[name], units = name === 'weight' ? ['mg', 'g', 'kg', 'oz', 'lb'] : ['mm', 'cm', 'm', 'in', 'ft'];\n    return [name, object(field) && typeof field.number === 'number' && Number.isFinite(field.number) && field.number > 0 && field.number <= 1e9 && units.includes(field.unit) ? {number:field.number, unit:field.unit} : null];\n  }));\n}\nfunction sanitizeDetail(input, productId, trustedCache = false) {\n  if (!object(input) || input.id !== productId) fail(502, 'UPSTREAM_INVALID');\n  const output = {id:productId, title:detailText(input.title, 200, true), description:detailText(input.description, 60000)};\n  output.brands = detailArray(input.brands, 16).filter(object).map(brand => ({id:detailText(brand.id, 200, true), name:detailText(brand.name, 100, true)}));\n  output.images = detailArray(input.images, 64).filter(object).flatMap(image => {\n    const url = safeUrl(image.url, 'cdn.trychannel3.com');\n    return url ? [{url, cleaned_url:safeUrl(image.cleaned_url, 'cdn.trychannel3.com') || null, alt_text:detailText(image.alt_text, 500), is_main_image:image.is_main_image === true, shot_type:detailText(image.shot_type, 40)}] : [];\n  });\n  const category = input.category;\n  output.category = object(category) ? {slug:detailText(category.slug, 100), title:detailText(category.title, 100), path:detailArray(category.path, 16).filter(object).map(part => ({slug:detailText(part.slug, 100), title:detailText(part.title, 100)})), has_children:typeof category.has_children === 'boolean' ? category.has_children : null} : null;\n  output.gender = ['male', 'female'].includes(input.gender) ? input.gender : null;\n  output.age = ['newborn', 'infant', 'toddler', 'kids', 'adult'].includes(input.age) ? input.age : null;\n  for (const name of ['materials', 'key_features']) output[name] = detailArray(input[name], 64).map(value => detailText(value, 2000, true));\n  const attributes = input.structured_attributes ?? {};\n  if (!object(attributes) || Object.keys(attributes).length > 64) fail(502, 'UPSTREAM_INVALID');\n  output.structured_attributes = Object.create(null);\n  for (const [name, values] of Object.entries(attributes)) {\n    if (!optionText(name, 80) || ['__proto__', 'constructor', 'prototype'].includes(name)) fail(502, 'UPSTREAM_INVALID');\n    output.structured_attributes[name] = detailArray(values, 64).map(value => detailText(value, 1000, true));\n  }\n  output.offers = detailArray(input.offers, 64).filter(object).flatMap(offer => {\n    const url = safeUrl(offer.url, 'buy.trychannel3.com'), domain = typeof offer.domain === 'string' ? offer.domain.toLowerCase() : '';\n    if (!url || domain.length > 253 || !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/.test(domain)) return [];\n    const amount = offer.price?.currency === 'USD' ? usdAmount(offer.price.price) : null;\n    return [{url, domain, price:amount === null ? null : {price:amount, currency:'USD', compare_at_price:usdAmount(offer.price.compare_at_price)}, availability:availability(offer.availability), condition:['new', 'used'].includes(offer.condition) ? offer.condition : null,\n      max_commission_rate:typeof offer.max_commission_rate === 'number' && offer.max_commission_rate >= 0 && offer.max_commission_rate <= 1 ? offer.max_commission_rate : null, dimensions:detailDimensions(offer.dimensions)}];\n  });\n  // Persist source-proven official seller identity across read-only\n  // presentation fallback, but never preserve stale prices or purchase links.\n  const officialHosts=new Set(['nike.com','www.nike.com','adidas.com','www.adidas.com',\n    'levi.com','www.levi.com','elfcosmetics.com','www.elfcosmetics.com',\n    'sephora.com','www.sephora.com','tjmaxx.com','www.tjmaxx.com',\n    'tjmaxx.tjx.com','www.tjmaxx.tjx.com']);\n  const sources=trustedCache&&Array.isArray(input.sellerDomains)\n    ? input.sellerDomains.slice(0,6).filter(domain=>typeof domain==='string'&&officialHosts.has(domain))\n    : output.offers.filter(offer=>officialHosts.has(offer.domain)).map(offer=>offer.domain);\n  output.sellerDomains=[...new Set(sources)].slice(0,6);\n  output.variants = null;\n  if (input.variants !== undefined && input.variants !== null) {\n    if (!object(input.variants)) fail(502, 'UPSTREAM_INVALID');\n    const names = new Set();\n    const options = detailArray(input.variants.options, 8).map(option => {\n      if (!object(option) || !optionText(option.name, 60) || names.has(option.name) || ['__proto__', 'constructor', 'prototype'].includes(option.name)) fail(502, 'UPSTREAM_INVALID');\n      names.add(option.name); const labels = new Set();\n      return {name:option.name, values:detailArray(option.values, 120).map(value => {\n        if (!object(value) || !optionText(value.label, 80) || labels.has(value.label) || typeof value.exists !== 'boolean') fail(502, 'UPSTREAM_INVALID');\n        labels.add(value.label);\n        return {label:value.label, exists:value.exists, available:availability(value.available), thumbnail_url:safeUrl(value.thumbnail_url, 'cdn.trychannel3.com') || null, product_id:detailId(value.product_id) ? value.product_id : null};\n      })};\n    });\n    const selectedNames = new Set();\n    const selected = detailArray(input.variants.selected, 8).map(value => {\n      const option = object(value) && options.find(option => option.name === value.name);\n      if (!option || selectedNames.has(value.name) || !option.values.some(entry => entry.label === value.label)) fail(502, 'UPSTREAM_INVALID');\n      selectedNames.add(value.name); return {name:value.name, label:value.label};\n    });\n    output.variants = {options, selected};\n  }\n  if (Buffer.byteLength(JSON.stringify(output)) > MAX_DETAIL_BYTES) fail(502, 'UPSTREAM_INVALID');\n  return output;\n}\nfunction mismatches(product, options) {\n  const effective = new Map((product.variants?.selected || []).map(value => [value.name, value.label]));\n  return Object.entries(options).filter(([name, label]) => effective.get(name) !== label).map(([name, requested]) => ({name, requested, effective:effective.get(name) ?? null}));\n}\nfunction presentation(product) {\n  const result = structuredClone(product); result.offers = [];\n  for (const option of result.variants?.options || []) for (const value of option.values) value.available = null;\n  return result;\n}\nfunction validateDetailRow(row, request, kind, now) {\n  if (row == null) return null;\n  try {\n    const payload = row.payload, ttl = kind === 'detail' ? DETAIL_TTL : PRESENTATION_TTL;\n    if (row.kind !== kind || row.version !== VERSION || row.contextHash !== request.contextHash || !object(payload) || Object.keys(payload).some(key => !['provider', 'data', 'fetchedAt', 'expiresAt', 'status', 'error', 'selectionMismatch'].includes(key)) || payload.provider !== 'channel3' || !object(payload.data) || Object.keys(payload.data).length !== 1) throw Error();\n    const fetched = Date.parse(payload.fetchedAt), expires = Date.parse(payload.expiresAt);\n    if (!Number.isFinite(fetched) || !Number.isFinite(expires) || fetched > now + 60000 || expires - fetched !== ttl || row.expiresAtMs !== expires) throw Error();\n    const product = sanitizeDetail(payload.data.product, request.productId, true);\n    if (JSON.stringify(product) !== JSON.stringify(payload.data.product) || JSON.stringify(mismatches(product, request.options)) !== JSON.stringify(payload.selectionMismatch) || Buffer.byteLength(JSON.stringify(payload)) > MAX_DETAIL_BYTES) throw Error();\n    if (kind === 'presentation' && (payload.status !== 'presentation_only' || payload.error !== 'DETAIL_REFRESH_UNAVAILABLE' || JSON.stringify(presentation(product)) !== JSON.stringify(product))) throw Error();\n    if (kind === 'detail' && (payload.status !== 'fresh' || payload.error !== null)) throw Error();\n    return expires > now && (kind === 'presentation' || fetched > request.startedAt) ? payload : null;\n  } catch {fail(503, 'CACHE_UNAVAILABLE');}\n}\nfunction sanitizeProduct(input, trustedCache = false) {\n  if (!object(input) || typeof input.id !== 'string' || !/^[A-Za-z0-9_-]{1,80}$/.test(input.id) || typeof input.title !== 'string' || !input.title.trim() || input.title.length > 200) return null;\n  const output = {id: input.id, title: input.title, description: cleanString(input.description, 2000)};\n  output.brands = (Array.isArray(input.brands) ? input.brands : []).slice(0, 4).filter(object).map(brand => ({id: cleanString(brand.id, 200), name: cleanString(brand.name, 100)}));\n  const image = input.images?.[0], url = safeUrl(image?.cleaned_url || image?.url, 'cdn.trychannel3.com');\n  output.images = url ? [{url, alt_text: cleanString(image.alt_text, 200)}] : [];\n  const category = object(input.category) ? input.category : {};\n  output.category = {slug: cleanString(category.slug, 100), title: cleanString(category.title, 100), path: (Array.isArray(category.path) ? category.path : []).slice(0, 6).filter(object).map(part => ({slug: cleanString(part.slug, 100), title: cleanString(part.title, 100)}))};\n  // Store only official seller identity, not offers, links, prices or stock.\n  // The source domain must be evidenced by an HTTPS Channel3 redirect.\n  const hosts=new Set(['nike.com','www.nike.com','adidas.com','www.adidas.com',\n    'levi.com','www.levi.com','elfcosmetics.com','www.elfcosmetics.com',\n    'sephora.com','www.sephora.com','tjmaxx.com','www.tjmaxx.com',\n    'tjmaxx.tjx.com','www.tjmaxx.tjx.com']);\n  const verified=trustedCache&&Array.isArray(input.sellerDomains)\n    ? input.sellerDomains.slice(0,6).filter(v=>typeof v==='string'&&hosts.has(v))\n    : (Array.isArray(input.offers)?input.offers:[]).slice(0,8)\n      .filter(o=>object(o)&&hosts.has(String(o.domain||'').toLowerCase())&&\n        safeUrl(o.url,'buy.trychannel3.com'))\n      .map(o=>String(o.domain).toLowerCase());\n  output.sellerDomains=[...new Set(verified)].slice(0,6);\n  // Search pages are presentation-only. Volatile offers, prices, stock and\n  // variants are retrieved fresh only when a user opens product detail.\n  output.key_features = (Array.isArray(input.key_features) ? input.key_features : []).slice(0, 8).filter(value => typeof value === 'string').map(value => value.slice(0, 200));\n  return output;\n}\nfunction sanitizePage(input, request, trustedCache = false) {\n  if (!object(input) || !Array.isArray(input.products) || input.products.length > request.limit) fail(502, 'UPSTREAM_INVALID');\n  const token = input.next_page_token;\n  if (token !== null && !tokenValid(token)) fail(502, 'UPSTREAM_INVALID');\n  if (token !== null && token === request.token) fail(502, 'UPSTREAM_INVALID');\n  const products = input.products.map(p=>sanitizeProduct(p,trustedCache)).filter(Boolean);\n  return {products, next_page_token: token};\n}\nfunction validateCached(row, request, now) {\n  if (row === undefined || row === null) return null;\n  if (row.kind !== 'page' || row.version !== VERSION || row.contextHash !== request.contextHash || !object(row.payload) || row.payload.provider !== 'channel3' || Object.keys(row.payload).some(key => !['provider', 'data', 'fetchedAt', 'expiresAt'].includes(key))) fail(503, 'CACHE_UNAVAILABLE');\n  const fetched = Date.parse(row.payload.fetchedAt), expires = Date.parse(row.payload.expiresAt);\n  if (!Number.isFinite(fetched) || !Number.isFinite(expires) || fetched > now + 60_000 || expires <= fetched || expires - fetched > request.ttl || row.expiresAtMs !== expires) fail(503, 'CACHE_UNAVAILABLE');\n  let sanitized;try {sanitized = sanitizePage(row.payload.data, request, true);} catch {fail(503, 'CACHE_UNAVAILABLE');}\n  if (JSON.stringify(sanitized) !== JSON.stringify(row.payload.data) || Buffer.byteLength(JSON.stringify(row.payload)) > MAX_PAGE_BYTES) fail(503, 'CACHE_UNAVAILABLE');\n  return expires > now ? row.payload : null;\n}\nfunction proxyResponse(statusCode, payload) {\n  return {statusCode, headers: {'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': 'https://anox.app', 'X-Content-Type-Options': 'nosniff'}, body: JSON.stringify(payload)};\n}\nfunction createHandler({store, upstream, upstreamDetail = upstream?.detail, now = Date.now, sleep = ms => new Promise(resolve => setTimeout(resolve, ms)), metric = () => {}}) {\n  const pending = new Map(); let sequence = 0;\n  const emit = name => {try {metric(name);} catch {}};\n  async function load(request) {\n    let chainExpires = now() + CURSOR_TTL, count = 0;\n    if (request.token !== undefined) {\n      const cursor = await store.get(cursorKey(request.contextHash, request.token));\n      if (!cursor || cursor.kind !== 'cursor' || cursor.contextHash !== request.contextHash || !Number.isSafeInteger(cursor.expiresAtMs) || !Number.isSafeInteger(cursor.count) || cursor.count < 1 || cursor.count >= 500) fail(400, 'CURSOR_INVALID');\n      if (cursor.expiresAtMs <= now()) fail(410, 'CURSOR_EXPIRED');\n      chainExpires = cursor.expiresAtMs; count = cursor.count;\n    }\n    const requireActiveChain = () => {if (now() >= chainExpires) fail(410, 'CURSOR_EXPIRED');};\n    const readPage = async () => {\n      const row = await store.get(request.key);\n      requireActiveChain();\n      return validateCached(row, request, now());\n    };\n    const cached = await readPage();\n    if (cached) {emit('cache_hit'); return cached;}\n    emit('cache_miss');\n    const owner = randomUUID();\n    if (!await store.acquire(request.key, owner, now(), now() + LEASE_MS)) {\n      requireActiveChain();\n      emit('cache_contention');\n      // A waiter never takes over in this invocation: failure needs an explicit retry.\n      const waitUntil = now() + 6000;\n      for (let attempt = 0; attempt < 20 && now() + 1800 <= waitUntil; attempt++) {\n        await sleep(300);\n        if (now() + 1500 > waitUntil) break;\n        const ready = await readPage();\n        if (ready) {emit('cache_hit'); return ready;}\n      }\n      fail(503, 'CACHE_BUSY');\n    }\n    try {\n      // Recheck after the conditional lease; another invocation may have published\n      // between our first read and lease acquisition.\n      const raced = await readPage();\n      if (raced) {emit('cache_hit'); return raced;}\n      const input = {query: request.query, limit: request.limit};\n      if (Object.keys(request.filters).length) input.filters = request.filters;\n      if (request.token !== undefined) input.page_token = request.token;\n      let data, rawCount;\n      try {\n        requireActiveChain();\n        const raw = await upstream(input, {expiresAt: chainExpires}); data = sanitizePage(raw, request); rawCount = raw.products.length;\n        if (!rawCount && data.next_page_token !== null) fail(502, 'UPSTREAM_INVALID');\n      } catch (error) {emit('upstream_failure'); if (error instanceof SafeError && [410, 429, 503].includes(error.status)) throw error; fail(502, 'UPSTREAM_UNAVAILABLE');}\n      const fetched = now(), expires = Math.min(fetched + request.ttl, chainExpires);\n      if (expires <= fetched) fail(410, 'CURSOR_EXPIRED');\n      data.products = data.products.slice(0, 500 - count);\n      count += rawCount;\n      if (count >= 500) data.next_page_token = null;\n      const payload = {provider: 'channel3', data, fetchedAt: new Date(fetched).toISOString(), expiresAt: new Date(expires).toISOString()};\n      if (Buffer.byteLength(JSON.stringify(payload)) > MAX_PAGE_BYTES) {emit('upstream_failure'); fail(502, 'UPSTREAM_INVALID');}\n      const page = {kind: 'page', version: VERSION, contextHash: request.contextHash, expiresAtMs: expires, payload};\n      const cursor = data.next_page_token === null ? null : {key: cursorKey(request.contextHash, data.next_page_token), value: {kind: 'cursor', contextHash: request.contextHash, expiresAtMs: chainExpires, count}};\n      await store.publish(request.key, owner, page, cursor, now());\n      return payload;\n    } finally {\n      try {await store.release(request.key, owner);} catch {emit('cache_error');}\n    }\n  }\n  async function loadDetail(request, fetched) {\n    const read = async () => validateDetailRow(await store.get(request.key), request, 'detail', now());\n    const exchanged = await read();\n    if (exchanged) {emit('detail_coalesced'); return exchanged;}\n    const owner = randomUUID();\n    if (!await store.acquire(request.key, owner, now(), now() + LEASE_MS)) {\n      emit('cache_contention'); const until = now() + 6000;\n      for (let attempt = 0; attempt < 20 && now() + 1800 <= until; attempt++) {\n        await sleep(300); if (now() + 1500 > until) break;\n        const ready = await read(); if (ready) {emit('detail_coalesced'); return ready;}\n      }\n      fail(503, 'CACHE_BUSY');\n    }\n    try {\n      const raced = await read(); if (raced) {emit('detail_coalesced'); return raced;}\n      let product;\n      try {product = sanitizeDetail(await upstreamDetail({productId:request.productId, options:request.options}), request.productId);}\n      catch (error) {\n        emit('upstream_failure');\n        if (error?.code === 'PRODUCT_NOT_FOUND') fail(404, 'PRODUCT_NOT_FOUND');\n        if (['UPSTREAM_BUDGET_EXCEEDED', 'UPSTREAM_RATE_LIMITED', 'UPSTREAM_BUDGET_UNAVAILABLE'].includes(error?.code)) fail(error.code === 'UPSTREAM_BUDGET_UNAVAILABLE' ? 503 : 429, error.code);\n        fail(503, 'DETAIL_REFRESH_UNAVAILABLE');\n      }\n      // Stop admitting local waiters when the upstream result is complete, even\n      // if its durable publication is still pending. A later view needs new data.\n      fetched();\n      const fetchedAt = now(), selectionMismatch = mismatches(product, request.options);\n      const payload = {provider:'channel3', data:{product}, fetchedAt:new Date(fetchedAt).toISOString(), expiresAt:new Date(fetchedAt + DETAIL_TTL).toISOString(), status:'fresh', error:null, selectionMismatch};\n      if (Buffer.byteLength(JSON.stringify(payload)) > MAX_DETAIL_BYTES) fail(503, 'DETAIL_REFRESH_UNAVAILABLE');\n      const fallback = {...payload, data:{product:presentation(product)}, expiresAt:new Date(fetchedAt + PRESENTATION_TTL).toISOString(), status:'presentation_only', error:'DETAIL_REFRESH_UNAVAILABLE'};\n      const row = {kind:'detail', version:VERSION, contextHash:request.contextHash, expiresAtMs:fetchedAt + DETAIL_TTL, payload};\n      await store.publish(request.key, owner, row, null, now(), [{key:request.presentationKey, value:{...row, kind:'presentation', expiresAtMs:fetchedAt + PRESENTATION_TTL, payload:fallback}}]);\n      emit('detail_fresh'); return payload;\n    } finally {try {await store.release(request.key, owner);} catch {emit('cache_error');}}\n  }\n  return async function handler(event) {\n    let request;\n    try {\n      if (!object(event)) fail(400, 'INVALID_REQUEST');\n      request = Object.hasOwn(event, 'operation') || event.rawPath?.startsWith('/catalog/channel3/products') ? parseDetail(event, now()) : parseRequest(event);\n      request.order = ++sequence;\n      let entry = pending.get(request.key);\n      while (request.mode === 'detail' && entry?.fetched) {\n        await entry.work.catch(() => {});\n        entry = pending.get(request.key);\n      }\n      if (!entry) {\n        if (pending.size >= 100) fail(503, 'CACHE_BUSY');\n        const created = {fetched:false};\n        created.work = request.mode === 'detail' ? loadDetail(request, () => {created.fetched = true; created.fetchedOrder = ++sequence;}) : load(request);\n        pending.set(request.key, created); entry = created;\n        const done = () => {if (pending.get(request.key) === created) pending.delete(request.key);};\n        created.work.then(done, done);\n      }\n      let payload;\n      try {\n        payload = await entry.work;\n        // The first waiter's timestamp cannot confer freshness on a later one.\n        // A local sequence also distinguishes requests within one clock tick.\n        if (request.mode === 'detail' && !(entry.fetchedOrder > request.order || Date.parse(payload.fetchedAt) > request.startedAt)) fail(503, 'CACHE_BUSY');\n      }\n      catch (error) {\n        if (request.mode !== 'detail' || request.internal || !['DETAIL_REFRESH_UNAVAILABLE', 'CACHE_BUSY', 'UPSTREAM_BUDGET_EXCEEDED', 'UPSTREAM_RATE_LIMITED', 'UPSTREAM_BUDGET_UNAVAILABLE'].includes(error?.code)) throw error;\n        payload = validateDetailRow(await store.get(request.presentationKey), request, 'presentation', now());\n        if (!payload) throw error;\n        emit('presentation_fallback');\n      }\n      return request.internal ? payload : proxyResponse(200, payload);\n    } catch (error) {\n      const status = error instanceof SafeError ? error.status : 503, code = error instanceof SafeError ? error.code : 'CACHE_UNAVAILABLE';\n      if (!(error instanceof SafeError)) emit('cache_error');\n      return request?.internal ? {statusCode:status, error:code} : proxyResponse(status, {error:code});\n    }\n  };\n}\nfunction createBudget({store, now = Date.now, budgetMonth = '', freeSearchMonthlyCredits = 0, paidSearchMonthlyCredits = 0, paidUsageEnabled = false,\n  searchDailyLimit = 0, detailMonthlyLimit = 0, detailDailyLimit = 0, totalDailyLimit = 1000, perSecondLimit = 5}) {\n  const bounded = (value, max) => Number.isSafeInteger(value) && value >= 0 && value <= max;\n  if (typeof budgetMonth !== 'string' || (budgetMonth !== '' && !/^20[0-9]{2}-(?:0[1-9]|1[0-2])$/.test(budgetMonth)) ||\n    !bounded(freeSearchMonthlyCredits, 1000) || !bounded(paidSearchMonthlyCredits, 1000000) || typeof paidUsageEnabled !== 'boolean' ||\n    (paidSearchMonthlyCredits > 0 && !paidUsageEnabled) || !bounded(detailMonthlyLimit, 310000) ||\n    ![searchDailyLimit, detailDailyLimit, totalDailyLimit].every(limit => bounded(limit, 10000)) ||\n    !bounded(perSecondLimit, 10) || perSecondLimit < 1 || typeof store?.reserve !== 'function') throw Error('INVALID_BUDGET_CONFIG');\n  return async kind => {\n    if (!['search', 'detail'].includes(kind)) fail(503, 'UPSTREAM_BUDGET_UNAVAILABLE');\n    const time = now(), day = new Date(time).toISOString().slice(0, 10), month = day.slice(0, 7), second = Math.floor(time / 1000);\n    // Allocation is a reviewed application budget, never an inferred provider balance.\n    // Requiring renewal prevents silently assuming a new free allowance at rollover.\n    if (!budgetMonth || budgetMonth !== month) fail(503, 'UPSTREAM_BUDGET_UNAVAILABLE');\n    const monthlyLimit = kind === 'search' ? freeSearchMonthlyCredits + paidSearchMonthlyCredits : detailMonthlyLimit;\n    const dailyLimit = kind === 'search' ? searchDailyLimit : detailDailyLimit;\n    if (!monthlyLimit || !dailyLimit || !totalDailyLimit) fail(429, 'UPSTREAM_BUDGET_EXCEEDED');\n    const dayExpiry = Math.floor(Date.parse(day + 'T00:00:00.000Z') / 1000) + 172800;\n    // Period-only identities do not reset when limits or other settings change.\n    const monthExpiry = Math.floor(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5)), 1) / 1000) + 90 * 86400;\n    try {\n      await store.reserve({counters:[\n        {key:`budget#month#${month}#${kind}`, limit:monthlyLimit, expiresAt:monthExpiry},\n        {key:`budget#${day}#${kind}`, limit:dailyLimit, expiresAt:dayExpiry},\n        {key:`budget#${day}#all`, limit:totalDailyLimit, expiresAt:dayExpiry},\n        {key:`rate#${second}`, limit:perSecondLimit, expiresAt:second + 120, rate:true}\n      ]});\n      return {validUntil:(second + 1) * 1000};\n    } catch (error) {\n      if (error instanceof SafeError) throw error;\n      fail(503, 'UPSTREAM_BUDGET_UNAVAILABLE');\n    }\n  };\n}\nfunction createDynamoStore({client, commands, table}) {\n  const {GetItemCommand, PutItemCommand, DeleteItemCommand, TransactWriteItemsCommand} = commands;\n  const send = command => client.send(command, {abortSignal: AbortSignal.timeout(1500)});\n  const key = pk => ({pk: {S: pk}});\n  const item = (pk, value) => ({pk: {S: pk}, value: {S: JSON.stringify(value)}, expiresAt: {N: String(Math.ceil(value.expiresAtMs / 1000))}});\n  return {\n    async get(pk) {\n      const result = await send(new GetItemCommand({TableName: table, Key: key(pk), ConsistentRead: true}));\n      if (!result.Item) return undefined;\n      if (typeof result.Item.value?.S !== 'string') throw Error('CACHE_INVALID');\n      return JSON.parse(result.Item.value.S);\n    },\n    async acquire(pk, owner, now, until) {\n      try {\n        await send(new PutItemCommand({TableName: table, Item: {...key('lease#' + pk), owner: {S: owner}, leaseUntil: {N: String(until)}, expiresAt: {N: String(Math.ceil(until / 1000))}},\n          ConditionExpression: 'attribute_not_exists(pk) OR leaseUntil <= :now', ExpressionAttributeValues: {':now': {N: String(now)}}}));\n        return true;\n      } catch (error) {if (error.name === 'ConditionalCheckFailedException') return false; throw error;}\n    },\n    async publish(pk, owner, page, cursor, now, extra = []) {\n      const writes = [{Put: {TableName: table, Item: item(pk, page)}}];\n      if (cursor) writes.push({Put: {TableName: table, Item: item(cursor.key, cursor.value)}});\n      for (const row of extra) writes.push({Put:{TableName:table, Item:item(row.key, row.value)}});\n      writes.push({Delete: {TableName: table, Key: key('lease#' + pk), ConditionExpression: '#owner = :owner AND leaseUntil > :now',\n        ExpressionAttributeNames: {'#owner': 'owner'}, ExpressionAttributeValues: {':owner': {S: owner}, ':now': {N: String(now)}}}});\n      await send(new TransactWriteItemsCommand({ClientRequestToken: owner, TransactItems: writes}));\n    },\n    async reserve({counters}) {\n      const counter = ({key:pk, limit, expiresAt}) => ({Update:{TableName:table, Key:key(pk), UpdateExpression:'SET expiresAt = :expires ADD #used :one',\n        ConditionExpression:':limit > :zero AND (attribute_not_exists(#used) OR (attribute_type(#used, :number) AND #used >= :zero AND #used < :limit))', ExpressionAttributeNames:{'#used':'used'},\n        ExpressionAttributeValues:{':expires':{N:String(expiresAt)}, ':one':{N:'1'}, ':zero':{N:'0'}, ':number':{S:'N'}, ':limit':{N:String(limit)}}}});\n      try {await send(new TransactWriteItemsCommand({ClientRequestToken:randomUUID(), TransactItems:counters.map(counter)}));}\n      catch (error) {\n        if (error.name === 'TransactionCanceledException') {\n          const rejected = error.CancellationReasons?.findIndex(row => row?.Code === 'ConditionalCheckFailed');\n          if (rejected >= 0 && rejected < counters.length) fail(429, counters[rejected].rate ? 'UPSTREAM_RATE_LIMITED' : 'UPSTREAM_BUDGET_EXCEEDED');\n        }\n        fail(503, 'UPSTREAM_BUDGET_UNAVAILABLE');\n      }\n    },\n    async release(pk, owner) {\n      try {await send(new DeleteItemCommand({TableName: table, Key: key('lease#' + pk), ConditionExpression: '#owner = :owner', ExpressionAttributeNames: {'#owner': 'owner'}, ExpressionAttributeValues: {':owner': {S: owner}}}));}\n      catch (error) {if (error.name !== 'ConditionalCheckFailedException') throw error;}\n    }\n  };\n}\nfunction createUpstream({fetch: transport = globalThis.fetch, getSecret, reserve = async () => {}, now = Date.now, timeoutMs = 10_000, metric = () => {}}) {\n  let secret = '', secretUntil = 0, secretPending = null;\n  async function apiKey(signal) {\n    if (secret && secretUntil > now()) return secret;\n    if (!secretPending) {\n      secretPending = (async () => {\n        const raw = await getSecret(signal);\n        let parsed; try {parsed = JSON.parse(raw);} catch {}\n        const value = object(parsed) ? parsed.apiKey || parsed.api_key || parsed.key : raw;\n        if (typeof value !== 'string' || !value.length || value.length > 8192 || /[\\u0000-\\u001f\\u007f]/.test(value)) fail(502, 'UPSTREAM_UNAVAILABLE');\n        secret = value; secretUntil = now() + 300_000; return secret;\n      })();\n      secretPending.then(() => {secretPending = null;}, () => {secretPending = null;});\n    }\n    return secretPending;\n  }\n  async function request(input, {expiresAt} = {}, detail = false) {\n    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeoutMs);\n    let response;\n    try {\n      const key = await apiKey(controller.signal);\n      controller.signal.throwIfAborted();\n      if (expiresAt !== undefined && now() >= expiresAt) fail(410, 'CURSOR_EXPIRED');\n      try {\n        const reservation = await reserve(detail ? 'detail' : 'search');\n        if (reservation?.validUntil !== undefined && now() >= reservation.validUntil) fail(429, 'UPSTREAM_RATE_LIMITED');\n      }\n      catch (error) {\n        const code = ['UPSTREAM_BUDGET_EXCEEDED', 'UPSTREAM_RATE_LIMITED'].includes(error?.code) ? error.code : 'UPSTREAM_BUDGET_UNAVAILABLE';\n        try {metric(code === 'UPSTREAM_BUDGET_EXCEEDED' ? 'budget_exceeded' : code === 'UPSTREAM_RATE_LIMITED' ? 'rate_limited' : 'budget_error');} catch {}\n        fail(code === 'UPSTREAM_BUDGET_UNAVAILABLE' ? 503 : 429, code);\n      }\n      controller.signal.throwIfAborted();\n      if (expiresAt !== undefined && now() >= expiresAt) fail(410, 'CURSOR_EXPIRED');\n      let url = 'https://api.trychannel3.com/v1/search';\n      const init = {method:detail ? 'GET' : 'POST', headers:{'Content-Type':'application/json', 'x-api-key':key}, signal:controller.signal, redirect:'error'};\n      if (detail) {\n        const params = new URLSearchParams({country:'US', currency:'USD', language:'en'});\n        for (const [name, value] of Object.entries(input.options)) params.set('option_' + name, value);\n        url = 'https://api.trychannel3.com/v1/products/' + encodeURIComponent(input.productId) + '?' + params.toString();\n      } else init.body = JSON.stringify(input);\n      try {metric('upstream_request'); metric(detail ? 'product_detail_request' : 'search_credit_request');} catch {}\n      response = await transport(url, init);\n      if (!response.ok) {\n        await response.body?.cancel();\n        if (detail && response.status === 404) fail(404, 'PRODUCT_NOT_FOUND');\n        if (input.page_token !== undefined && [400, 404, 410, 422].includes(response.status)) fail(410, 'CURSOR_INVALID');\n        fail(502, 'UPSTREAM_UNAVAILABLE');\n      }\n      if (!/^application\\/(?:[a-z0-9.+-]*\\+)?json(?:\\s*;|$)/i.test(response.headers.get('content-type') || '') || Number(response.headers.get('content-length')) > MAX_UPSTREAM_BYTES) {\n        await response.body?.cancel(); fail(502, 'UPSTREAM_INVALID');\n      }\n      const reader = response.body?.getReader(); if (!reader) fail(502, 'UPSTREAM_INVALID');\n      const decoder = new TextDecoder('utf-8', {fatal: true}); let text = '', bytes = 0;\n      try {\n        for (;;) {\n          const {done, value} = await reader.read(); if (done) break;\n          bytes += value.byteLength; if (bytes > MAX_UPSTREAM_BYTES) fail(502, 'UPSTREAM_INVALID');\n          text += decoder.decode(value, {stream: true});\n        }\n        text += decoder.decode(); return JSON.parse(text);\n      } catch (error) {await reader.cancel().catch(() => {}); throw error;}\n    } catch (error) {if (error instanceof SafeError) throw error; fail(502, 'UPSTREAM_UNAVAILABLE');}\n    finally {clearTimeout(timer); controller.abort();}\n  }\n  const search = (input, options) => request(input, options);\n  search.detail = input => {\n    if (!detailId(input?.productId)) fail(400, 'INVALID_PRODUCT');\n    return request({productId:input.productId, options:detailOptions(input.options)}, {}, true);\n  };\n  return search;\n}\nfunction createMetric({log = line => console.log(line), now = Date.now, namespace = 'AnoX/Catalog'} = {}) {\n  if (!['AnoX/Catalog','AnoX/Staging/Catalog'].includes(namespace)) throw Error('INVALID_METRIC_CONFIG');\n  const names = new Set(['cache_hit', 'cache_miss', 'upstream_request', 'upstream_failure', 'cache_contention', 'cache_error', 'search_credit_request', 'product_detail_request', 'detail_fresh', 'detail_coalesced', 'presentation_fallback', 'budget_exceeded', 'rate_limited', 'budget_error']);\n  return name => {\n    if (!names.has(name)) return;\n    log(JSON.stringify({_aws: {Timestamp: now(), CloudWatchMetrics: [{Namespace: namespace, Dimensions: [['Service']], Metrics: [{Name: name, Unit: 'Count'}]}]}, Service: 'Channel3Catalog', event: name, [name]: 1}));\n  };\n}\nlet runtimeHandler;\nasync function handler(event) {\n  if (!runtimeHandler) {\n    // SDK clients are reused by the warm runtime. Secret values are resolved only\n    // inside this deployed application and never included in source or responses.\n    const dynamo = require('@aws-sdk/client-dynamodb');\n    const secrets = require('@aws-sdk/client-secrets-manager');\n    const config = {region: process.env.AWS_REGION || 'us-east-2', maxAttempts: 2, requestHandler: {connectionTimeout: 1000, requestTimeout: 1500}};\n    const client = new dynamo.DynamoDBClient(config), secretClient = new secrets.SecretsManagerClient(config);\n    const table = process.env.CACHE_TABLE, secretId = process.env.CHANNEL3_SECRET_ID;\n    if (!table || !secretId) return proxyResponse(503, {error: 'CACHE_UNAVAILABLE'});\n    let metric;\n    try {metric = createMetric({namespace:process.env.METRIC_NAMESPACE ?? 'AnoX/Catalog'});}\n    catch {return proxyResponse(503,{error:'CATALOG_CONFIG_UNAVAILABLE'});}\n    const store = createDynamoStore({client, commands:dynamo, table});\n    let reserve;\n    try {\n      if (!['true', 'false'].includes(process.env.PAID_USAGE_ENABLED ?? 'false')) throw Error('INVALID_BUDGET_CONFIG');\n      const number = (name, fallback = 0) => {\n        const raw = process.env[name];\n        if (raw === undefined) return fallback;\n        if (!/^(?:0|[1-9][0-9]*)$/.test(raw)) throw Error('INVALID_BUDGET_CONFIG');\n        return Number(raw);\n      };\n      reserve = createBudget({store, budgetMonth:process.env.BUDGET_MONTH ?? '', freeSearchMonthlyCredits:number('FREE_SEARCH_MONTHLY_CREDITS'),\n        paidSearchMonthlyCredits:number('PAID_SEARCH_MONTHLY_CREDITS'), paidUsageEnabled:process.env.PAID_USAGE_ENABLED === 'true', searchDailyLimit:number('SEARCH_DAILY_LIMIT'),\n        detailMonthlyLimit:number('DETAIL_MONTHLY_LIMIT'), detailDailyLimit:number('DETAIL_DAILY_LIMIT'), totalDailyLimit:number('TOTAL_DAILY_LIMIT', 1000), perSecondLimit:number('UPSTREAM_PER_SECOND_LIMIT', 5)});\n    }\n    catch {try {metric('budget_error');} catch {} return proxyResponse(503, {error:'UPSTREAM_BUDGET_UNAVAILABLE'});}\n    runtimeHandler = createHandler({store, metric,\n      upstream:createUpstream({metric, reserve, getSecret:async signal => (await secretClient.send(new secrets.GetSecretValueCommand({SecretId:secretId}), {abortSignal:signal})).SecretString})});\n  }\n  return runtimeHandler(event);\n}\nmodule.exports = {handler, createHandler, createUpstream, createDynamoStore, createMetric, createBudget};\n"
+        },
+        "ReservedConcurrentExecutions": {
+          "Ref": "StagingCatalogConcurrency"
+        }
+      },
+      "DependsOn": [
+        "StagingCatalogLogs"
+      ]
+    },
+    "DetailIntegration": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "StagingApi"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationMethod": "POST",
+        "PayloadFormatVersion": "2.0",
+        "TimeoutInMillis": 20000,
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "Channel3Function",
+            "Arn"
+          ]
+        }
+      }
+    },
+    "DetailRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "StagingApi"
+        },
+        "RouteKey": "GET /catalog/channel3/products/{id}",
+        "AuthorizationType": "NONE",
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "DetailIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "DetailPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "Channel3Function"
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${StagingApi}/*/GET/catalog/channel3/products/*"
+        }
+      }
+    },
+    "PaidUsageAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "Search HTTP attempts reach the configured daily cap. This credit-bearing endpoint count does not distinguish invoiced/free credits and is not billing reconciliation.",
+        "Namespace": "AnoX/Staging/Catalog",
+        "MetricName": "search_credit_request",
+        "Dimensions": [
+          {
+            "Name": "Service",
+            "Value": "Channel3Catalog"
+          }
+        ],
+        "Statistic": "Sum",
+        "Period": 86400,
+        "EvaluationPeriods": 1,
+        "Threshold": {
+          "Ref": "SearchDailyLimit"
+        },
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "notBreaching",
+        "AlarmActions": {
+          "Fn::If": [
+            "HasAlarmTopic",
+            [
+              {
+                "Ref": "ExistingAlarmTopicArn"
+              }
+            ],
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      }
+    },
+    "DetailUsageAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "Product-detail attempts reach the configured request quota. Product retrieval is zero-credit in current public documentation, not the paid lookup endpoint.",
+        "Namespace": "AnoX/Staging/Catalog",
+        "MetricName": "product_detail_request",
+        "Dimensions": [
+          {
+            "Name": "Service",
+            "Value": "Channel3Catalog"
+          }
+        ],
+        "Statistic": "Sum",
+        "Period": 86400,
+        "EvaluationPeriods": 1,
+        "Threshold": {
+          "Ref": "DetailDailyLimit"
+        },
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "notBreaching",
+        "AlarmActions": {
+          "Fn::If": [
+            "HasAlarmTopic",
+            [
+              {
+                "Ref": "ExistingAlarmTopicArn"
+              }
+            ],
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      }
+    },
+    "BudgetDeniedAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "The distributed monthly, daily or shared upstream allocation denied a request.",
+        "Namespace": "AnoX/Staging/Catalog",
+        "MetricName": "budget_exceeded",
+        "Dimensions": [
+          {
+            "Name": "Service",
+            "Value": "Channel3Catalog"
+          }
+        ],
+        "Statistic": "Sum",
+        "Period": 300,
+        "EvaluationPeriods": 1,
+        "Threshold": 1,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "notBreaching",
+        "AlarmActions": {
+          "Fn::If": [
+            "HasAlarmTopic",
+            [
+              {
+                "Ref": "ExistingAlarmTopicArn"
+              }
+            ],
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      }
+    },
+    "UpstreamFailureAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "Channel3 catalog or detail retrieval is failing.",
+        "Namespace": "AnoX/Staging/Catalog",
+        "MetricName": "upstream_failure",
+        "Dimensions": [
+          {
+            "Name": "Service",
+            "Value": "Channel3Catalog"
+          }
+        ],
+        "Statistic": "Sum",
+        "Period": 300,
+        "EvaluationPeriods": 1,
+        "Threshold": 5,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "notBreaching",
+        "AlarmActions": {
+          "Fn::If": [
+            "HasAlarmTopic",
+            [
+              {
+                "Ref": "ExistingAlarmTopicArn"
+              }
+            ],
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      }
+    },
+    "BudgetStorageAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "The budget counter could not be reserved; upstream calls fail closed.",
+        "Namespace": "AnoX/Staging/Catalog",
+        "MetricName": "budget_error",
+        "Dimensions": [
+          {
+            "Name": "Service",
+            "Value": "Channel3Catalog"
+          }
+        ],
+        "Statistic": "Sum",
+        "Period": 300,
+        "EvaluationPeriods": 1,
+        "Threshold": 1,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "notBreaching",
+        "AlarmActions": {
+          "Fn::If": [
+            "HasAlarmTopic",
+            [
+              {
+                "Ref": "ExistingAlarmTopicArn"
+              }
+            ],
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      }
+    },
+    "CommerceTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "BillingMode": "PAY_PER_REQUEST",
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "pk",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "sk",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "pk",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "sk",
+            "KeyType": "RANGE"
+          }
+        ],
+        "SSESpecification": {
+          "SSEEnabled": true
+        },
+        "PointInTimeRecoverySpecification": {
+          "PointInTimeRecoveryEnabled": true
+        },
+        "DeletionProtectionEnabled": true,
+        "TimeToLiveSpecification": {
+          "AttributeName": "ttl",
+          "Enabled": true
+        },
+        "Tags": [
+          {
+            "Key": "Service",
+            "Value": "AnoX-Commerce"
+          }
+        ]
+      }
+    },
+    "CommerceLogs": {
+      "Type": "AWS::Logs::LogGroup",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/lambda/${AWS::StackName}-commerce"
+        },
+        "RetentionInDays": 90
+      }
+    },
+    "CommerceRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "CommerceRuntime",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:Query",
+                    "dynamodb:ConditionCheckItem"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "CommerceTable",
+                      "Arn"
+                    ]
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "lambda:InvokeFunction"
+                  ],
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "Channel3Function",
+                      "Arn"
+                    ]
+                  }
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AWS::StackName}-commerce:*"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "CommerceFunction": {
+      "Type": "AWS::Lambda::Function",
+      "DependsOn": [
+        "CommerceLogs"
+      ],
+      "Properties": {
+        "FunctionName": {
+          "Fn::Sub": "${AWS::StackName}-commerce"
+        },
+        "Runtime": "nodejs24.x",
+        "Handler": "index.handler",
+        "Timeout": 18,
+        "MemorySize": 256,
+        "ReservedConcurrentExecutions": {
+          "Ref": "ReservedConcurrency"
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "CommerceRole",
+            "Arn"
+          ]
+        },
+        "Environment": {
+          "Variables": {
+            "COMMERCE_TABLE": {
+              "Ref": "CommerceTable"
+            },
+            "CATALOG_FUNCTION_ARN": {
+              "Fn::GetAtt": [
+                "Channel3Function",
+                "Arn"
+              ]
+            },
+            "COGNITO_ISSUER": {
+              "Fn::Sub": "https://cognito-idp.${AWS::Region}.amazonaws.com/${StagingUserPool}"
+            },
+            "COGNITO_CLIENT_ID": {
+              "Ref": "StagingClient"
+            },
+            "ALLOWED_ORIGIN": "https://anox.app"
+          }
+        },
+        "Code": {
+          "ZipFile": "'use strict';\nconst externalRequire=require;\nconst factories={\n\"./errors.js\":function(module,exports,require){\n'use strict';\nclass CommerceError extends Error {\n  constructor(code, message, statusCode = 400) { super(message); this.name = 'CommerceError'; this.code = code; this.statusCode = statusCode; }\n}\nconst fail = (code, message, statusCode = 400) => { throw new CommerceError(code, message, statusCode); };\nmodule.exports = { CommerceError, fail };\n\n},\n\"./money.js\":function(module,exports,require){\n'use strict';\nconst { fail } = require('./errors.js');\nfunction checked(value) {\n  if (!Number.isSafeInteger(value) || value < 0) fail('invalid_money', 'Money must be a nonnegative safe integer in minor units.', 422);\n  return value;\n}\nfunction decimalToMinor(value) {\n  if (typeof value !== 'string' && typeof value !== 'number') fail('invalid_money', 'A decimal price is required.', 422);\n  const source = String(value);\n  if (!/^(?:0|[1-9]\\d{0,6})(?:\\.\\d{1,2})?$/.test(source)) fail('invalid_money', 'Price must be an exact decimal with at most two fractional digits.', 422);\n  const [whole, fraction = ''] = source.split('.');\n  const minor = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, '0'));\n  if (minor > 100000000n) fail('invalid_money', 'Price exceeds the supported limit.', 422);\n  return checked(Number(minor));\n}\nfunction addMinor(values) {\n  let total = 0n; for (const value of values) total += BigInt(checked(value));\n  if (total > BigInt(Number.MAX_SAFE_INTEGER)) fail('invalid_money', 'Amount exceeds the supported limit.', 422);\n  return Number(total);\n}\nfunction multiplyMinor(amount, quantity) { checked(quantity); return addMinor([checked(Number(BigInt(checked(amount)) * BigInt(quantity)))]); }\nmodule.exports = { decimalToMinor, addMinor, multiplyMinor, checked };\n\n},\n\"./validation.js\":function(module,exports,require){\n'use strict';\nconst crypto = require('node:crypto');\nconst { fail } = require('./errors.js');\nconst LIMITS = Object.freeze({ maxLines: 10, maxDistinctProducts: 5, maxQuantityPerLine: 20 });\nconst ID = /^[A-Za-z0-9_-]{1,80}$/;\nconst forbidden = new Set(['__proto__', 'constructor', 'prototype']);\nfunction object(value, allowed, required = allowed) {\n  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) fail('invalid_request', 'Expected a plain JSON object.');\n  if (Object.keys(value).some(key => forbidden.has(key) || !allowed.includes(key)) || required.some(key => !Object.hasOwn(value, key))) fail('invalid_request', 'Missing or unsupported request fields.');\n  return value;\n}\nfunction text(value, max = 160) { return typeof value === 'string' && value.length > 0 && value.length <= max && !/[\\u0000-\\u001f\\u007f-\\u009f\\ud800-\\udfff]/u.test(value); }\nfunction canonical(value) {\n  if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';\n  if (value && typeof value === 'object') return '{' + Object.keys(value).sort().map(key => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}';\n  return JSON.stringify(value);\n}\nconst hash = value => crypto.createHash('sha256').update(typeof value === 'string' ? value : canonical(value)).digest('hex');\nconst productKey = line => canonical({ productId: line.productId, options: line.options });\nfunction quoteInput(input) {\n  object(input, ['cartRevision', 'lines', 'destination', 'currency']);\n  if (!ID.test(input.cartRevision || '') || typeof input.cartRevision !== 'string') fail('invalid_request', 'An opaque cart revision is required.');\n  if (input.currency !== 'USD') fail('unsupported_currency', 'Only USD quotes are currently supported.', 422);\n  object(input.destination, ['country']); if (input.destination.country !== 'DZ') fail('unsupported_destination', 'Only Algeria quotes are currently supported.', 422);\n  if (!Array.isArray(input.lines) || input.lines.length < 1 || input.lines.length > LIMITS.maxLines) fail('quote_too_large', 'A quote requires one to ten cart lines.', 422);\n  const lines = input.lines.map(line => {\n    object(line, ['provider', 'productId', 'merchantDomain', 'condition', 'quantity', 'options']);\n    if (line.provider !== 'channel3') fail('unsupported_provider', 'This catalog provider is not supported.', 422);\n    if (typeof line.productId !== 'string' || !ID.test(line.productId)) fail('invalid_request', 'Invalid product identifier.');\n    if (typeof line.merchantDomain !== 'string' || line.merchantDomain.length > 253 || !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$/.test(line.merchantDomain)) fail('invalid_request', 'Invalid merchant domain.');\n    if (line.condition !== null && line.condition !== 'new' && line.condition !== 'used') fail('invalid_request', 'Invalid product condition.');\n    if (!Number.isInteger(line.quantity) || line.quantity < 1 || line.quantity > LIMITS.maxQuantityPerLine) fail('invalid_request', 'Quantity must be between one and twenty.');\n    if (!line.options || typeof line.options !== 'object' || Array.isArray(line.options) || Object.getPrototypeOf(line.options) !== Object.prototype || Object.keys(line.options).length > 8) fail('invalid_request', 'Invalid variant options.');\n    for (const [name, value] of Object.entries(line.options)) if (forbidden.has(name) || !text(name, 60) || !text(value, 80)) fail('invalid_request', 'Invalid variant selection.');\n    return { provider: 'channel3', productId: line.productId, merchantDomain: line.merchantDomain, condition: line.condition, quantity: line.quantity, options: Object.fromEntries(Object.entries(line.options).sort(([a], [b]) => a.localeCompare(b))) };\n  });\n  if (new Set(lines.map(productKey)).size > LIMITS.maxDistinctProducts) fail('quote_too_large', 'A quote supports at most five distinct product selections.', 422);\n  const identities = lines.map(({ quantity, ...identity }) => canonical(identity));\n  if (new Set(identities).size !== identities.length) fail('duplicate_line', 'Combine identical selections into a single cart line.', 422);\n  return { cartRevision: input.cartRevision, lines, destination: { country: 'DZ' }, currency: 'USD' };\n}\nfunction attemptInput(input) {\n  object(input, ['quoteId', 'cartRevision', 'cartHash']);\n  if (typeof input.quoteId !== 'string' || !ID.test(input.quoteId) || typeof input.cartRevision !== 'string' || !ID.test(input.cartRevision) || typeof input.cartHash !== 'string' || !/^[a-f0-9]{64}$/.test(input.cartHash)) fail('invalid_request', 'Invalid quote or cart binding.');\n  return input;\n}\nfunction idempotencyKey(headers) {\n  const key = headers['idempotency-key']; if (typeof key !== 'string' || !/^[A-Za-z0-9_-]{16,128}$/.test(key)) fail('idempotency_key_required', 'Use a stable 16–128 character Idempotency-Key for retries.'); return key;\n}\nmodule.exports = { LIMITS, ID, object, text, canonical, hash, productKey, quoteInput, attemptInput, idempotencyKey };\n\n},\n\"./providers.js\":function(module,exports,require){\n'use strict';\nconst { fail } = require('./errors.js');\n// Implementations must establish merchant participation and operational guarantees.\n// Configuration alone cannot supply those guarantees or enable payment collection.\nclass CheckoutProvider {\n  capabilities() { return { checkout: false, cancellation: false, refund: false, fulfillment: false }; }\n  async createOrder() { fail('operation_unsupported', 'Merchant purchasing is not supported by this provider.', 409); }\n  async cancelOrder() { fail('operation_unsupported', 'Merchant cancellation is not supported by this provider.', 409); }\n  async refundOrder() { fail('operation_unsupported', 'Merchant refunds are not supported by this provider.', 409); }\n}\nclass Channel3CheckoutProvider extends CheckoutProvider {\n  get id() { return 'channel3'; }\n  blockers() { return [{ code: 'merchant_checkout_unavailable', message: 'Channel3 catalog access does not establish an authorized merchant purchasing integration.' }, { code: 'payment_arrangement_unverified', message: 'A supported merchant payment arrangement and successful-order fee collection have not been established.' }]; }\n}\nconst channel3 = Object.freeze(new Channel3CheckoutProvider());\nconst checkout = () => ({ enabled: false, blockers: channel3.blockers() });\nmodule.exports = { CheckoutProvider, Channel3CheckoutProvider, checkout };\n\n},\n\"./delivery.js\":function(module,exports,require){\n'use strict';\nconst { fail } = require('./errors.js');\nconst { object, hash, ID, text } = require('./validation.js');\nconst FRESHNESS_MS = 30000;\nconst LABELS = Object.freeze({ us_sales_tax: 'U.S. sales tax', us_shipping: 'Domestic U.S. shipping', international_shipping: 'International shipping to Algeria', customs_import: 'Customs duties and import taxes' });\nfunction deliveryComponents() {\n  return Object.entries(LABELS).map(([code, label]) => ({ code, label, amountMinor: null, currency: 'USD', status: 'unknown', source: null, ...(code === 'customs_import' ? { note: 'Import classification and responsibility for arrival charges are not established.' } : {}) }));\n}\nconst reference = value => typeof value === 'string' && ID.test(value);\nfunction inputError() { fail('delivery_input_invalid', 'Verified address references, measured parcels and a supported delivery destination are required.', 422); }\nfunction positiveInteger(value, ceiling) { if (!Number.isSafeInteger(value) || value < 1 || value > ceiling) inputError(); return value; }\n// Server-internal contract, not an HTTP request schema. References must resolve\n// to immutable, ownership-checked address/contents/service records in a future adapter.\n// Shape validation does not prove a real address, measurement or carrier service.\nfunction validateDeliveryRequest(value) {\n  try {\n    object(value, ['serviceRef', 'cartHash', 'currency', 'origin', 'destination', 'parcels']);\n    if (!reference(value.serviceRef) || typeof value.cartHash !== 'string' || !/^[a-f0-9]{64}$/.test(value.cartHash) || value.currency !== 'USD') inputError();\n    object(value.origin, ['country', 'postalCode', 'addressRef']);\n    if (value.origin.country !== 'US' || typeof value.origin.postalCode !== 'string' || !/^\\d{5}(?:-\\d{4})?$/.test(value.origin.postalCode) || !reference(value.origin.addressRef)) inputError();\n    object(value.destination, ['country', 'postalCode', 'addressRef', 'deliveryMode', 'collectionPointRef']);\n    const destination = value.destination;\n    if (destination.country !== 'DZ' || typeof destination.postalCode !== 'string' || !/^\\d{5}$/.test(destination.postalCode) || !reference(destination.addressRef)) inputError();\n    if (destination.deliveryMode === 'postal_pickup' ? !reference(destination.collectionPointRef) : destination.deliveryMode !== 'home' || destination.collectionPointRef !== null) inputError();\n    if (!Array.isArray(value.parcels) || value.parcels.length < 1 || value.parcels.length > 10) inputError();\n    const parcels = value.parcels.map(parcel => {\n      object(parcel, ['id', 'contentsRef', 'weightGrams', 'lengthMm', 'widthMm', 'heightMm']);\n      if (!reference(parcel.id) || !reference(parcel.contentsRef)) inputError();\n      // Defensive representation ceilings, not carrier capacity declarations.\n      return { id: parcel.id, contentsRef: parcel.contentsRef, weightGrams: positiveInteger(parcel.weightGrams, 1000000000), lengthMm: positiveInteger(parcel.lengthMm, 1000000), widthMm: positiveInteger(parcel.widthMm, 1000000), heightMm: positiveInteger(parcel.heightMm, 1000000) };\n    }).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);\n    if (new Set(parcels.map(parcel => parcel.id)).size !== parcels.length) inputError();\n    return { serviceRef: value.serviceRef, cartHash: value.cartHash, currency: 'USD', origin: { ...value.origin }, destination: { ...destination }, parcels };\n  } catch { inputError(); }\n}\nfunction evidenceError() { fail('delivery_evidence_invalid', 'Current delivery cost evidence could not be validated.', 503); }\nfunction timestamp(value) {\n  if (typeof value !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/.test(value)) evidenceError();\n  const parsed = Date.parse(value);\n  if (!Number.isFinite(parsed) || new Date(parsed).toISOString() !== value) evidenceError();\n  return parsed;\n}\nfunction costs(components) {\n  return { components, estimatedTotalMinor: null, verifiedPayableTotalMinor: null, potentialChargesOnArrival: components.filter(component => component.payer === 'customer_on_arrival' || (component.code === 'customs_import' && component.status === 'unknown')) };\n}\n// Only a reviewed server adapter can supply this context and authenticated\n// provider response. This validator cannot establish provider authorization,\n// invoice finality, insurance, stock reservation or permission to charge money.\nfunction validateDeliveryEvidence(value, context) {\n  try {\n    if (!context || !Number.isSafeInteger(context.now) || context.now < 0 || context.now > 8640000000000000 || !reference(context.providerId)) evidenceError();\n    const request = validateDeliveryRequest(context.request);\n    object(value, ['provider', 'reference', 'requestHash', 'observedAt', 'expiresAt', 'components']);\n    if (value.provider !== context.providerId || !reference(value.reference) || value.requestHash !== hash(request)) evidenceError();\n    const observedAt = timestamp(value.observedAt), upstreamExpires = timestamp(value.expiresAt);\n    if (observedAt > context.now || observedAt <= context.now - FRESHNESS_MS || upstreamExpires <= context.now || upstreamExpires <= observedAt) evidenceError();\n    if (!Array.isArray(value.components) || value.components.length < 1 || value.components.length > Object.keys(LABELS).length) evidenceError();\n    const validated = new Map();\n    for (const component of value.components) {\n      object(component, ['code', 'status', 'amountMinor', 'currency', 'payer', 'assumptions']);\n      if (!Object.hasOwn(LABELS, component.code) || validated.has(component.code) || component.currency !== 'USD' || !['verified', 'estimated', 'unknown'].includes(component.status) || !['customer_before_purchase', 'customer_on_arrival', 'merchant', 'unknown'].includes(component.payer)) evidenceError();\n      if (!Array.isArray(component.assumptions) || component.assumptions.length > 10 || component.assumptions.some(value => !text(value, 240) || /[<>]/.test(value))) evidenceError();\n      if (component.status === 'unknown') {\n        if (component.amountMinor !== null || component.payer !== 'unknown') evidenceError();\n      } else {\n        if (!Number.isSafeInteger(component.amountMinor) || component.amountMinor < 0 || component.amountMinor > 100000000 || component.payer === 'unknown') evidenceError();\n        if (component.status === 'estimated' && component.assumptions.length === 0) evidenceError();\n      }\n      validated.set(component.code, { code: component.code, label: LABELS[component.code], amountMinor: component.amountMinor, currency: 'USD', status: component.status, source: value.provider, payer: component.payer, assumptions: [...component.assumptions] });\n    }\n    return { provider: value.provider, reference: value.reference, requestHash: value.requestHash, observedAt: value.observedAt, expiresAt: new Date(Math.min(upstreamExpires, observedAt + FRESHNESS_MS)).toISOString(), ...costs(deliveryComponents().map(component => validated.get(component.code) || component)) };\n  } catch { evidenceError(); }\n}\nclass DeliveryCostProvider {\n  capabilities() { return { rates: false, insurance: false, labels: false, returns: false }; }\n  async quote() { return { status: 'unavailable', reason: 'delivery_provider_unavailable', ...costs(deliveryComponents()) }; }\n}\nmodule.exports = { DeliveryCostProvider, deliveryComponents, validateDeliveryRequest, validateDeliveryEvidence };\n\n},\n\"./quote.js\":function(module,exports,require){\n'use strict';\nconst { fail } = require('./errors.js');\nconst { decimalToMinor, multiplyMinor, addMinor } = require('./money.js');\nconst { hash, productKey, text, canonical } = require('./validation.js');\nconst { checkout } = require('./providers.js');\nconst { deliveryComponents } = require('./delivery.js');\nconst SAFE_TITLE = 240;\nconst VOLATILE_TTL_MS = 30000;\nfunction safeUrl(value) {\n  try { const u = new URL(value); return typeof value === 'string' && value.length <= 2048 && u.protocol === 'https:' && !u.username && !u.password ? u.href : null; } catch { return null; }\n}\nfunction offerUrl(value) {\n  const url = safeUrl(value); if (!url) return null;\n  const parsed = new URL(url); return parsed.hostname === 'buy.trychannel3.com' && !parsed.port ? url : null;\n}\nasync function hydrate(lines, catalog, timeoutMs) {\n  const unique = [...new Map(lines.map(line => [productKey(line), { productId: line.productId, options: line.options }])).entries()];\n  const result = new Map(), controller = new AbortController(); let cursor = 0, timer;\n  const deadline = new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(Object.assign(new Error('Fresh product deadline exceeded.'), { code: 'catalog_unavailable', statusCode: 503 })); }, timeoutMs); });\n  const worker = async () => {\n    while (!controller.signal.aborted) {\n      const entry = unique[cursor++]; if (!entry) return;\n      const value = await catalog.freshProduct(entry[1], { signal: controller.signal });\n      if (controller.signal.aborted) return; result.set(entry[0], value);\n    }\n  };\n  try { await Promise.race([Promise.all(Array.from({ length: Math.min(3, unique.length) }, worker)), deadline]); }\n  catch { controller.abort(); fail('catalog_unavailable', 'Fresh product validation is temporarily unavailable. Please retry.', 503); }\n  finally { clearTimeout(timer); }\n  if (result.size !== unique.length) fail('catalog_unavailable', 'Fresh product validation did not complete.', 503);\n  return result;\n}\nfunction validateLine(line, envelope, now) {\n  const fetchedAt = Date.parse(envelope?.fetchedAt), expiresAt = Date.parse(envelope?.expiresAt);\n  if (envelope?.provider !== 'channel3' || envelope?.status !== 'fresh' || envelope.error != null || !Number.isFinite(fetchedAt) || !Number.isFinite(expiresAt) || fetchedAt > now + 10000 || fetchedAt <= now - VOLATILE_TTL_MS || expiresAt <= now || expiresAt > fetchedAt + 300000) fail('catalog_unavailable', 'A fresh product snapshot could not be validated.', 503);\n  const product = envelope?.data?.product;\n  if (!product || product.id !== line.productId) fail('product_changed', 'The provider returned a different product.', 422);\n  if (!Array.isArray(envelope.selectionMismatch) || envelope.selectionMismatch.length) fail('variant_changed', 'The provider could not retain the selected variant.', 422);\n  const options = product.variants?.options || [], selected = product.variants?.selected || [];\n  if (!Array.isArray(options) || !Array.isArray(selected) || options.length > 8 || selected.length > 8 || new Set(options.map(x => x.name)).size !== options.length || new Set(selected.map(x => x.name)).size !== selected.length) fail('variant_invalid', 'Product variant information is incomplete.', 422);\n  if (options.length !== Object.keys(line.options).length) fail('variant_required', 'Select every required product variant.', 422);\n  let variantUnavailable = false, variantUnknown = false;\n  for (const [name, label] of Object.entries(line.options)) {\n    const definition = options.find(option => option.name === name), effective = selected.find(option => option.name === name);\n    const values = Array.isArray(definition?.values) ? definition.values.filter(value => value.label === label) : [];\n    if (values.length !== 1 || values[0].exists !== true || effective?.label !== label || (values[0].product_id != null && values[0].product_id !== line.productId)) fail('variant_changed', 'The selected variant cannot be confirmed for this product.', 422);\n    if (values[0].available === 'OutOfStock') variantUnavailable = true;\n    else if (values[0].available !== 'InStock') variantUnknown = true;\n  }\n  if (selected.some(value => !Object.hasOwn(line.options, value.name))) fail('variant_changed', 'The provider selected an unrequested variant.', 422);\n  const matching = Array.isArray(product.offers) ? product.offers.filter(offer => offer.domain === line.merchantDomain && (offer.condition ?? null) === line.condition) : [];\n  if (!matching.length || matching.length > 20) fail('offer_unavailable', 'The selected merchant offer is unavailable.', 422);\n  const normalized = matching.map(offer => {\n    if (offer.price?.currency !== 'USD') fail('offer_price_unavailable', 'The selected offer has no supported USD price.', 422);\n    return { unitPriceMinor: decimalToMinor(offer.price.price), availability: variantUnavailable || offer.availability === 'OutOfStock' ? 'OutOfStock' : variantUnknown ? 'unknown' : offer.availability === 'InStock' ? 'InStock' : 'unknown', url: offerUrl(offer.url), maxCommissionRate: typeof offer.max_commission_rate === 'number' && Number.isFinite(offer.max_commission_rate) && offer.max_commission_rate >= 0 && offer.max_commission_rate <= 1 ? offer.max_commission_rate : null };\n  });\n  if (new Set(normalized.map(canonical)).size !== 1) fail('offer_ambiguous', 'This merchant has multiple indistinguishable offers. A unique offer is required.', 422);\n  const offer = normalized[0];\n  return { expiresAt: Math.min(expiresAt, fetchedAt + VOLATILE_TTL_MS), value: { ...line, title: text(product.title, 2000) ? Array.from(product.title).slice(0, SAFE_TITLE).join('') : 'Product', unitPriceMinor: offer.unitPriceMinor, lineTotalMinor: multiplyMinor(offer.unitPriceMinor, line.quantity), currency: 'USD', availability: offer.availability, validatedAt: new Date(fetchedAt).toISOString(), offer: { domain: line.merchantDomain, url: offer.url, maxCommissionRate: offer.maxCommissionRate }, selection: { valid: true } } };\n}\nfunction component(code, label, amountMinor, status, source, note) { return { code, label, amountMinor, currency: 'USD', status, source, ...(note ? { note } : {}) }; }\nasync function buildQuote({ input, catalog, now, randomId, hydrationTimeoutMs = 9000 }) {\n  const products = await hydrate(input.lines, catalog, hydrationTimeoutMs);\n  // Read time after hydration so a slow request cannot extend a provider snapshot.\n  const current = now(), validated = input.lines.map(line => validateLine(line, products.get(productKey(line)), current));\n  const lines = validated.map(x => x.value), subtotal = addMinor(lines.map(line => line.lineTotalMinor));\n  const delivery = deliveryComponents(), customs = delivery.find(value => value.code === 'customs_import');\n  const components = [component('products', 'Products', subtotal, 'estimated', 'channel3', 'Fresh catalog prices are not a merchant purchase reservation or quantity guarantee.'), ...delivery, component('currency_conversion', 'Currency conversion', 0, 'verified', 'quote_currency', 'This quote is denominated in USD; no currency conversion is performed.'), component('anox_service_fee', 'AnoX service fee', 500, 'conditional', 'anox', 'Exactly $5 per successfully completed order. Nothing is collected for a blocked attempt.')];\n  const capability = checkout();\n  capability.blockers.push({ code: 'landed_cost_unverified', message: 'Verified U.S. tax, shipping, and Algeria import charges are unavailable.' }, { code: 'quantity_unreserved', message: 'Catalog availability does not reserve the requested quantity.' });\n  for (const line of lines) if (line.availability !== 'InStock') capability.blockers.push({ code: line.availability === 'OutOfStock' ? 'availability_unavailable' : 'availability_unknown', message: line.availability === 'OutOfStock' ? 'A selected product is unavailable.' : 'Availability for a selected product is unknown.' });\n  return { quoteId: randomId(), cartHash: hash({ lines: input.lines, destination: input.destination, currency: input.currency }), cartRevision: input.cartRevision, createdAt: new Date(current).toISOString(), expiresAt: new Date(Math.min(current + VOLATILE_TTL_MS, ...validated.map(x => x.expiresAt))).toISOString(), currency: 'USD', destination: input.destination, lines, costs: { components, estimatedTotalMinor: null, verifiedPayableTotalMinor: null, potentialChargesOnArrival: [customs] }, checkout: capability };\n}\nmodule.exports = { buildQuote, safeUrl, validateLine };\n\n},\n\"./orders.js\":function(module,exports,require){\n'use strict';\nconst { fail } = require('./errors.js');\nconst { safeUrl } = require('./quote.js');\nconst { ID, text } = require('./validation.js');\nconst ORDER_STATES = Object.freeze(['pending', 'confirmed', 'fulfilling', 'shipped', 'delivered', 'canceled', 'failed']);\nconst PAYMENT_STATES = Object.freeze(['pending', 'processing', 'succeeded', 'failed', 'canceled', 'partially_refunded', 'refunded']);\nconst FULFILLMENT_STATES = Object.freeze(['unfulfilled', 'processing', 'shipped', 'delivered', 'returned', 'unknown']);\nfunction safeText(value, limit = 200) { return text(value, limit) ? value : null; }\nfunction validDate(value) { return typeof value === 'string' && /^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value; }\nfunction publicOrder(order) {\n  if (!order || typeof order.orderId !== 'string' || !ID.test(order.orderId) || !validDate(order.createdAt) || (order.updatedAt !== undefined && !validDate(order.updatedAt)) || !ORDER_STATES.includes(order.status) || order.currency !== 'USD' || !Number.isSafeInteger(order.totalMinor) || order.totalMinor < 0 || !PAYMENT_STATES.includes(order.payment?.status)) fail('order_unavailable', 'This order record is unavailable.', 503);\n  return { orderId: order.orderId, status: order.status, currency: order.currency, totalMinor: order.totalMinor, createdAt: order.createdAt, updatedAt: order.updatedAt || order.createdAt, merchantOrderReference: safeText(order.merchantOrderReference), payment: { status: order.payment.status }, fulfillment: { status: FULFILLMENT_STATES.includes(order.fulfillment?.status) ? order.fulfillment.status : 'unknown', tracking: Array.isArray(order.fulfillment?.tracking) ? order.fulfillment.tracking.slice(0, 20).filter(item => item && typeof item === 'object').map(item => ({ carrier: safeText(item.carrier, 80), trackingNumber: safeText(item.trackingNumber, 160), url: item.verified === true ? safeUrl(item.url) : null })) : [] }, capabilities: { cancel: false, refund: false } };\n}\nconst transitions = { pending: ['confirmed', 'canceled', 'failed'], confirmed: ['fulfilling', 'canceled'], fulfilling: ['shipped'], shipped: ['delivered'], delivered: [], canceled: [], failed: [] };\nfunction transitionOrder(order, nextStatus, expectedVersion, at) {\n  if (!Number.isSafeInteger(expectedVersion) || order.version !== expectedVersion) fail('state_conflict', 'The order changed; read current state before retrying.', 409);\n  if (!transitions[order.status]?.includes(nextStatus)) fail('invalid_transition', 'This order transition is not permitted.', 409);\n  if (nextStatus === 'confirmed' && (!order.merchantOrderReference || order.payment?.status !== 'succeeded')) fail('confirmation_unverified', 'Merchant acceptance and verified payment are required for confirmation.', 409);\n  return { ...order, status: nextStatus, version: order.version + 1, updatedAt: at };\n}\nmodule.exports = { publicOrder, transitionOrder, ORDER_STATES, PAYMENT_STATES, FULFILLMENT_STATES };\n\n},\n\"./index.js\":function(module,exports,require){\n'use strict';\nconst crypto = require('node:crypto');\nconst { CommerceError, fail } = require('./errors.js');\nconst { LIMITS, ID, hash, quoteInput, attemptInput, idempotencyKey, object } = require('./validation.js');\nconst { checkout } = require('./providers.js');\nconst { buildQuote } = require('./quote.js');\nconst { publicOrder } = require('./orders.js');\nfunction createHandler({ store, catalog, config = {}, now = Date.now, randomId = crypto.randomUUID, hydrationTimeoutMs = 9000, logger = console }) {\n  const settings = { allowedOrigin: 'https://anox.app', ...config };\n  function owner(event) {\n    const claims = event.requestContext?.authorizer?.jwt?.claims;\n    if (!settings.issuer || !settings.clientId || !claims || typeof claims.sub !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(claims.sub) || claims.iss !== settings.issuer || claims.token_use !== 'id' || claims.aud !== settings.clientId || !Number.isFinite(Number(claims.exp)) || Number(claims.exp) * 1000 <= now()) fail('unauthorized', 'Sign in to access commerce information.', 401);\n    return claims.sub;\n  }\n  function parseBody(event, headers) {\n    if (!/^application\\/json(?:\\s*;.*)?$/i.test(headers['content-type'] || '')) fail('invalid_content_type', 'Use application/json.', 415);\n    if (typeof event.body !== 'string' || event.body.length > 45000) fail('invalid_request', 'Request body is missing or too large.', 413);\n    let body = event.body;\n    if (event.isBase64Encoded) { if (!/^[A-Za-z0-9+/]*={0,2}$/.test(body)) fail('invalid_request', 'Invalid encoded request.'); body = Buffer.from(body, 'base64').toString('utf8'); }\n    if (Buffer.byteLength(body) > 32000) fail('invalid_request', 'Request body is too large.', 413);\n    try { return JSON.parse(body); } catch { fail('invalid_request', 'Malformed JSON request.'); }\n  }\n  async function operation({ customer, kind, key, input, build }) {\n    const requestHash = hash(input), current = now();\n    const begun = await store.begin({ owner: customer, kind, key, hash: requestHash, now: current, leaseMs: 30000 });\n    if (begun.status === 'complete') return { payload: begun.result, replayed: true };\n    try {\n      const value = await build();\n      const result = { schemaVersion: 1, [kind === 'quote' ? 'quote' : 'attempt']: value };\n      await store.complete({ owner: customer, kind, key, token: begun.token, result, record: { kind, id: kind === 'quote' ? value.quoteId : value.attemptId, data: value, ...(kind === 'quote' ? { ttl: Math.floor(now() / 1000) + 86400 } : {}) }, audit: { eventId: randomId(), type: kind === 'quote' ? 'quote.created' : 'checkout.blocked', resourceId: kind === 'quote' ? value.quoteId : value.attemptId, at: new Date(now()).toISOString() }, now: now() });\n      return { payload: result, replayed: false };\n    } catch (error) { await store.release({ owner: customer, kind, key, token: begun.token }).catch(() => {}); throw error; }\n  }\n  return async function handler(event) {\n    const headers = Object.fromEntries(Object.entries(event?.headers || {}).map(([name, value]) => [name.toLowerCase(), value]));\n    const origin = headers.origin, responseHeaders = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', Vary: 'Origin' };\n    if (!origin || origin === settings.allowedOrigin) { responseHeaders['Access-Control-Allow-Origin'] = settings.allowedOrigin; responseHeaders['Access-Control-Allow-Headers'] = 'Content-Type,Authorization,Idempotency-Key'; responseHeaders['Access-Control-Allow-Methods'] = 'GET,POST,OPTIONS'; responseHeaders['Access-Control-Expose-Headers'] = 'Idempotency-Replayed,Retry-After'; }\n    const respond = (statusCode, payload, additional = {}) => ({ statusCode, headers: { ...responseHeaders, ...additional }, body: JSON.stringify(payload) });\n    try {\n      if (origin && origin !== settings.allowedOrigin) fail('origin_not_allowed', 'This origin is not allowed.', 403);\n      const method = event?.requestContext?.http?.method, path = event?.rawPath;\n      if (event?.version !== '2.0' || typeof path !== 'string' || !path.startsWith('/commerce/')) fail('not_found', 'Route not found.', 404);\n      if (method === 'OPTIONS') return respond(204, null);\n      if (method === 'GET' && path === '/commerce/capabilities') return respond(200, { schemaVersion: 1, quote: { enabled: true, limits: LIMITS }, checkout: checkout(), orders: { read: true, cancel: false, refund: false }, serviceFee: { currency: 'USD', amountMinor: 500, appliesOn: 'successful_order' } });\n      if (path === '/commerce/webhooks/stripe') fail('webhook_disabled', 'Payment webhooks are not activated for this unsupported checkout integration.', 409);\n      const customer = owner(event);\n      if (method === 'POST' && path === '/commerce/quotes') {\n        const input = quoteInput(parseBody(event, headers)), key = idempotencyKey(headers);\n        const result = await operation({ customer, kind: 'quote', key, input, build: () => buildQuote({ input, catalog, now, randomId, hydrationTimeoutMs }) });\n        return respond(201, result.payload, result.replayed ? { 'Idempotency-Replayed': 'true' } : {});\n      }\n      if (method === 'POST' && path === '/commerce/checkout-attempts') {\n        const input = attemptInput(parseBody(event, headers)), key = idempotencyKey(headers);\n        const result = await operation({ customer, kind: 'attempt', key, input, build: async () => {\n          const quote = await store.get(customer, 'quote', input.quoteId); if (!quote) fail('quote_not_found', 'Quote not found.', 404);\n          if (quote.cartRevision !== input.cartRevision || quote.cartHash !== input.cartHash) fail('cart_changed', 'The quote does not match the reviewed cart.', 409);\n          if (!Number.isFinite(Date.parse(quote.expiresAt)) || Date.parse(quote.expiresAt) <= now()) fail('quote_expired', 'The quote expired. Request a fresh quote.', 409);\n          return { attemptId: randomId(), quoteId: quote.quoteId, cartHash: quote.cartHash, cartRevision: quote.cartRevision, status: 'blocked', createdAt: new Date(now()).toISOString(), checkout: quote.checkout };\n        } }); return respond(201, result.payload, result.replayed ? { 'Idempotency-Replayed': 'true' } : {});\n      }\n      if (method === 'GET' && path === '/commerce/orders') {\n        const query = event.queryStringParameters || {}; object(query, ['cursor'], []);\n        if (query.cursor !== undefined && (typeof query.cursor !== 'string' || !ID.test(query.cursor))) fail('invalid_request', 'Invalid order cursor.');\n        const page = await store.listOrders(customer, query.cursor || null, 20);\n        return respond(200, { schemaVersion: 1, orders: page.orders.map(publicOrder), nextCursor: page.nextCursor });\n      }\n      const match = path.match(/^\\/commerce\\/orders\\/([A-Za-z0-9_-]{1,80})(?:\\/(cancel|refund))?$/);\n      if (match && ((method === 'GET' && !match[2]) || (method === 'POST' && match[2]))) {\n        const order = await store.get(customer, 'order', match[1]); if (!order) fail('order_not_found', 'Order not found.', 404);\n        if (match[2]) { object(parseBody(event, headers), []); fail('operation_unsupported', 'This merchant integration does not support ' + (match[2] === 'cancel' ? 'cancellation.' : 'refunds.'), 409); }\n        return respond(200, { schemaVersion: 1, order: publicOrder(order) });\n      }\n      fail('not_found', 'Route not found.', 404);\n    } catch (error) {\n      const known = error instanceof CommerceError;\n      const statusCode = known ? error.statusCode : 503, code = known ? error.code : 'service_unavailable';\n      logger.error?.(JSON.stringify({ service: 'commerce', outcome: code, statusCode }));\n      return respond(statusCode, { schemaVersion: 1, error: { code, message: known ? error.message : 'Commerce is temporarily unavailable. Please retry.' } }, statusCode === 503 || code === 'operation_in_progress' ? { 'Retry-After': '2' } : {});\n    }\n  };\n}\nmodule.exports = { createHandler };\n\n},\n\"./store.js\":function(module,exports,require){\n'use strict';\nconst crypto = require('node:crypto');\nconst { hash } = require('./validation.js');\nconst { fail } = require('./errors.js');\nfunction createDynamoStore({ send, tableName }) {\n  if (!tableName || typeof send !== 'function') throw Error('Commerce persistence is not configured.');\n  const partition = owner => 'CUSTOMER#' + hash(owner);\n  const keyFor = (owner, kind, id) => ({ pk: partition(owner), sk: kind.toUpperCase() + '#' + id });\n  const operationKey = (owner, kind, key) => ({ pk: partition(owner), sk: 'IDEM#' + kind + '#' + hash(key) });\n  const putUnique = Item => ({ Put: { TableName: tableName, Item, ConditionExpression: 'attribute_not_exists(pk) AND attribute_not_exists(sk)' } });\n  const getItem = async Key => (await send('Get', { TableName: tableName, Key, ConsistentRead: true })).Item;\n  const conditional = error => error.name === 'ConditionalCheckFailedException' || error.name === 'TransactionCanceledException';\n  async function begin({ owner, kind, key, hash: requestHash, now, leaseMs }) {\n    const Key = operationKey(owner, kind, key), previous = await getItem(Key);\n    // An expired record still present is not ignored. TTL is cleanup, not authority.\n    if (previous && previous.requestHash !== requestHash) fail('idempotency_conflict', 'This key was already used for different input.', 409);\n    if (previous?.status === 'complete') return { status: 'complete', result: previous.result };\n    if (previous?.leaseUntil > now) fail('operation_in_progress', 'This operation is already running. Retry with the same key.', 409);\n    const token = crypto.randomUUID(), Item = { ...Key, requestHash, status: 'working', token, leaseUntil: now + leaseMs, ttl: Math.floor(now / 1000) + 86400 };\n    const condition = previous ? { ConditionExpression: 'token = :previous AND leaseUntil <= :now AND requestHash = :hash AND #status = :working', ExpressionAttributeNames: { '#status': 'status' }, ExpressionAttributeValues: { ':previous': previous.token, ':now': now, ':hash': requestHash, ':working': 'working' } } : { ConditionExpression: 'attribute_not_exists(pk) AND attribute_not_exists(sk)' };\n    try { await send('Put', { TableName: tableName, Item, ...condition }); }\n    catch (error) {\n      if (!conditional(error)) throw error;\n      const winner = await getItem(Key);\n      if (winner?.requestHash !== requestHash) fail('idempotency_conflict', 'This key was already used for different input.', 409);\n      if (winner?.status === 'complete') return { status: 'complete', result: winner.result };\n      fail('operation_in_progress', 'This operation is already running. Retry with the same key.', 409);\n    }\n    return { status: 'acquired', token };\n  }\n  async function complete({ owner, kind, key, token, result, record, audit, now }) {\n    const TransactItems = [{ Update: { TableName: tableName, Key: operationKey(owner, kind, key), UpdateExpression: 'SET #status = :complete, #result = :result, ttl = :ttl', ConditionExpression: 'token = :token AND #status = :working AND leaseUntil > :now', ExpressionAttributeNames: { '#status': 'status', '#result': 'result' }, ExpressionAttributeValues: { ':complete': 'complete', ':working': 'working', ':result': result, ':token': token, ':now': now, ':ttl': Math.floor(now / 1000) + 86400 } } }];\n    if (record) TransactItems.push(putUnique({ ...keyFor(owner, record.kind, record.id), data: record.data, ...(record.ttl ? { ttl: record.ttl } : {}) }));\n    if (audit) TransactItems.push(putUnique({ pk: partition(owner), sk: 'AUDIT#' + audit.at + '#' + audit.eventId, data: audit }));\n    try { await send('TransactWrite', { TransactItems, ClientRequestToken: token }); }\n    catch (error) { if (conditional(error)) fail('operation_conflict', 'The operation changed before it could be committed. Retry with the same key.', 409); throw error; }\n  }\n  async function release({ owner, kind, key, token }) {\n    try { await send('Update', { TableName: tableName, Key: operationKey(owner, kind, key), UpdateExpression: 'SET leaseUntil = :zero', ConditionExpression: 'token = :token AND #status = :working', ExpressionAttributeNames: { '#status': 'status' }, ExpressionAttributeValues: { ':zero': 0, ':token': token, ':working': 'working' } }); }\n    catch (error) { if (!conditional(error)) throw error; }\n  }\n  async function get(owner, kind, id) { return (await getItem(keyFor(owner, kind, id)))?.data; }\n  async function listOrders(owner, cursor, limit) {\n    const pk = partition(owner), result = await send('Query', { TableName: tableName, KeyConditionExpression: 'pk = :pk AND begins_with(sk, :prefix)', ExpressionAttributeValues: { ':pk': pk, ':prefix': 'ORDER#' }, ConsistentRead: true, Limit: limit, ...(cursor ? { ExclusiveStartKey: { pk, sk: 'ORDER#' + cursor } } : {}) });\n    return { orders: (result.Items || []).map(item => item.data), nextCursor: result.LastEvaluatedKey?.sk?.slice('ORDER#'.length) || null };\n  }\n  async function transition({ owner, orderId, expectedVersion, next, audit }) {\n    if (!Number.isSafeInteger(expectedVersion) || next.version !== expectedVersion + 1 || next.orderId !== orderId) fail('state_conflict', 'Invalid order transition version.', 409);\n    const changes = [{ Put: { TableName: tableName, Item: { ...keyFor(owner, 'order', orderId), data: next }, ConditionExpression: '#data.#version = :expected', ExpressionAttributeNames: { '#data': 'data', '#version': 'version' }, ExpressionAttributeValues: { ':expected': expectedVersion } } }, putUnique({ pk: partition(owner), sk: 'AUDIT#' + audit.at + '#' + audit.eventId, data: audit })];\n    try { await send('TransactWrite', { TransactItems: changes }); } catch (error) { if (conditional(error)) fail('state_conflict', 'The order changed before the update.', 409); throw error; }\n  }\n  async function getPaymentBinding(id) { return (await getItem({ pk: 'PAYMENT#' + hash(id), sk: 'BINDING' }))?.data; }\n  async function hasWebhook(id) { return Boolean(await getItem({ pk: 'STRIPE#' + hash(id), sk: 'RECEIPT' })); }\n  async function applyWebhook({ eventId, binding, expectedOrderVersion, payment, audit }) {\n    if (!Number.isSafeInteger(expectedOrderVersion) || expectedOrderVersion < 1) fail('state_conflict', 'Invalid order version.', 409);\n    const receipt = { pk: 'STRIPE#' + hash(eventId), sk: 'RECEIPT', data: { eventId, orderId: binding.orderId, at: audit.at } };\n    const identity = ['paymentId', 'attemptId', 'currency', 'account', 'livemode'];\n    const names = Object.fromEntries(identity.map(field => ['#' + field, field]));\n    const values = Object.fromEntries(identity.map(field => [':' + field, binding[field]]));\n    const TransactItems = [putUnique(receipt), { Update: { TableName: tableName, Key: keyFor(binding.owner, 'order', binding.orderId), UpdateExpression: 'SET #data.#payment = :payment, #data.#version = :next, #data.#updatedAt = :at', ConditionExpression: '#data.#version = :expected AND #data.#payment.#amountMinor = :amount AND ' + identity.map(field => '#data.#payment.#' + field + ' = :' + field).join(' AND '), ExpressionAttributeNames: { '#data': 'data', '#payment': 'payment', '#version': 'version', '#updatedAt': 'updatedAt', '#amountMinor': 'amountMinor', ...names }, ExpressionAttributeValues: { ':payment': payment, ':next': expectedOrderVersion + 1, ':expected': expectedOrderVersion, ':at': audit.at, ':amount': binding.expectedAmountMinor, ...values } } }, { ConditionCheck: { TableName: tableName, Key: { pk: 'PAYMENT#' + hash(binding.paymentId), sk: 'BINDING' }, ConditionExpression: '#data.#owner = :owner AND #data.#orderId = :orderId AND #data.#expectedAmountMinor = :amount AND ' + identity.map(field => '#data.#' + field + ' = :' + field).join(' AND '), ExpressionAttributeNames: { '#data': 'data', '#owner': 'owner', '#orderId': 'orderId', '#expectedAmountMinor': 'expectedAmountMinor', ...names }, ExpressionAttributeValues: { ':owner': binding.owner, ':orderId': binding.orderId, ':amount': binding.expectedAmountMinor, ...values } } }, putUnique({ pk: partition(binding.owner), sk: 'AUDIT#' + audit.at + '#' + audit.eventId, data: audit })];\n    try { await send('TransactWrite', { TransactItems }); return { duplicate: false }; }\n    catch (error) { if (conditional(error)) { if (await hasWebhook(eventId)) return { duplicate: true }; fail('state_conflict', 'Concurrent payment update; retry the signed event.', 409); } throw error; }\n  }\n  return { begin, complete, release, get, listOrders, transition, getPaymentBinding, hasWebhook, applyWebhook };\n}\nmodule.exports = { createDynamoStore };\n\n},\n\"./webhooks.js\":function(module,exports,require){\n'use strict';\nconst crypto = require('node:crypto');\nconst { fail } = require('./errors.js');\n// Pure foundation only: no active HTTP route, secret retrieval or payment APIs.\nfunction verifyStripeSignature({ rawBody, signature, secret, now = Date.now(), toleranceSeconds = 300 }) {\n  if (!Buffer.isBuffer(rawBody) || rawBody.length > 256000 || typeof signature !== 'string' || signature.length > 4096 || typeof secret !== 'string' || secret.length < 16) fail('invalid_signature', 'Webhook signature verification failed.', 400);\n  const fields = signature.split(',').map(value => value.trim().split('='));\n  const timestamps = fields.filter(([key]) => key === 't'), signatures = fields.filter(([key]) => key === 'v1').map(([, value]) => value);\n  if (timestamps.length !== 1 || !/^\\d{10,12}$/.test(timestamps[0][1] || '') || !Number.isSafeInteger(toleranceSeconds) || toleranceSeconds < 1 || toleranceSeconds > 300) fail('invalid_signature', 'Webhook signature verification failed.', 400);\n  const timestamp = Number(timestamps[0][1]);\n  if (Math.abs(now / 1000 - timestamp) > toleranceSeconds) fail('invalid_signature', 'Webhook signature has expired.', 400);\n  const expected = crypto.createHmac('sha256', secret).update(timestamps[0][1] + '.').update(rawBody).digest();\n  if (!signatures.some(value => /^[0-9a-f]{64}$/i.test(value || '') && crypto.timingSafeEqual(expected, Buffer.from(value, 'hex')))) fail('invalid_signature', 'Webhook signature verification failed.', 400);\n  try { return JSON.parse(rawBody.toString('utf8')); } catch { fail('invalid_webhook', 'Webhook body must be JSON.', 400); }\n}\nasync function processStripeEvent({ event, store, now = Date.now() }) {\n  if (!event || typeof event.id !== 'string' || !/^evt_[A-Za-z0-9]{1,160}$/.test(event.id) || event.object !== 'event' || typeof event.livemode !== 'boolean' || !Number.isSafeInteger(event.created)) fail('invalid_webhook', 'Invalid payment event.', 400);\n  const supported = ['payment_intent.succeeded', 'payment_intent.processing', 'payment_intent.payment_failed', 'payment_intent.canceled', 'charge.refunded'];\n  if (!supported.includes(event.type)) return { ignored: true };\n  const payment = event.data?.object, refund = event.type === 'charge.refunded', paymentId = refund ? payment?.payment_intent : payment?.id;\n  if (!payment || typeof paymentId !== 'string' || !/^pi_[A-Za-z0-9]{1,160}$/.test(paymentId) || payment.object !== (refund ? 'charge' : 'payment_intent')) fail('invalid_webhook', 'Invalid payment object.', 400);\n  const binding = await store.getPaymentBinding(paymentId);\n  if (!binding) fail('payment_binding_missing', 'No expected payment is bound to this event.', 409);\n  const expected = binding.expectedAmountMinor;\n  if (binding.paymentId !== paymentId || !Number.isSafeInteger(expected) || expected < 0 || payment.amount !== expected || payment.currency !== binding.currency || (event.account ?? null) !== binding.account || event.livemode !== binding.livemode || payment.livemode !== binding.livemode || payment.metadata?.anox_attempt_id !== binding.attemptId || payment.metadata?.anox_order_id !== binding.orderId || (event.type === 'payment_intent.succeeded' && payment.amount_received !== expected)) fail('payment_binding_mismatch', 'Payment event does not match the expected order, amount or account.', 409);\n  // Validate even repeat deliveries so mismatched payloads never receive success.\n  if (await store.hasWebhook(event.id)) return { duplicate: true };\n  const order = await store.get(binding.owner, 'order', binding.orderId);\n  if (!order || !Number.isSafeInteger(order.version) || order.version < 1) fail('state_conflict', 'The expected order payment state changed.', 409);\n  if (order.payment?.amountMinor !== expected || ['paymentId', 'attemptId', 'currency', 'account', 'livemode'].some(field => order.payment?.[field] !== binding[field])) fail('payment_binding_mismatch', 'This payment is not the active payment for the order.', 409);\n  const current = order.payment, next = { ...current };\n  if (refund) {\n    if (!Number.isSafeInteger(payment.amount_refunded) || payment.amount_refunded < 0 || payment.amount_refunded > expected || !['succeeded', 'partially_refunded', 'refunded'].includes(current.status)) fail('refund_unverified', 'Refund principal or payment state is invalid.', 409);\n    next.refundedMinor = Math.max(current.refundedMinor || 0, payment.amount_refunded);\n    next.status = next.refundedMinor === expected ? 'refunded' : next.refundedMinor > 0 ? 'partially_refunded' : 'succeeded';\n  } else if (!['succeeded', 'partially_refunded', 'refunded', 'canceled'].includes(current.status)) {\n    const status = { 'payment_intent.succeeded': 'succeeded', 'payment_intent.processing': 'processing', 'payment_intent.payment_failed': 'failed', 'payment_intent.canceled': 'canceled' }[event.type];\n    // Failure may later be retried on the same PaymentIntent; event time prevents\n    // older processing/failure deliveries from reversing the more recent state.\n    if (status === 'succeeded' || event.created >= (current.lastEventCreated || 0)) { next.status = status; next.lastEventCreated = event.created; }\n  }\n  return store.applyWebhook({ eventId: event.id, binding, expectedOrderVersion: order.version, payment: next, audit: { eventId: event.id, type: 'stripe.' + event.type, resourceId: binding.orderId, at: new Date(now).toISOString(), previousPaymentStatus: current.status, paymentStatus: next.status } });\n}\nmodule.exports = { verifyStripeSignature, processStripeEvent };\n\n},\n\"./runtime.js\":function(module,exports,require){\n'use strict';\nconst { createHandler } = require('./index.js');\nconst { createDynamoStore } = require('./store.js');\nfunction loadSdk() {\n  return { ...require('@aws-sdk/client-dynamodb'), ...require('@aws-sdk/lib-dynamodb'), ...require('@aws-sdk/client-lambda') };\n}\nfunction createRuntime({ env = process.env, sdk, logger = console } = {}) {\n  const region = env.AWS_REGION || 'us-east-2';\n  if (!/^[a-z]{2}-[a-z]+-\\d$/.test(region) || !/^[A-Za-z0-9_.-]{3,255}$/.test(env.COMMERCE_TABLE || '') || !/^arn:aws:lambda:[a-z0-9-]+:\\d{12}:function:[A-Za-z0-9_-]+(?::[A-Za-z0-9_-]+)?$/.test(env.CATALOG_FUNCTION_ARN || '') || !/^https:\\/\\/cognito-idp\\.[a-z0-9-]+\\.amazonaws\\.com\\/[a-z0-9-]+_[A-Za-z0-9]+$/.test(env.COGNITO_ISSUER || '') || !/^[A-Za-z0-9_-]{1,128}$/.test(env.COGNITO_CLIENT_ID || '') || (env.ALLOWED_ORIGIN && env.ALLOWED_ORIGIN !== 'https://anox.app')) throw Error('Commerce runtime configuration is incomplete.');\n  sdk ||= loadSdk();\n  const database = sdk.DynamoDBDocumentClient.from(new sdk.DynamoDBClient({ region, maxAttempts: 2, requestHandler: { connectionTimeout: 500, requestTimeout: 1500 } }), { marshallOptions: { removeUndefinedValues: false } });\n  const lambda = new sdk.LambdaClient({ region, maxAttempts: 1, requestHandler: { connectionTimeout: 500, requestTimeout: 9000 } });\n  const commands = { Get: sdk.GetCommand, Put: sdk.PutCommand, Update: sdk.UpdateCommand, Query: sdk.QueryCommand, TransactWrite: sdk.TransactWriteCommand };\n  const store = createDynamoStore({ tableName: env.COMMERCE_TABLE, send: (operation, input) => {\n    const Command = commands[operation]; if (!Command) throw Error('Unsupported persistence operation.');\n    return database.send(new Command(input), { abortSignal: AbortSignal.timeout(1500) });\n  } });\n  const catalog = { freshProduct: async ({ productId, options }, { signal }) => {\n    const response = await lambda.send(new sdk.InvokeCommand({ FunctionName: env.CATALOG_FUNCTION_ARN, InvocationType: 'RequestResponse', Payload: Buffer.from(JSON.stringify({ operation: 'commerce.product', productId, options })) }), { abortSignal: signal });\n    if (response.FunctionError || !response.Payload || response.Payload.byteLength > 512000) throw Error('Fresh catalog response unavailable.');\n    return JSON.parse(Buffer.from(response.Payload).toString('utf8'));\n  } };\n  return { store, catalog, handler: createHandler({ store, catalog, logger, config: { issuer: env.COGNITO_ISSUER, clientId: env.COGNITO_CLIENT_ID, allowedOrigin: env.ALLOWED_ORIGIN || 'https://anox.app' } }) };\n}\nlet runtime;\nasync function handler(event) {\n  try { runtime ||= createRuntime(); return await runtime.handler(event); }\n  catch { console.error(JSON.stringify({ service: 'commerce', outcome: 'runtime_unavailable', statusCode: 503 })); return { statusCode: 503, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' }, body: JSON.stringify({ schemaVersion: 1, error: { code: 'service_unavailable', message: 'Commerce is temporarily unavailable.' } }) }; }\n}\nmodule.exports = { createRuntime, handler };\n\n}\n};\nconst loaded=Object.create(null);\nfunction load(name){if(!Object.hasOwn(factories,name))return externalRequire(name);if(loaded[name])return loaded[name].exports;const module={exports:{}};loaded[name]=module;factories[name](module,module.exports,load);return module.exports;}\nexports.handler=load('./runtime.js').handler;\n"
+        }
+      }
+    },
+    "CommerceIntegration": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "StagingApi"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationMethod": "POST",
+        "PayloadFormatVersion": "2.0",
+        "TimeoutInMillis": 20000,
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "CommerceFunction",
+            "Arn"
+          ]
+        }
+      }
+    },
+    "CommerceFailureMetric": {
+      "Type": "AWS::Logs::MetricFilter",
+      "Properties": {
+        "LogGroupName": {
+          "Ref": "CommerceLogs"
+        },
+        "FilterPattern": "?catalog_unavailable ?service_unavailable ?runtime_unavailable",
+        "MetricTransformations": [
+          {
+            "MetricNamespace": "AnoX/Staging/Commerce",
+            "MetricName": "ServiceUnavailable",
+            "MetricValue": "1",
+            "DefaultValue": 0
+          }
+        ]
+      }
+    },
+    "CommerceFailureAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "The commerce handler is returning unavailable responses. No customer data is included.",
+        "Namespace": "AnoX/Staging/Commerce",
+        "MetricName": "ServiceUnavailable",
+        "Statistic": "Sum",
+        "Period": 300,
+        "EvaluationPeriods": 1,
+        "Threshold": 3,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "notBreaching",
+        "AlarmActions": {
+          "Fn::If": [
+            "HasAlarmTopic",
+            [
+              {
+                "Ref": "ExistingAlarmTopicArn"
+              }
+            ],
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      }
+    },
+    "CommerceRuntimeErrorAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "An unhandled commerce Lambda error occurred.",
+        "Namespace": "AWS/Lambda",
+        "MetricName": "Errors",
+        "Dimensions": [
+          {
+            "Name": "FunctionName",
+            "Value": {
+              "Ref": "CommerceFunction"
+            }
+          }
+        ],
+        "Statistic": "Sum",
+        "Period": 300,
+        "EvaluationPeriods": 1,
+        "Threshold": 1,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "notBreaching",
+        "AlarmActions": {
+          "Fn::If": [
+            "HasAlarmTopic",
+            [
+              {
+                "Ref": "ExistingAlarmTopicArn"
+              }
+            ],
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      }
+    },
+    "CommerceThrottleAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "Commerce reserved concurrency is exhausted.",
+        "Namespace": "AWS/Lambda",
+        "MetricName": "Throttles",
+        "Dimensions": [
+          {
+            "Name": "FunctionName",
+            "Value": {
+              "Ref": "CommerceFunction"
+            }
+          }
+        ],
+        "Statistic": "Sum",
+        "Period": 300,
+        "EvaluationPeriods": 1,
+        "Threshold": 1,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "notBreaching",
+        "AlarmActions": {
+          "Fn::If": [
+            "HasAlarmTopic",
+            [
+              {
+                "Ref": "ExistingAlarmTopicArn"
+              }
+            ],
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      }
+    },
+    "CommerceDurationAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "Commerce p99 duration approaches its 18-second runtime limit.",
+        "Namespace": "AWS/Lambda",
+        "MetricName": "Duration",
+        "Dimensions": [
+          {
+            "Name": "FunctionName",
+            "Value": {
+              "Ref": "CommerceFunction"
+            }
+          }
+        ],
+        "ExtendedStatistic": "p99",
+        "Period": 300,
+        "EvaluationPeriods": 1,
+        "Threshold": 14000,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "notBreaching",
+        "AlarmActions": {
+          "Fn::If": [
+            "HasAlarmTopic",
+            [
+              {
+                "Ref": "ExistingAlarmTopicArn"
+              }
+            ],
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      }
+    },
+    "CommerceWriteUsageAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "Commerce write consumption reaches 10,000 capacity units per hour. This is a usage alert, not a provider invoice.",
+        "Namespace": "AWS/DynamoDB",
+        "MetricName": "ConsumedWriteCapacityUnits",
+        "Dimensions": [
+          {
+            "Name": "TableName",
+            "Value": {
+              "Ref": "CommerceTable"
+            }
+          }
+        ],
+        "Statistic": "Sum",
+        "Period": 3600,
+        "EvaluationPeriods": 1,
+        "Threshold": 10000,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "notBreaching",
+        "AlarmActions": {
+          "Fn::If": [
+            "HasAlarmTopic",
+            [
+              {
+                "Ref": "ExistingAlarmTopicArn"
+              }
+            ],
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      }
+    },
+    "CommerceTableThrottleAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "AlarmDescription": "Commerce DynamoDB requests were throttled.",
+        "Namespace": "AWS/DynamoDB",
+        "MetricName": "WriteThrottleEvents",
+        "Dimensions": [
+          {
+            "Name": "TableName",
+            "Value": {
+              "Ref": "CommerceTable"
+            }
+          }
+        ],
+        "Statistic": "Sum",
+        "Period": 300,
+        "EvaluationPeriods": 1,
+        "Threshold": 1,
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "TreatMissingData": "notBreaching",
+        "AlarmActions": {
+          "Fn::If": [
+            "HasAlarmTopic",
+            [
+              {
+                "Ref": "ExistingAlarmTopicArn"
+              }
+            ],
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      }
+    },
+    "CapabilitiesRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "StagingApi"
+        },
+        "RouteKey": "GET /commerce/capabilities",
+        "AuthorizationType": "NONE",
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "CommerceIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "CapabilitiesPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "CommerceFunction"
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${StagingApi}/*/GET/commerce/capabilities"
+        }
+      }
+    },
+    "QuotesRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "StagingApi"
+        },
+        "RouteKey": "POST /commerce/quotes",
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "StagingAuthorizer"
+        },
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "CommerceIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "QuotesPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "CommerceFunction"
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${StagingApi}/*/POST/commerce/quotes"
+        }
+      }
+    },
+    "AttemptsRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "StagingApi"
+        },
+        "RouteKey": "POST /commerce/checkout-attempts",
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "StagingAuthorizer"
+        },
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "CommerceIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "AttemptsPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "CommerceFunction"
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${StagingApi}/*/POST/commerce/checkout-attempts"
+        }
+      }
+    },
+    "OrdersRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "StagingApi"
+        },
+        "RouteKey": "GET /commerce/orders",
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "StagingAuthorizer"
+        },
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "CommerceIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "OrdersPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "CommerceFunction"
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${StagingApi}/*/GET/commerce/orders"
+        }
+      }
+    },
+    "OrderRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "StagingApi"
+        },
+        "RouteKey": "GET /commerce/orders/{orderId}",
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "StagingAuthorizer"
+        },
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "CommerceIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "OrderPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "CommerceFunction"
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${StagingApi}/*/GET/commerce/orders/*"
+        }
+      }
+    },
+    "CancelRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "StagingApi"
+        },
+        "RouteKey": "POST /commerce/orders/{orderId}/cancel",
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "StagingAuthorizer"
+        },
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "CommerceIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "CancelPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "CommerceFunction"
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${StagingApi}/*/POST/commerce/orders/*/cancel"
+        }
+      }
+    },
+    "RefundRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "StagingApi"
+        },
+        "RouteKey": "POST /commerce/orders/{orderId}/refund",
+        "AuthorizationType": "JWT",
+        "AuthorizerId": {
+          "Ref": "StagingAuthorizer"
+        },
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "CommerceIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "RefundPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "CommerceFunction"
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${StagingApi}/*/POST/commerce/orders/*/refund"
+        }
+      }
+    },
+    "StagingCatalogLogs": {
+      "Type": "AWS::Logs::LogGroup",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/lambda/${AWS::StackName}-catalog"
+        },
+        "RetentionInDays": 30
+      }
+    },
+    "StagingApi": {
+      "Type": "AWS::ApiGatewayV2::Api",
+      "Properties": {
+        "Name": {
+          "Fn::Sub": "${AWS::StackName}-api"
+        },
+        "ProtocolType": "HTTP",
+        "CorsConfiguration": {
+          "AllowOrigins": [
+            "https://anox.app"
+          ],
+          "AllowCredentials": false,
+          "AllowMethods": [
+            "GET",
+            "POST",
+            "PUT",
+            "OPTIONS"
+          ],
+          "AllowHeaders": [
+            "content-type",
+            "authorization",
+            "Idempotency-Key"
+          ],
+          "ExposeHeaders": [
+            "Idempotency-Replayed",
+            "Retry-After"
+          ],
+          "MaxAge": 300
+        }
+      }
+    },
+    "StagingUserPool": {
+      "Type": "AWS::Cognito::UserPool",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "UserPoolName": {
+          "Fn::Sub": "${AWS::StackName}-customers"
+        },
+        "DeletionProtection": "ACTIVE",
+        "AdminCreateUserConfig": {
+          "AllowAdminCreateUserOnly": true
+        },
+        "Policies": {
+          "PasswordPolicy": {
+            "MinimumLength": 16,
+            "RequireLowercase": true,
+            "RequireUppercase": true,
+            "RequireNumbers": true,
+            "RequireSymbols": true,
+            "TemporaryPasswordValidityDays": 1
+          }
+        }
+      }
+    },
+    "StagingClient": {
+      "Type": "AWS::Cognito::UserPoolClient",
+      "Properties": {
+        "UserPoolId": {
+          "Ref": "StagingUserPool"
+        },
+        "ClientName": {
+          "Fn::Sub": "${AWS::StackName}-review"
+        },
+        "GenerateSecret": false,
+        "ExplicitAuthFlows": [
+          "ALLOW_USER_PASSWORD_AUTH",
+          "ALLOW_USER_SRP_AUTH",
+          "ALLOW_REFRESH_TOKEN_AUTH"
+        ],
+        "PreventUserExistenceErrors": "ENABLED",
+        "EnableTokenRevocation": true,
+        "AccessTokenValidity": 15,
+        "IdTokenValidity": 15,
+        "RefreshTokenValidity": 1,
+        "TokenValidityUnits": {
+          "AccessToken": "minutes",
+          "IdToken": "minutes",
+          "RefreshToken": "days"
+        }
+      }
+    },
+    "StagingAuthorizer": {
+      "Type": "AWS::ApiGatewayV2::Authorizer",
+      "Properties": {
+        "ApiId": {
+          "Ref": "StagingApi"
+        },
+        "Name": "StagingCustomerJWT",
+        "AuthorizerType": "JWT",
+        "IdentitySource": [
+          "$request.header.Authorization"
+        ],
+        "JwtConfiguration": {
+          "Issuer": {
+            "Fn::Sub": "https://cognito-idp.${AWS::Region}.amazonaws.com/${StagingUserPool}"
+          },
+          "Audience": [
+            {
+              "Ref": "StagingClient"
+            }
+          ]
+        }
+      }
+    },
+    "SearchRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "StagingApi"
+        },
+        "RouteKey": "GET /catalog/search",
+        "AuthorizationType": "NONE",
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "DetailIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "SearchPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "Channel3Function"
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceAccount": {
+          "Ref": "AWS::AccountId"
+        },
+        "SourceArn": {
+          "Fn::Sub": "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${StagingApi}/*/GET/catalog/search"
+        }
+      }
+    },
+    "StagingDeploymentdaaf6ba1594c5f13": {
+      "Type": "AWS::ApiGatewayV2::Deployment",
+      "DependsOn": [
+        "DetailRoute",
+        "CapabilitiesRoute",
+        "QuotesRoute",
+        "AttemptsRoute",
+        "OrdersRoute",
+        "OrderRoute",
+        "CancelRoute",
+        "RefundRoute",
+        "SearchRoute"
+      ],
+      "Properties": {
+        "ApiId": {
+          "Ref": "StagingApi"
+        },
+        "Description": "Explicit isolated review snapshot; no production API attachment."
+      }
+    },
+    "StagingStage": {
+      "Type": "AWS::ApiGatewayV2::Stage",
+      "Properties": {
+        "ApiId": {
+          "Ref": "StagingApi"
+        },
+        "StageName": "$default",
+        "AutoDeploy": false,
+        "DeploymentId": {
+          "Ref": "StagingDeploymentdaaf6ba1594c5f13"
+        },
+        "DefaultRouteSettings": {
+          "ThrottlingRateLimit": 1,
+          "ThrottlingBurstLimit": 2,
+          "DetailedMetricsEnabled": true
+        },
+        "RouteSettings": {
+          "POST /commerce/quotes": {
+            "ThrottlingRateLimit": 0.2,
+            "ThrottlingBurstLimit": 2
+          }
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "StagingApiId": {
+      "Value": {
+        "Ref": "StagingApi"
+      }
+    },
+    "StagingBaseUrl": {
+      "Value": {
+        "Fn::Sub": "https://${StagingApi}.execute-api.${AWS::Region}.amazonaws.com"
+      }
+    },
+    "StagingPoolId": {
+      "Value": {
+        "Ref": "StagingUserPool"
+      }
+    },
+    "StagingClientId": {
+      "Value": {
+        "Ref": "StagingClient"
+      }
+    },
+    "CatalogFunctionArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "Channel3Function",
+          "Arn"
+        ]
+      }
+    },
+    "CommerceFunctionArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "CommerceFunction",
+          "Arn"
+        ]
+      }
+    },
+    "CacheTableName": {
+      "Value": {
+        "Ref": "CatalogCache"
+      }
+    },
+    "CommerceTableName": {
+      "Value": {
+        "Ref": "CommerceTable"
+      }
+    }
+  }
+}

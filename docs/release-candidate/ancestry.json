@@ -1,0 +1,31 @@
+{
+  "branch": "feat/anox-commerce-foundation",
+  "baseline": "dd11ddedf277d74446d77af6836a67ee30abebf7",
+  "pr5": {
+    "draft": true,
+    "merged": false,
+    "head": "b0ac4df603e300103fd1f2df4aa4d8fe22f4ea07",
+    "base": "9b81ec5c1a791f3aacec4fc3df503bef742c9a84"
+  },
+  "pr6": {
+    "draft": true,
+    "merged": false,
+    "head": "dd11ddedf277d74446d77af6836a67ee30abebf7",
+    "base": "b0ac4df603e300103fd1f2df4aa4d8fe22f4ea07"
+  },
+  "checks": [
+    {
+      "name": "main",
+      "ancestor": "9b81ec5c1a791f3aacec4fc3df503bef742c9a84",
+      "descendant": "b0ac4df603e300103fd1f2df4aa4d8fe22f4ea07",
+      "exitCode": 0
+    },
+    {
+      "name": "phase1",
+      "ancestor": "b0ac4df603e300103fd1f2df4aa4d8fe22f4ea07",
+      "descendant": "dd11ddedf277d74446d77af6836a67ee30abebf7",
+      "exitCode": 0
+    }
+  ],
+  "scope": "Pre-publication read-only remote PR capture and local commit ancestry; final candidate identity in export manifest."
+}

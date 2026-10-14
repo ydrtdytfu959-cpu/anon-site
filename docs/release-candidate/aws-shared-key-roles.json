@@ -1,0 +1,779 @@
+{
+  "status": "success",
+  "stdout": "",
+  "return_value": {
+    "capturedAt": "2026-10-13T23:34:47.590245+00:00",
+    "roles": {
+      "AnoX-AI-Intent-Role": {
+        "GetRole": {
+          "Role": {
+            "Path": "/",
+            "RoleName": "AnoX-AI-Intent-Role",
+            "RoleId": "AROAWG3X7TK4CT5KO6TDU",
+            "Arn": "arn:aws:iam::427064007352:role/AnoX-AI-Intent-Role",
+            "CreateDate": "2026-09-24T04:59:44+00:00",
+            "AssumeRolePolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Service": "lambda.amazonaws.com"
+                  },
+                  "Action": "sts:AssumeRole"
+                }
+              ]
+            },
+            "Description": "Least-privilege execution role for AnoX GPT intent parsing",
+            "MaxSessionDuration": 3600,
+            "RoleLastUsed": {
+              "LastUsedDate": "2026-09-25T23:11:29+00:00",
+              "Region": "us-east-2"
+            }
+          }
+        },
+        "ListRolePolicies": {
+          "PolicyNames": [
+            "ReadAnoXOpenAISecret"
+          ]
+        },
+        "ListAttachedRolePolicies": {
+          "AttachedPolicies": [
+            {
+              "PolicyName": "AWSLambdaBasicExecutionRole",
+              "PolicyArn": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+            }
+          ]
+        },
+        "InlinePolicyDocuments": {
+          "ReadAnoXOpenAISecret": {
+            "RoleName": "AnoX-AI-Intent-Role",
+            "PolicyName": "ReadAnoXOpenAISecret",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "ReadOpenAISecret",
+                  "Effect": "Allow",
+                  "Action": [
+                    "secretsmanager:GetSecretValue"
+                  ],
+                  "Resource": "arn:aws:secretsmanager:us-east-2:427064007352:secret:AnoX/OpenAI/Production-Y8jeGE"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "AnoX-Catalog-API-Role": {
+        "GetRole": {
+          "Role": {
+            "Path": "/",
+            "RoleName": "AnoX-Catalog-API-Role",
+            "RoleId": "AROAWG3X7TK4B7EIMEVMU",
+            "Arn": "arn:aws:iam::427064007352:role/AnoX-Catalog-API-Role",
+            "CreateDate": "2026-09-22T04:09:35+00:00",
+            "AssumeRolePolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Service": "lambda.amazonaws.com"
+                  },
+                  "Action": "sts:AssumeRole"
+                }
+              ]
+            },
+            "Description": "",
+            "MaxSessionDuration": 3600,
+            "Tags": [
+              {
+                "Key": "Project",
+                "Value": "AnoX"
+              },
+              {
+                "Key": "Integration",
+                "Value": "CJ"
+              }
+            ],
+            "RoleLastUsed": {
+              "LastUsedDate": "2026-10-13T22:25:41+00:00",
+              "Region": "us-east-2"
+            }
+          }
+        },
+        "ListRolePolicies": {
+          "PolicyNames": [
+            "CatalogTable",
+            "ReadChannel3Secret",
+            "ReadCJSecret"
+          ]
+        },
+        "ListAttachedRolePolicies": {
+          "AttachedPolicies": [
+            {
+              "PolicyName": "AWSLambdaBasicExecutionRole",
+              "PolicyArn": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+            }
+          ]
+        },
+        "InlinePolicyDocuments": {
+          "CatalogTable": {
+            "RoleName": "AnoX-Catalog-API-Role",
+            "PolicyName": "CatalogTable",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:BatchWriteItem"
+                  ],
+                  "Resource": "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Products",
+                  "Effect": "Allow"
+                }
+              ]
+            }
+          },
+          "ReadChannel3Secret": {
+            "RoleName": "AnoX-Catalog-API-Role",
+            "PolicyName": "ReadChannel3Secret",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "secretsmanager:GetSecretValue"
+                  ],
+                  "Resource": "arn:aws:secretsmanager:us-east-2:427064007352:secret:AnoX/Channel3/Production-22Xm3D"
+                }
+              ]
+            }
+          },
+          "ReadCJSecret": {
+            "RoleName": "AnoX-Catalog-API-Role",
+            "PolicyName": "ReadCJSecret",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Action": [
+                    "secretsmanager:GetSecretValue"
+                  ],
+                  "Resource": "arn:aws:secretsmanager:us-east-2:427064007352:secret:AnoX/CJ/Production-N5donP",
+                  "Effect": "Allow"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "AnoX-Channel3-Catalog-Channel3Role-3AzyNIuhdUvo": {
+        "GetRole": {
+          "Role": {
+            "Path": "/",
+            "RoleName": "AnoX-Channel3-Catalog-Channel3Role-3AzyNIuhdUvo",
+            "RoleId": "AROAWG3X7TK4OQDMXKQFS",
+            "Arn": "arn:aws:iam::427064007352:role/AnoX-Channel3-Catalog-Channel3Role-3AzyNIuhdUvo",
+            "CreateDate": "2026-10-08T04:06:57+00:00",
+            "AssumeRolePolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Service": "lambda.amazonaws.com"
+                  },
+                  "Action": "sts:AssumeRole"
+                }
+              ]
+            },
+            "Description": "",
+            "MaxSessionDuration": 3600,
+            "Tags": [
+              {
+                "Key": "Project",
+                "Value": "AnoX"
+              },
+              {
+                "Key": "Integration",
+                "Value": "Channel3"
+              }
+            ],
+            "RoleLastUsed": {
+              "LastUsedDate": "2026-10-13T13:42:41+00:00",
+              "Region": "us-east-2"
+            }
+          }
+        },
+        "ListRolePolicies": {
+          "PolicyNames": [
+            "Channel3CatalogRuntime"
+          ]
+        },
+        "ListAttachedRolePolicies": {
+          "AttachedPolicies": []
+        },
+        "InlinePolicyDocuments": {
+          "Channel3CatalogRuntime": {
+            "RoleName": "AnoX-Channel3-Catalog-Channel3Role-3AzyNIuhdUvo",
+            "PolicyName": "Channel3CatalogRuntime",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Action": [
+                    "secretsmanager:GetSecretValue"
+                  ],
+                  "Resource": "arn:aws:secretsmanager:us-east-2:427064007352:secret:AnoX/Channel3/Production-22Xm3D",
+                  "Effect": "Allow"
+                },
+                {
+                  "Action": [
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:DeleteItem"
+                  ],
+                  "Resource": "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Channel3-Catalog-CatalogCache-GGLNCMZC7CSK",
+                  "Effect": "Allow"
+                },
+                {
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "arn:aws:logs:us-east-2:427064007352:log-group:/aws/lambda/AnoX-Channel3-Catalog:*",
+                  "Effect": "Allow"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "AnoX-Chat-Role": {
+        "GetRole": {
+          "Role": {
+            "Path": "/",
+            "RoleName": "AnoX-Chat-Role",
+            "RoleId": "AROAWG3X7TK4L2ZEOEEWQ",
+            "Arn": "arn:aws:iam::427064007352:role/AnoX-Chat-Role",
+            "CreateDate": "2026-09-25T22:40:03+00:00",
+            "AssumeRolePolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Service": "lambda.amazonaws.com"
+                  },
+                  "Action": "sts:AssumeRole"
+                }
+              ]
+            },
+            "Description": "AnoX conversational shopping assistant",
+            "MaxSessionDuration": 3600,
+            "RoleLastUsed": {
+              "LastUsedDate": "2026-09-29T22:41:09+00:00",
+              "Region": "us-east-2"
+            }
+          }
+        },
+        "ListRolePolicies": {
+          "PolicyNames": [
+            "AnoXChatRuntime"
+          ]
+        },
+        "ListAttachedRolePolicies": {
+          "AttachedPolicies": [
+            {
+              "PolicyName": "AWSLambdaBasicExecutionRole",
+              "PolicyArn": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+            }
+          ]
+        },
+        "InlinePolicyDocuments": {
+          "AnoXChatRuntime": {
+            "RoleName": "AnoX-Chat-Role",
+            "PolicyName": "AnoXChatRuntime",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "secretsmanager:GetSecretValue"
+                  ],
+                  "Resource": "arn:aws:secretsmanager:us-east-2:427064007352:secret:AnoX/OpenAI/Production*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "lambda:InvokeFunction"
+                  ],
+                  "Resource": "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Smart-Catalog"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "AnoX-Smart-Catalog-Role": {
+        "GetRole": {
+          "Role": {
+            "Path": "/",
+            "RoleName": "AnoX-Smart-Catalog-Role",
+            "RoleId": "AROAWG3X7TK4P6AKAZNGE",
+            "Arn": "arn:aws:iam::427064007352:role/AnoX-Smart-Catalog-Role",
+            "CreateDate": "2026-09-24T05:11:05+00:00",
+            "AssumeRolePolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Service": "lambda.amazonaws.com"
+                  },
+                  "Action": "sts:AssumeRole"
+                }
+              ]
+            },
+            "Description": "AnoX smart catalog wrapper role",
+            "MaxSessionDuration": 3600,
+            "RoleLastUsed": {
+              "LastUsedDate": "2026-10-13T21:28:00+00:00",
+              "Region": "us-east-2"
+            }
+          }
+        },
+        "ListRolePolicies": {
+          "PolicyNames": [
+            "InvokeAnoXAIAndCatalog"
+          ]
+        },
+        "ListAttachedRolePolicies": {
+          "AttachedPolicies": [
+            {
+              "PolicyName": "AWSLambdaBasicExecutionRole",
+              "PolicyArn": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+            }
+          ]
+        },
+        "InlinePolicyDocuments": {
+          "InvokeAnoXAIAndCatalog": {
+            "RoleName": "AnoX-Smart-Catalog-Role",
+            "PolicyName": "InvokeAnoXAIAndCatalog",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "lambda:InvokeFunction"
+                  ],
+                  "Resource": [
+                    "arn:aws:lambda:us-east-2:427064007352:function:AnoX-AI-Intent",
+                    "arn:aws:lambda:us-east-2:427064007352:function:AnoX-Catalog-API"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "anox-api-role-kximt488": {
+        "GetRole": {
+          "Role": {
+            "Path": "/service-role/",
+            "RoleName": "anox-api-role-kximt488",
+            "RoleId": "AROAWG3X7TK4JPMDZXRJL",
+            "Arn": "arn:aws:iam::427064007352:role/service-role/anox-api-role-kximt488",
+            "CreateDate": "2026-09-12T00:14:48+00:00",
+            "AssumeRolePolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Service": "lambda.amazonaws.com"
+                  },
+                  "Action": "sts:AssumeRole"
+                }
+              ]
+            },
+            "MaxSessionDuration": 3600,
+            "RoleLastUsed": {
+              "LastUsedDate": "2026-09-18T19:20:40+00:00",
+              "Region": "us-east-2"
+            }
+          }
+        },
+        "ListRolePolicies": {
+          "PolicyNames": [
+            "AnoXOrdersAccess"
+          ]
+        },
+        "ListAttachedRolePolicies": {
+          "AttachedPolicies": [
+            {
+              "PolicyName": "AWSLambdaBasicExecutionRole-ca1b4ac7-e749-465a-be52-4db41e2e7c52",
+              "PolicyArn": "arn:aws:iam::427064007352:policy/service-role/AWSLambdaBasicExecutionRole-ca1b4ac7-e749-465a-be52-4db41e2e7c52"
+            }
+          ]
+        },
+        "InlinePolicyDocuments": {
+          "AnoXOrdersAccess": {
+            "RoleName": "anox-api-role-kximt488",
+            "PolicyName": "AnoXOrdersAccess",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:PutItem",
+                    "dynamodb:GetItem",
+                    "dynamodb:UpdateItem"
+                  ],
+                  "Resource": "arn:aws:dynamodb:us-east-2:427064007352:table/AnoX-Orders"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "functions": [
+      {
+        "FunctionName": "AnoX-Channel3-Catalog",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Channel3-Catalog-Channel3Role-3AzyNIuhdUvo",
+        "EnvironmentKeys": [
+          "CACHE_TABLE",
+          "CHANNEL3_SECRET_ID"
+        ]
+      },
+      {
+        "FunctionName": "anox-api",
+        "Role": "arn:aws:iam::427064007352:role/service-role/anox-api-role-kximt488",
+        "EnvironmentKeys": [
+          "ORDERS_TABLE"
+        ]
+      },
+      {
+        "FunctionName": "AnoX-AI-Intent",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-AI-Intent-Role",
+        "EnvironmentKeys": [
+          "ALLOWED_ORIGINS",
+          "OPENAI_MODEL",
+          "OPENAI_SECRET_ID"
+        ]
+      },
+      {
+        "FunctionName": "AnoX-Catalog-API",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Catalog-API-Role",
+        "EnvironmentKeys": [
+          "CHANNEL3_SECRET_ID",
+          "CJ_COMPANY_ID",
+          "CJ_SECRET_ID",
+          "NIKE_ADVERTISER_ID",
+          "PRODUCTS_TABLE"
+        ]
+      },
+      {
+        "FunctionName": "AnoX-Smart-Catalog",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Smart-Catalog-Role",
+        "EnvironmentKeys": [
+          "AI_FUNCTION",
+          "CATALOG_FUNCTION"
+        ]
+      },
+      {
+        "FunctionName": "AnoX-Chat",
+        "Role": "arn:aws:iam::427064007352:role/AnoX-Chat-Role",
+        "EnvironmentKeys": [
+          "CATALOG_FUNCTION",
+          "OPENAI_MODEL",
+          "OPENAI_SECRET_ID"
+        ]
+      }
+    ],
+    "managedPolicies": {
+      "arn:aws:iam::427064007352:policy/service-role/AWSLambdaBasicExecutionRole-ca1b4ac7-e749-465a-be52-4db41e2e7c52": {
+        "Policy": {
+          "PolicyName": "AWSLambdaBasicExecutionRole-ca1b4ac7-e749-465a-be52-4db41e2e7c52",
+          "PolicyId": "ANPAWG3X7TK4GIY2AQJZC",
+          "Arn": "arn:aws:iam::427064007352:policy/service-role/AWSLambdaBasicExecutionRole-ca1b4ac7-e749-465a-be52-4db41e2e7c52",
+          "Path": "/service-role/",
+          "DefaultVersionId": "v1",
+          "AttachmentCount": 1,
+          "PermissionsBoundaryUsageCount": 0,
+          "IsAttachable": true,
+          "CreateDate": "2026-09-12T00:14:48+00:00",
+          "UpdateDate": "2026-09-12T00:14:48+00:00",
+          "Tags": []
+        },
+        "Version": {
+          "PolicyVersion": {
+            "Document": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "logs:CreateLogGroup",
+                  "Resource": "arn:aws:logs:us-east-2:427064007352:*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": [
+                    "arn:aws:logs:us-east-2:427064007352:log-group:/aws/lambda/anox-api:*"
+                  ]
+                }
+              ]
+            },
+            "VersionId": "v1",
+            "IsDefaultVersion": true,
+            "CreateDate": "2026-09-12T00:14:48+00:00"
+          }
+        }
+      },
+      "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole": {
+        "Policy": {
+          "PolicyName": "AWSLambdaBasicExecutionRole",
+          "PolicyId": "ANPAJNCQGXC42545SKXIK",
+          "Arn": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+          "Path": "/service-role/",
+          "DefaultVersionId": "v1",
+          "AttachmentCount": 10,
+          "PermissionsBoundaryUsageCount": 0,
+          "IsAttachable": true,
+          "Description": "Provides write permissions to CloudWatch Logs.",
+          "CreateDate": "2015-04-09T15:03:43+00:00",
+          "UpdateDate": "2015-04-09T15:03:43+00:00",
+          "Tags": []
+        },
+        "Version": {
+          "PolicyVersion": {
+            "Document": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            },
+            "VersionId": "v1",
+            "IsDefaultVersion": true,
+            "CreateDate": "2015-04-09T15:03:43+00:00"
+          }
+        }
+      }
+    }
+  },
+  "api_calls": [
+    {
+      "service": "lambda",
+      "operation": "ListFunctions",
+      "status": "success",
+      "n_items": {
+        "Functions": 12
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 3
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 0
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRole",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "ListRolePolicies",
+      "status": "success",
+      "n_items": {
+        "PolicyNames": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "ListAttachedRolePolicies",
+      "status": "success",
+      "n_items": {
+        "AttachedPolicies": 1
+      }
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetRolePolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetPolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetPolicy",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetPolicyVersion",
+      "status": "success"
+    },
+    {
+      "service": "iam",
+      "operation": "GetPolicyVersion",
+      "status": "success"
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+[
+  {
+    "name": "cfn-lint",
+    "command": [
+      "/private/tmp/anox-remediation-validation/bin/cfn-lint",
+      "backend/cloudformation.json",
+      "backend/commerce/cloudformation.json",
+      "backend/staging/cloudformation.json"
+    ],
+    "exitCode": 0,
+    "evidence": "cfn-lint.txt"
+  },
+  {
+    "name": "guard-catalog",
+    "command": [
+      "/private/tmp/cfn-guard-v3-aarch64-macos-latest/cfn-guard",
+      "validate",
+      "-d",
+      "backend/cloudformation.json",
+      "-r",
+      "backend/catalog.guard"
+    ],
+    "exitCode": 0,
+    "evidence": "guard-catalog.txt"
+  },
+  {
+    "name": "guard-commerce",
+    "command": [
+      "/private/tmp/cfn-guard-v3-aarch64-macos-latest/cfn-guard",
+      "validate",
+      "-d",
+      "backend/commerce/cloudformation.json",
+      "-r",
+      "backend/commerce/commerce.guard"
+    ],
+    "exitCode": 0,
+    "evidence": "guard-commerce.txt"
+  },
+  {
+    "name": "guard-staging",
+    "command": [
+      "/private/tmp/cfn-guard-v3-aarch64-macos-latest/cfn-guard",
+      "validate",
+      "-d",
+      "backend/staging/cloudformation.json",
+      "-r",
+      "backend/staging/staging.guard"
+    ],
+    "exitCode": 0,
+    "evidence": "guard-staging.txt"
+  }
+]

@@ -9,7 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3">
   <meta name="robots" content="index,follow">
   <meta name="description" content="AnoX — اكتشف المنتجات، وقارن التفاصيل وتكلفة وصولها التقديرية إلى الجزائر.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-DMF85JiWnKZI21FGvXKamiFTkpyQm94L6C2Ln3fXJNo=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — U.S. products for Algeria">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-rQ23+TIvAYp0wJeZgOe4Zik/Ql5uZYnik2ySz/w5ucg=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — U.S. products for Algeria">
   <meta property="og:description" content="AnoX LLC — discover U.S. products and discuss purchasing and fulfillment to Algeria.">
   <meta property="og:url" content="https://anox.app/">
   <title>AnoX — اختيارات أبعد. تكلفة أوضح.</title>
@@ -1297,7 +1297,27 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     transform:none!important;
     filter:none!important;
   }
-}</style> 
+}
+.commerce-gallery-stage{height:min(66vw,620px);min-height:280px;display:grid;place-items:center;overflow:hidden;touch-action:pan-y;background:var(--paper-2);border-radius:18px}
+.commerce-main-image{width:100%;height:100%;object-fit:contain}
+.commerce-gallery-controls{justify-content:space-between;margin-block:12px}
+.commerce-thumbs{display:flex;justify-content:flex-start;overflow-x:auto;padding:6px;max-width:100%}
+.commerce-thumbs button{flex:0 0 74px;height:74px;padding:3px}
+.commerce-thumbs img{width:100%;height:100%;object-fit:contain}
+.commerce-option{display:grid;gap:6px;margin-block:16px}
+.commerce-description{white-space:pre-wrap}
+.commerce-image-empty{display:grid;place-items:center;min-height:70px;color:var(--muted);text-align:center}
+.commerce-cart-layout{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(290px,1fr);gap:28px}
+.commerce-cart-line{display:flex;gap:20px;padding:24px 0;border-bottom:1px solid var(--line)}
+.commerce-cart-line>img{flex:0 0 110px;object-fit:contain;align-self:flex-start}
+.commerce-cart-line h2{font-size:1.2rem;margin-bottom:8px}
+.commerce-quantity{width:76px}
+.commerce-cost h2{font-size:1.4rem;margin-bottom:15px}
+.commerce-cost h3{font-size:1.05rem;margin-block:20px 10px}
+.commerce-cost dt small{display:block;color:var(--muted)}
+.commerce-totals{border-top:1px solid var(--line);margin-top:15px;padding-top:15px}
+@media(max-width:760px){.commerce-cart-layout{grid-template-columns:1fr}.commerce-cart-line{gap:12px}.commerce-cart-line>img{width:72px;flex-basis:72px}.commerce-cart-line .actions{gap:6px}.commerce-gallery-stage{height:90vw;min-height:220px}.commerce-cart-line .btn{padding-inline:12px}}
+</style>
 </head>
 <body>
   <a id="skip-link" class="sr-only skip-link" href="#main">انتقل إلى المحتوى</a>
@@ -1416,14 +1436,6 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
   const provider = Object.freeze({id:"nike-live", merchant:"Nike", mode:"live", transport:"api", sourceType:"affiliate-feed", authorization:Object.freeze({status:"unverified",evidence:null}), approvedLive:false, imageHosts:Object.freeze(["static.nike.com"]), merchantHosts:Object.freeze(["nike.com","www.nike.com"]), staleAfterMs:86400000});
   const channel3Provider = Object.freeze({id:"channel3-live", merchant:"Channel3", mode:"live", transport:"api", pagination:"cursor", timeoutMs:18000, sourceType:"catalog-api", authorization:Object.freeze({status:"provider-terms",evidence:"Channel3 customer output"}), approvedLive:false, imageHosts:Object.freeze(["cdn.trychannel3.com"]), merchantHosts:Object.freeze(["buy.trychannel3.com"]), staleAfterMs:86400000});
   const CHANNEL3_SECTIONS = Object.freeze(["featured","men","women","shoes","clothing","beauty","accessories","sports","brands"]);
-  // Channel3 generic discovery is not limited to AnoX's approved sources:
-  // actual production pages returned 24 unrelated brands and zero accepted
-  // products. Use single bounded source-specific queries; no background fanout.
-  const CHANNEL3_CURATED_QUERIES = Object.freeze({
-    featured:"Nike", men:"Levi's men", women:"Nike women",
-    shoes:"adidas", clothing:"Levi's", beauty:"e.l.f. cosmetics",
-    accessories:"Nike accessories", sports:"Nike sports", brands:"Sephora"
-  });
   const MAX_BYTES=2*1024*1024;
   let retryAt=0;
   const DEFAULT_LIMIT = 24;
@@ -1640,65 +1652,77 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     const brands=Array.isArray(raw?.brands)?raw.brands:[];
     return stringValue(brands.find(entry=>stringValue(entry?.name))?.name)||"Brand";
   }
-  // Approved AnoX brands and merchants. Retailer identity comes from Channel3
-  // offer.domain, never a product title, search term or affiliate-link host.
+  // A product is in the public catalog only when its source declares one of
+  // four approved brands, or a fresh offer identifies an approved retailer.
+  // Titles and search terms are NEVER evidence of brand or retailer identity.
   const APPROVED_BRANDS=Object.freeze({nike:"Nike",adidas:"Adidas",levis:"Levi's",elf:"e.l.f. Cosmetics",elfcosmetics:"e.l.f. Cosmetics"});
-  const APPROVED_RETAILERS=Object.freeze(["sephora.com","www.sephora.com","tjmaxx.tjx.com","www.tjmaxx.tjx.com","tjmaxx.com","www.tjmaxx.com"]);
-  function approvedBrand(raw) {
-    const brands=Array.isArray(raw?.brands)?raw.brands:[];
-    for(const entry of brands.slice(0,16)){
-      const name=stringValue(entry?.name);
-      const key=name.normalize("NFKC").toLowerCase().replace(/[^a-z0-9]/g,"");
-      if(Object.hasOwn(APPROVED_BRANDS,key))return APPROVED_BRANDS[key];
+  // Strict direct retailer attribution, not any marketplace carrying a branded item.
+  // Buy links are Channel3-managed HTTPS redirects, never an invented store URL.
+  const OFFICIAL_STORES=Object.freeze({
+    Nike:["nike.com","www.nike.com"],
+    Adidas:["adidas.com","www.adidas.com"],
+    "Levi's":["levi.com","www.levi.com"],
+    "e.l.f. Cosmetics":["elfcosmetics.com","www.elfcosmetics.com"],
+    Sephora:["sephora.com","www.sephora.com"],
+    "TJ Maxx":["tjmaxx.tjx.com","www.tjmaxx.tjx.com","tjmaxx.com","www.tjmaxx.com"]
+  });
+  const FEATURED_SOURCES=Object.freeze([
+    ["Nike","Nike"],["Adidas","adidas"],["Levi's","Levi's"],
+    ["e.l.f. Cosmetics","e.l.f. cosmetics"],["Sephora","Sephora"],["TJ Maxx","TJ Maxx"]
+  ]);
+  const SECTION_QUERIES=Object.freeze({
+    men:"Levi's men",women:"Nike women",shoes:"adidas",clothing:"Levi's",
+    beauty:"e.l.f. cosmetics",accessories:"Nike accessories",sports:"Nike sports",brands:"Sephora"
+  });
+  const OFFICIAL_DOMAINS=new Set(Object.values(OFFICIAL_STORES).flat());
+  function officialOffers(raw) {
+    return (Array.isArray(raw?.offers)?raw.offers:[]).filter(offer=>{
+      const domain=stringValue(offer?.domain).toLowerCase();
+      const url=safeHttpsUrl(offer?.url);
+      return OFFICIAL_DOMAINS.has(domain)&&url&&new URL(url).hostname.toLowerCase()==="buy.trychannel3.com";
+    });
+  }
+  function approvedBrand(raw){
+    for(const entry of (Array.isArray(raw?.brands)?raw.brands:[]).slice(0,16)){
+      const name=stringValue(entry?.name).normalize("NFKC").toLowerCase().replace(/[^a-z0-9]/g,"");
+      if(Object.hasOwn(APPROVED_BRANDS,name))return APPROVED_BRANDS[name];
     }
     return null;
   }
-  function approvedRetailerOffers(raw) {
-    return (Array.isArray(raw?.offers)?raw.offers:[]).filter(offer=>{
-      const domain=stringValue(offer?.domain).toLowerCase();
-      return APPROVED_RETAILERS.includes(domain) && !!safeHttpsUrl(offer?.url);
-    });
+  function approvedRetailerOffers(raw){return officialOffers(raw).filter(o=>
+    OFFICIAL_STORES.Sephora.includes(stringValue(o.domain).toLowerCase())||
+    OFFICIAL_STORES["TJ Maxx"].includes(stringValue(o.domain).toLowerCase())
+  );}
+  function approvedSellerDomains(raw) {
+    const brand=approvedBrand(raw);
+    const fromOffers=officialOffers(raw).map(o=>stringValue(o.domain).toLowerCase());
+    const fromCache=(Array.isArray(raw?.sellerDomains)?raw.sellerDomains:[])
+      .slice(0,6).map(v=>stringValue(v).toLowerCase()).filter(d=>OFFICIAL_DOMAINS.has(d));
+    const retail=[...OFFICIAL_STORES.Sephora,...OFFICIAL_STORES["TJ Maxx"]];
+    return [...new Set([...fromOffers,...fromCache])].filter(d=>
+      (brand&&OFFICIAL_STORES[brand].includes(d))||retail.includes(d));
   }
-  function channel3Offer(raw){
-    const offers=(Array.isArray(raw?.offers)?raw.offers:[]).filter(offer=>{
-      const currency=stringValue(offer?.price?.currency).toUpperCase(),price=numberValue(offer?.price?.price);
-      return currency==="USD"&&Number.isFinite(price)&&price>=0&&safeHttpsUrl(offer?.url);
-    });
-    return offers.sort((a,b)=>{
-      const rank=offer=>(String(offer?.availability).toLowerCase()==="instock"?4:0)+(String(offer?.condition).toLowerCase()==="new"?2:0)+(stringValue(offer?.domain).endsWith(".com")?1:0);
-      return rank(b)-rank(a);
-    })[0]||null;
-  }
-  function channel3Selected(raw,matcher){
-    const selected=Array.isArray(raw?.variants?.selected)?raw.variants.selected:[];
-    const hit=selected.find(entry=>matcher.test(stringValue(entry?.name)));
-    return stringValue(hit?.label);
-  }
-  function channel3Variants(raw,inStock){
-    const options=Array.isArray(raw?.variants?.options)?raw.variants.options:[];
-    const sizeOption=options.find(option=>/size/i.test(stringValue(option?.name)));
-    const selectedColor=channel3Selected(raw,/color|wash|style/i)||"Default";
-    const sizes=Array.isArray(sizeOption?.values)?sizeOption.values.filter(value=>value?.exists===true&&stringValue(value?.label)).map(value=>stringValue(value.label)).slice(0,60):[];
-    if(!sizes.length)return {variants:[{color:selectedColor,size:"Unspecified",stock:0}],known:false};
-    return {variants:sizes.map(size=>({color:selectedColor,size,stock:inStock?1:0})),known:true};
+  function approvedOfficialOffers(raw){
+    const allowed=new Set(approvedSellerDomains(raw));
+    return officialOffers(raw).filter(o=>allowed.has(stringValue(o.domain).toLowerCase()));
   }
   function normalizeChannel3Product(raw,index=0,fetchedAt=new Date().toISOString()){
     if(!raw||typeof raw!=="object"||Array.isArray(raw))return null;
     const id=stringValue(raw.id),title=stringValue(raw.title);if(!/^[A-Za-z0-9_-]{1,80}$/.test(id)||!title||title.length>200)return null;
-    const branded=approvedBrand(raw), retailerOffers=approvedRetailerOffers(raw);
-    if(!branded&&!retailerOffers.length)return null;
-    // Unapproved product brands are allowed only through a verified approved retailer.
-    const offer=channel3Offer(branded?raw:{...raw,offers:retailerOffers});if(!offer)return null;
-    const priceCents=cents(offer.price?.price);if(priceCents===null)return null;
-    const compareAtPriceCents=cents(offer.price?.compare_at_price),inStock=String(offer.availability).toLowerCase()==="instock",variantInfo=channel3Variants(raw,inStock),name=localized(title,title);
+    const sellers=approvedSellerDomains(raw);
+    if(!sellers.length)return null;
+    const retailer=sellers[0];
+    const label=Object.entries(OFFICIAL_STORES).find(([,domains])=>domains.includes(retailer))?.[0];
+    if(!label)return null;
+    // Ignore volatile fields even from an older backend during rollout.
+    const name=localized(title,title);
     const media=(Array.isArray(raw.images)?raw.images:[]).slice(0,1).flatMap(image=>{const url=trustedImageUrl(firstValue(image?.cleaned_url,image?.url));if(!url)return [];return [{url,alt:localized(stringValue(image?.alt_text)||title,title),width:420,height:390}];});
     const category=channel3Category(raw),kind=safeKey(firstValue(raw?.category?.slug,raw?.category?.title,category),"product").toLowerCase();
-    return {id,slug:id,name,brand:branded||channel3Brand(raw),category,kind:/^[a-z][a-z-]{0,29}$/.test(kind)?kind:"product",currency:"USD",priceCents,
-      compareAtPriceCents:compareAtPriceCents!==null&&compareAtPriceCents>priceCents?compareAtPriceCents:null,weightGrams:0,variantDetailsKnown:variantInfo.known,
-      stock:variantInfo.variants.reduce((sum,variant)=>sum+variant.stock,0),variants:variantInfo.variants,media,
+    return {id,slug:id,name,brand:label,category,kind:/^[a-z][a-z-]{0,29}$/.test(kind)?kind:"product",currency:"USD",priceCents:null,presentationOnly:true,
+      compareAtPriceCents:null,weightGrams:0,variantDetailsKnown:false,stock:null,variants:[],media,
       description:localized(firstValue(raw.description,Array.isArray(raw.key_features)?raw.key_features.join(". "):"",title),title),updatedAt:fetchedAt,
-      availability:inStock?"in_stock":String(offer.availability).toLowerCase()==="outofstock"?"out_of_stock":"unknown",
-      source:{merchantUrl:safeHttpsUrl(offer.url),merchantDomain:stringValue(offer.domain),verifiedAt:fetchedAt,fetchedAt,availabilityVerifiedAt:fetchedAt,availability:inStock?"verified":"reported",sourceType:"catalog-api"},
+      availability:"unknown",
+      source:{merchantUrl:null,merchantDomain:null,verifiedAt:null,fetchedAt,availabilityVerifiedAt:null,availability:"unknown",sourceType:"catalog-api"},
       purchasable:false};
   }
   function catalogError(code, status) {
@@ -1742,10 +1766,9 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
   function buildChannel3Url(options = {}) {
     const { q, section, limit, cursor, filters } = channel3Options(options);
     const params = new URLSearchParams();
-    // Keep the UI section stable while searching within approved source terms.
-    // The same query is used for every continuation token in this section.
     if (q) params.set("q", q);
-    else params.set("q", CHANNEL3_CURATED_QUERIES[section]);
+    else if(section!=="featured") params.set("q",SECTION_QUERIES[section]);
+    else params.set("section", section);
     params.set("limit", String(limit));
     if (cursor !== null) params.set("page_token", cursor);
     if (Object.keys(filters).length) params.set("filters", JSON.stringify(filters));
@@ -1770,9 +1793,55 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     return { q, section, limit, items, total: null, nextCursor, fetchedAt, expiresAt, invalidCount: raw.length - items.length };
   }
 
+  function parseMixedCursor(value){
+    if(value===null)return Array(6).fill(null);
+    let obj;try{obj=JSON.parse(value);}catch{throw catalogError("catalog_cursor_invalid",400);}
+    if(!record(obj)||obj.v!==1||!Array.isArray(obj.c)||obj.c.length!==6||
+       obj.c.some(v=>v!==null&&(typeof v!=="string"||v.length>1024)))throw catalogError("catalog_cursor_invalid",400);
+    return obj.c;
+  }
+  function shuffleRoundRobin(groups){
+    const order=groups.map((_,i)=>i);
+    for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+    const items=[];for(let pos=0;pos<4;pos++)for(const i of order)if(groups[i][pos])items.push(groups[i][pos]);
+    return items;
+  }
+  async function fetchMixedPage(normalized,signal){
+    const cursors=parseMixedCursor(normalized.cursor);
+    const groups=Array(6).fill(null).map(()=>[]);
+    const next=cursors.slice();let errors=0,firstDate=null,lastDate=null;
+    // Three simultaneous reads at most; two bounded waves, no unbounded prefetch.
+    for(let start=0;start<6;start+=3){
+      const results=await Promise.allSettled(FEATURED_SOURCES.slice(start,start+3).map(async([,query],offset)=>{
+        const i=start+offset;
+        if(cursors[i]==="")return null;
+        const url=buildChannel3Url({q:query,limit:4,cursor:cursors[i],filters:normalized.filters});
+        const page=parseChannel3Page(await readJson(url,signal,channel3Provider.timeoutMs),{q:query,limit:4});
+        return page;
+      }));
+      results.forEach((res,k)=>{
+        const i=start+k;
+        if(res.status==="rejected"){errors++;next[i]=cursors[i];return;}
+        if(!res.value){next[i]="";return;}
+        groups[i]=res.value.items;
+        next[i]=res.value.nextCursor??"";
+        firstDate=firstDate&&Date.parse(firstDate)<Date.parse(res.value.fetchedAt)?firstDate:res.value.fetchedAt;
+        lastDate=lastDate&&Date.parse(lastDate)<Date.parse(res.value.expiresAt)?lastDate:res.value.expiresAt;
+      });
+    }
+    if(signal?.aborted){const aborted=new Error("catalog_aborted");aborted.name="AbortError";throw aborted;}
+    if(errors===6)throw catalogError("catalog_unavailable",503);
+    const items=shuffleRoundRobin(groups);
+    // Keep partially successful results; never invent a cursor when all six are exhausted.
+    const nextCursor=next.every(v=>v==="")?null:JSON.stringify({v:1,c:next});
+    return {q:"",section:"featured",limit:normalized.limit,items,total:null,nextCursor,
+      fetchedAt:firstDate||new Date().toISOString(),expiresAt:lastDate||new Date(Date.now()+60000).toISOString(),
+      invalidCount:0,partialErrors:errors};
+  }
   async function fetchChannel3Page(options = {}) {
     const normalized = channel3Options(options);
     try {
+      if(!normalized.q&&normalized.section==="featured")return await fetchMixedPage(normalized,options.signal);
       return parseChannel3Page(await readJson(buildChannel3Url(normalized), options.signal, channel3Provider.timeoutMs), normalized);
     } catch (error) {
       // The backend classifies unusable continuations without exposing provider diagnostics.
@@ -1782,7 +1851,110 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     }
   }
 
-  return Object.freeze({ provider, nikeProvider: provider, channel3Provider, API_BASE, CHANNEL3_API_BASE, IMAGE_HOSTS, buildCatalogUrl, buildChannel3Url, getProduct, normalizeNikeProduct, normalizeChannel3Product, parseCatalogPage, parseChannel3Page, fetchPage, fetchChannel3Page });
+  const detailIdentity = value => typeof value === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(value);
+  const record = value => value !== null && typeof value === "object" && !Array.isArray(value);
+  function detailSelection(input = {}) {
+    if (!record(input) || Object.keys(input).length > 8) throw catalogError("catalog_options");
+    const output = {};
+    for (const name of Object.keys(input).sort()) {
+      const value = input[name];
+      if (!name.trim() || name.length > 60 || ["__proto__", "constructor", "prototype"].includes(name) || typeof value !== "string" || !value.trim() || value.length > 80 || /[\u0000-\u001f\u007f-\u009f]/.test(name + value)) throw catalogError("catalog_options");
+      try {encodeURIComponent(name); encodeURIComponent(value);} catch {throw catalogError("catalog_options");}
+      output[name] = value;
+    }
+    return output;
+  }
+  function buildChannel3DetailUrl(productId, options = {}) {
+    if (!detailIdentity(productId)) throw catalogError("catalog_identity");
+    const params = new URLSearchParams();
+    for (const [name, label] of Object.entries(detailSelection(options))) params.set("option_" + name, label);
+    return API_BASE + "/channel3/products/" + productId + (params.size ? "?" + params.toString() : "");
+  }
+  function detailList(value, max) {
+    if (value === null || value === undefined) return [];
+    if (!Array.isArray(value) || value.length > max) throw catalogError("catalog_payload");
+    return value;
+  }
+  function detailString(value, max, required = false) {
+    if (value === null || value === undefined) {if (required) throw catalogError("catalog_payload"); return null;}
+    if (typeof value !== "string" || value.length > max || required && !value.trim() || /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value)) throw catalogError("catalog_payload");
+    try {encodeURIComponent(value);} catch {throw catalogError("catalog_payload");}
+    return value;
+  }
+  function detailUrl(value, hostname) {
+    if (typeof value !== "string" || value.length > 2048) return "";
+    const url = safeHttpsUrl(value);
+    return url && new URL(url).hostname === hostname ? url : "";
+  }
+  const detailAvailability = value => value === "InStock" ? "in_stock" : value === "OutOfStock" ? "out_of_stock" : "unknown";
+  function detailCents(value) {
+    if (typeof value !== "number" || value < 0 || value > 1e6 || !/^(?:0|[1-9]\d*)(?:\.\d{1,2})?$/.test(String(value))) return null;
+    const [whole, decimal = ""] = String(value).split(".");
+    return Number(BigInt(whole) * 100n + BigInt(decimal.padEnd(2, "0")));
+  }
+  function detailMeasurements(value) {
+    if (!record(value)) return null;
+    return Object.fromEntries(["length", "width", "height", "weight"].map(name => {
+      const field = value[name], units = name === "weight" ? ["mg", "g", "kg", "oz", "lb"] : ["mm", "cm", "m", "in", "ft"];
+      return [name, record(field) && typeof field.number === "number" && Number.isFinite(field.number) && field.number > 0 && field.number <= 1e9 && units.includes(field.unit) ? {number:field.number, unit:field.unit} : null];
+    }));
+  }
+  function parseChannel3Detail(payload, productId, {options = {}} = {}) {
+    const requested = detailSelection(options), raw = payload?.data?.product;
+    if (!detailIdentity(productId) || !record(payload) || payload.provider !== "channel3" || !record(raw) || raw.id !== productId || !["fresh", "presentation_only"].includes(payload.status)) throw catalogError("catalog_payload");
+    const fresh = payload.status === "fresh", fetchedAt = normalizedDate(payload.fetchedAt), expiresAt = normalizedDate(payload.expiresAt), time = Date.now();
+    if (!fetchedAt || !expiresAt || Date.parse(fetchedAt) > time + 60000 || Date.parse(expiresAt) <= Date.parse(fetchedAt) || Date.parse(expiresAt) - Date.parse(fetchedAt) > (fresh ? 30000 : 3600000) || payload.error !== (fresh ? null : "DETAIL_REFRESH_UNAVAILABLE")) throw catalogError("catalog_payload");
+    if (Date.parse(expiresAt) <= time) throw catalogError("catalog_expired");
+    const title = detailString(raw.title, 200, true), names = new Set();
+    if (raw.variants != null && !record(raw.variants)) throw catalogError("catalog_payload");
+    const variantOptions = detailList(raw.variants?.options, 8).map(option => {
+      if (!record(option) || typeof option.name !== "string" || names.has(option.name)) throw catalogError("catalog_payload");
+      detailSelection({[option.name]:"value"}); names.add(option.name); const labels = new Set();
+      return {name:option.name, values:detailList(option.values, 120).map(value => {
+        if (!record(value) || labels.has(value.label) || typeof value.exists !== "boolean") throw catalogError("catalog_payload");
+        detailSelection({[option.name]:value.label}); labels.add(value.label);
+        return {label:value.label, exists:value.exists, availability:fresh ? detailAvailability(value.available) : "unknown", thumbnailUrl:detailUrl(value.thumbnail_url, "cdn.trychannel3.com") || null, productId:detailIdentity(value.product_id) ? value.product_id : null};
+      })};
+    });
+    const selectedNames = new Set(), selected = detailList(raw.variants?.selected, 8).map(value => {
+      const option = record(value) && variantOptions.find(option => option.name === value.name);
+      if (!option || selectedNames.has(value.name) || !option.values.some(entry => entry.label === value.label)) throw catalogError("catalog_payload");
+      selectedNames.add(value.name); return {name:value.name, label:value.label};
+    });
+    const effective = new Map(selected.map(value => [value.name, value.label]));
+    const selectionMismatch = Object.entries(requested).filter(([name, label]) => effective.get(name) !== label).map(([name, requested]) => ({name, requested, effective:effective.get(name) ?? null}));
+    if (JSON.stringify(selectionMismatch) !== JSON.stringify(payload.selectionMismatch)) throw catalogError("catalog_selection_mismatch");
+    const attributes = raw.structured_attributes ?? {};
+    if (!record(attributes) || Object.keys(attributes).length > 64) throw catalogError("catalog_payload");
+    const structuredAttributes = {};
+    for (const [name, values] of Object.entries(attributes)) {
+      if (!name.trim() || name.length > 80 || ["__proto__", "constructor", "prototype"].includes(name)) throw catalogError("catalog_payload");
+      structuredAttributes[name] = detailList(values, 64).map(value => detailString(value, 1000, true));
+    }
+    const official=approvedOfficialOffers(raw);
+    if(fresh?!official.length:!approvedSellerDomains(raw).length)throw catalogError("catalog_not_approved",403);
+    const offers = detailList(official, 64).filter(record).flatMap(offer => {
+      const url = detailUrl(offer.url, "buy.trychannel3.com"), merchantDomain = typeof offer.domain === "string" ? offer.domain.toLowerCase() : "";
+      if (!fresh || !url || merchantDomain.length > 253 || !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(merchantDomain)) return [];
+      const currency = offer.price?.currency === "USD" ? "USD" : null;
+      return [{merchantDomain, url, priceCents:currency ? detailCents(offer.price.price) : null, compareAtPriceCents:currency ? detailCents(offer.price.compare_at_price) : null, currency,
+        availability:detailAvailability(offer.availability), condition:["new", "used"].includes(offer.condition) ? offer.condition : null,
+        maxCommissionRate:typeof offer.max_commission_rate === "number" && offer.max_commission_rate >= 0 && offer.max_commission_rate <= 1 ? offer.max_commission_rate : null, dimensions:detailMeasurements(offer.dimensions)}];
+    });
+    const category = record(raw.category) ? {slug:detailString(raw.category.slug, 100), title:detailString(raw.category.title, 100), path:detailList(raw.category.path, 16).filter(record).map(part => ({slug:detailString(part.slug, 100), title:detailString(part.title, 100)}))} : null;
+    return {schema:"anox.product-detail/1", provider:"channel3", id:productId, slug:productId, title, description:detailString(raw.description, 60000),
+      brands:detailList(raw.brands, 16).filter(record).map(brand => ({id:detailString(brand.id, 200, true), name:detailString(brand.name, 100, true)})),
+      images:detailList(raw.images, 64).filter(record).flatMap(image => {const url = detailUrl(image.url, "cdn.trychannel3.com"); return url ? [{url, altText:detailString(image.alt_text, 500) || title, isMainImage:image.is_main_image === true, shotType:detailString(image.shot_type, 40)}] : [];}),
+      category, gender:["male", "female"].includes(raw.gender) ? raw.gender : null, age:["newborn", "infant", "toddler", "kids", "adult"].includes(raw.age) ? raw.age : null,
+      materials:detailList(raw.materials, 64).map(value => detailString(value, 2000, true)), keyFeatures:detailList(raw.key_features, 64).map(value => detailString(value, 2000, true)), structuredAttributes,
+      offers, variants:{options:variantOptions, selected}, stock:null, purchasable:false, freshness:{status:payload.status, fetchedAt, expiresAt}, selectionMismatch, error:payload.error};
+  }
+  async function getChannel3Product(productId, {options = {}, signal} = {}) {
+    const selected = detailSelection(options);
+    return parseChannel3Detail(await readJson(buildChannel3DetailUrl(productId, selected), signal, channel3Provider.timeoutMs), productId, {options:selected});
+  }
+
+  return Object.freeze({ provider, nikeProvider: provider, channel3Provider, API_BASE, CHANNEL3_API_BASE, IMAGE_HOSTS, buildCatalogUrl, buildChannel3Url, getProduct, normalizeNikeProduct, normalizeChannel3Product, parseCatalogPage, parseChannel3Page, fetchPage, fetchChannel3Page, buildChannel3DetailUrl, parseChannel3Detail, getChannel3Product });
 });
 
 ;
@@ -1800,14 +1972,15 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     const change=()=>{try{onChange();}catch{}};
     function clear(){generation++;refreshing=null;loadPromise=null;write(null);state.user=null;state.orders=[];state.busy=false;state.error='';state.loadStatus='idle';change();}
     async function json(url,options={}){
-      const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000);
+      const timeout=options.timeoutMs===18000?18000:12000;delete options.timeoutMs;
+      const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
       try{
         const r=await transport(url,{...options,credentials:'omit',cache:'no-store',referrerPolicy:'no-referrer',redirect:'error',signal:controller.signal});
         const reader=r.body?.getReader();let bytes=0,body='';if(!reader)throw fail('INVALID_RESPONSE');const decoder=new TextDecoder();
         for(;;){const {done,value}=await reader.read();if(done)break;bytes+=value.byteLength;if(bytes>2*1024*1024){await reader.cancel();throw fail('INVALID_RESPONSE');}body+=decoder.decode(value,{stream:true});}body+=decoder.decode();
         let data;try{data=JSON.parse(body);}catch{throw fail('INVALID_RESPONSE');}
         if(!data||typeof data!=='object'||Array.isArray(data))throw fail('INVALID_RESPONSE');
-        if(!r.ok){const code=text(data.__type||data.code||data.error,100).split('#').pop();throw Object.assign(fail(/^[A-Za-z0-9_]+$/.test(code)?code:'HTTP_'+r.status),{status:r.status});}
+        if(!r.ok){const code=text(data.__type||data.code||data.error?.code||data.error,100).split('#').pop();throw Object.assign(fail(/^[A-Za-z0-9_]+$/.test(code)?code:'HTTP_'+r.status),{status:r.status});}
         return data;
       }finally{clearTimeout(timer);controller.abort();}
     }
@@ -1826,12 +1999,37 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     const resend=email=>cognito('ResendConfirmationCode',{ClientId:config.clientId,Username:email.trim().toLowerCase()});
     const forgot=email=>cognito('ForgotPassword',{ClientId:config.clientId,Username:email.trim().toLowerCase()});
     const reset=(email,code,password)=>cognito('ConfirmForgotPassword',{ClientId:config.clientId,Username:email.trim().toLowerCase(),ConfirmationCode:String(code).trim(),Password:password});
+    function commerceBody(path, raw) {
+      let data;try{data=JSON.parse(raw);}catch{throw fail('INVALID_BODY');}
+      const object=value=>value&&typeof value==='object'&&!Array.isArray(value);
+      const only=(value,keys)=>object(value)&&Object.keys(value).every(key=>keys.includes(key));
+      const identifier=value=>typeof value==='string'&&/^[A-Za-z0-9_-]{1,80}$/.test(value);
+      if(typeof raw!=='string'||new TextEncoder().encode(raw).byteLength>32000)throw fail('INVALID_BODY');
+      if(path==='/commerce/quotes'){
+        if(!only(data,['cartRevision','lines','destination','currency'])||(!identifier(data.cartRevision)||data.cartRevision.length>80)||data.currency!=='USD'||!only(data.destination,['country'])||data.destination.country!=='DZ'||!Array.isArray(data.lines)||!data.lines.length||data.lines.length>10)throw fail('INVALID_BODY');
+        for(const line of data.lines){
+          if(!only(line,['provider','productId','merchantDomain','condition','quantity','options'])||line.provider!=='channel3'||!identifier(line.productId)||line.productId.length>80||typeof line.merchantDomain!=='string'||line.merchantDomain.length>253||!/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(line.merchantDomain)||!['new','used',null].includes(line.condition)||!Number.isSafeInteger(line.quantity)||line.quantity<1||line.quantity>20||!object(line.options)||Object.keys(line.options).length>8)throw fail('INVALID_BODY');
+          for(const [key,value] of Object.entries(line.options))if(!key||key.length>60||['__proto__','constructor','prototype'].includes(key)||typeof value!=='string'||!value||value.length>80||/[\u0000-\u001f\u007f-\u009f\ud800-\udfff]/u.test(key+value))throw fail('INVALID_BODY');
+        }
+        const selections=data.lines.map(line=>[line.productId,Object.keys(line.options).sort().map(key=>[key,line.options[key]])]);
+        if(new Set(selections.map(selection=>JSON.stringify(selection))).size>5)throw fail('INVALID_BODY');
+        const identities=data.lines.map((line,i)=>JSON.stringify([line.provider,...selections[i],line.merchantDomain,line.condition]));
+        if(new Set(identities).size!==identities.length)throw fail('INVALID_BODY');
+      }else if(path==='/commerce/checkout-attempts'){
+        if(!only(data,['quoteId','cartRevision','cartHash'])||!identifier(data.quoteId)||(!identifier(data.cartRevision)||data.cartRevision.length>80)||typeof data.cartHash!=='string'||!/^[a-f0-9]{64}$/.test(data.cartHash))throw fail('INVALID_BODY');
+      }else if(!only(data,[]))throw fail('INVALID_BODY');
+      return JSON.stringify(data);
+    }
     async function api(path,options={},retry=true){
-      const method=options.method||'GET';if(!['/me','/orders'].includes(path)||!(method==='GET'||path==='/me'&&method==='PUT'))throw fail('INVALID_PATH');
-      const epoch=generation,session=await validSession();if(epoch!==generation||!session)throw fail('UNAUTHORIZED');
-      const headers={'Authorization':'Bearer '+session.idToken};let body;
+      const method=options.method||'GET',commerce=typeof path==='string'&&path.startsWith('/commerce/');
+      const read=method==='GET'&&(/^(?:\/commerce\/orders\/[A-Za-z0-9_-]{1,80}|\/commerce\/orders(?:\?cursor=[A-Za-z0-9_-]{1,80})?)$/.test(path));
+      const post=method==='POST'&&(path==='/commerce/quotes'||path==='/commerce/checkout-attempts'||/^\/commerce\/orders\/[A-Za-z0-9_-]{1,80}\/(?:cancel|refund)$/.test(path));
+      if(commerce?!(read||post):!['/me','/orders'].includes(path)||!(method==='GET'||path==='/me'&&method==='PUT'))throw fail('INVALID_PATH');
+      const headers={};let body;
+      if(post){if(typeof options.idempotencyKey!=='string'||!/^[-A-Za-z0-9_]{16,128}$/.test(options.idempotencyKey))throw fail('INVALID_IDEMPOTENCY_KEY');body=commerceBody(path,options.body);headers['Content-Type']='application/json';headers['Idempotency-Key']=options.idempotencyKey;}
       if(method==='PUT'){let data;try{data=JSON.parse(options.body);}catch{throw fail('INVALID_BODY');}if(!data||Object.keys(data).some(k=>k!=='displayName')||typeof data.displayName!=='string'||data.displayName.length>160)throw fail('INVALID_BODY');headers['Content-Type']='application/json';body=JSON.stringify(data);}
-      try{const data=await json(config.apiBase+path,{method,headers,body});if(epoch!==generation)throw fail('STALE_SESSION');return data;}
+      const epoch=generation,session=await validSession();if(epoch!==generation||!session)throw fail('UNAUTHORIZED');headers.Authorization='Bearer '+session.idToken;
+      try{const data=await json(config.apiBase+path,{method,headers,body,...(path==='/commerce/quotes'&&method==='POST'?{timeoutMs:18000}:{})});if(epoch!==generation)throw fail('STALE_SESSION');return data;}
       catch(e){if(epoch===generation&&retry&&e.status===401){await refresh();return api(path,options,false);}throw e;}
     }
     function normalizeOrders(items){return (Array.isArray(items)?items:[]).slice(0,100).filter(x=>x&&typeof x==='object'&&!Array.isArray(x)).map(x=>({orderId:text(x.orderId||x.id,160),createdAt:text(x.createdAt,50),status:text(x.status,80),paymentStatus:text(x.paymentStatus,80),amountTotal:Number.isSafeInteger(x.amountTotal)&&x.amountTotal>=0&&x.amountTotal<=1e12?x.amountTotal:null,currency:typeof x.currency==='string'&&['USD','DZD'].includes(x.currency.toUpperCase())?x.currency.toUpperCase():null}));}
@@ -1842,7 +2040,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       loadPromise=pending;await pending;if(loadPromise===pending)loadPromise=null;
     }
     function signOut(revoke=true){const token=state.session?.refreshToken;clear();if(revoke){logoutNotice();if(token)void cognito('RevokeToken',{Token:token,ClientId:config.clientId}).catch(()=>{});}}
-    return Object.freeze({config,state,cancelPending(){if(!state.session)generation++;},refresh,validSession,signIn,signUp,confirm,resend,forgot,reset,api,loadAccount,signOut,onLogout(fn){logoutNotice=fn;}});
+    return Object.freeze({config,state,sessionVersion:()=>generation,cancelPending(){if(!state.session)generation++;},refresh,validSession,signIn,signUp,confirm,resend,forgot,reset,api,loadAccount,signOut,onLogout(fn){logoutNotice=fn;}});
   }
   return Object.freeze({config,createClient});
 });
@@ -2085,6 +2283,184 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
 
 ;
 
+
+(function exposeAnoXCommerce(root, factory) {
+  const library = factory();
+  if (typeof module === 'object' && module.exports) module.exports = library;
+  else if (!root.AnoXAnalytics?.isMetricsFrame) root.AnoXCommerce = library;
+})(typeof window === 'object' ? window : null, function () {
+  'use strict';
+  const CART_KEY = 'anox:selection-cart:v1';
+  const object = value => value && typeof value === 'object' && !Array.isArray(value);
+  const integer = (value,min,max) => Number.isSafeInteger(value) && value >= min && value <= max;
+  const fail = code => Object.assign(Error(code), {code});
+  const copy = value => JSON.parse(JSON.stringify(value));
+  const freeze = value => { if (value && typeof value === 'object') { Object.freeze(value); Object.values(value).forEach(freeze); } return value; };
+  const cleanUnicode = value => !/[\u0000-\u001f\u007f-\u009f\ud800-\udfff]/u.test(value);
+  function safeText(value, max = 200) { return typeof value === 'string' ? value.slice(0,max) : ''; }
+  function https(value, hosts) {
+    try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password && !url.port && (!hosts || hosts.includes(url.hostname)) ? url.href : ''; } catch { return ''; }
+  }
+  function optionsOf(value = {}) {
+    if (!object(value) || Object.keys(value).length > 8) throw fail('invalid_selection');
+    return Object.fromEntries(Object.keys(value).sort().map(name => {
+      if (!name || name.length > 60 || !cleanUnicode(name) || ['__proto__','constructor','prototype'].includes(name) || typeof value[name] !== 'string' || !value[name].length || value[name].length > 80 || !cleanUnicode(value[name])) throw fail('invalid_selection');
+      return [name,value[name]];
+    }));
+  }
+  function selection(value) {
+    if (!object(value) || value.provider !== 'channel3' || !/^[A-Za-z0-9_-]{1,80}$/.test(value.productId) || !integer(value.quantity,1,20)) throw fail('invalid_selection');
+    const data = object(value.display) ? value.display : {}, rawDomain=value.merchantDomain ?? data.merchantDomain;
+    if(typeof rawDomain!=='string'||rawDomain.length>253)throw fail('invalid_selection');
+    const merchantDomain=rawDomain.toLowerCase();
+    if (!/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}$/.test(merchantDomain)) throw fail('invalid_selection');
+    if (value.condition != null && !['new','used'].includes(value.condition)) throw fail('invalid_selection');
+    const condition = value.condition ?? null;
+    return {provider:'channel3',productId:value.productId,merchantDomain,condition,options:optionsOf(value.options),quantity:value.quantity,
+      offerUrl:https(value.offerUrl,['buy.trychannel3.com']),display:{title:safeText(data.title),merchantDomain,currency:'USD',priceCents:integer(data.priceCents,0,1e8)?data.priceCents:null,
+        imageUrl:https(data.imageUrl,['cdn.trychannel3.com']),stock:null,maxCommissionRate:typeof data.maxCommissionRate === 'number' && Number.isFinite(data.maxCommissionRate) && data.maxCommissionRate >= 0 && data.maxCommissionRate <= 1 ? data.maxCommissionRate : null}};
+  }
+  function lineKey(line) { return JSON.stringify([line.provider,line.productId,line.merchantDomain,line.condition,optionsOf(line.options)]); }
+  function createCart({storage,locks,crypto:random=globalThis.crypto,onChange=()=>{}} = {}) {
+    const state = {lines:Object.freeze([]),revision:'',persistent:!!storage && !!locks?.request,notice:''};
+    let queue=Promise.resolve(),resetGeneration=0;
+    const newId = () => { if (typeof random?.randomUUID !== 'function') throw fail('secure_random_unavailable'); return random.randomUUID(); };
+    function decode(raw) {
+      if (!raw) return {lines:[],revision:''};
+      if (raw.length > 131072) throw fail('cart_storage_invalid');
+      const saved=JSON.parse(raw);if (!object(saved) || saved.schema !== 'anox.selection-cart/1' || !Array.isArray(saved.lines) || saved.lines.length > 50 || typeof saved.revision !== 'string' || !/^[A-Za-z0-9_-]{1,80}$/.test(saved.revision)) throw fail('cart_storage_invalid');
+      const seen=new Set(),lines=[];
+      for (const rawLine of saved.lines) { try { const line=selection(rawLine),key=lineKey(line);if (seen.has(key)) continue;seen.add(key);lines.push(line); } catch { state.notice='cart_restoration_incomplete'; } }
+      return {lines,revision:saved.revision};
+    }
+    function read() { return decode(storage?.getItem(CART_KEY)); }
+    function apply(next) { state.lines=freeze(copy(next.lines));state.revision=next.revision; }
+    function changed() { try { onChange(state); } catch {} }
+    function reload({cleared=false}={}) {
+      if(cleared){resetGeneration++;apply({lines:[],revision:''});}
+      if (state.persistent) { try { apply(read()); } catch { state.persistent=false;state.notice='cart_session_only'; } }
+      changed();return state;
+    }
+    if (storage) { try { apply(read()); } catch { state.persistent=false;state.notice='cart_session_only'; } }
+    if (!state.persistent) state.notice='cart_session_only';
+    function mutate(work) {
+      const generation=resetGeneration;
+      const run=async()=>{
+        const commit=()=>{
+          if(generation!==resetGeneration)throw fail('cart_changed');
+          let before={lines:copy(state.lines),revision:state.revision};
+          if (state.persistent) { try { before=read(); } catch { state.persistent=false;state.notice='cart_session_only'; } }
+          const lines=work(copy(before.lines));if (lines.length>50) throw fail('cart_line_limit');
+          const next={schema:'anox.selection-cart/1',revision:newId(),lines};
+          if (state.persistent) { try { const raw=JSON.stringify(next);storage.setItem(CART_KEY,raw);if (storage.getItem(CART_KEY)!==raw) throw Error('write_unverified'); } catch { state.persistent=false;state.notice='cart_session_only'; } }
+          apply(next);changed();return state;
+        };
+        if (!state.persistent) return commit();
+        const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),5000);
+        try { return await locks.request(CART_KEY,{mode:'exclusive',signal:controller.signal},commit); } finally { clearTimeout(timer); }
+      };
+      const pending=queue.then(run);queue=pending.catch(()=>{});return pending;
+    }
+    function forget(){
+      resetGeneration++;
+      const commit=()=>{storage?.removeItem(CART_KEY);if(storage?.getItem(CART_KEY)!=null)throw fail('cart_erase_failed');apply({lines:[],revision:''});state.persistent=!!storage&&!!locks?.request;state.notice=state.persistent?'':'cart_session_only';changed();return state;};
+      const run=async()=>{if(!locks?.request)return commit();const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),5000);try{return await locks.request(CART_KEY,{mode:'exclusive',signal:controller.signal},commit);}finally{clearTimeout(timer);}};
+      const pending=queue.then(run);queue=pending.catch(()=>{});return pending;
+    }
+    function checkedLine(lines,key,expected) {
+      const index=lines.findIndex(line=>lineKey(line)===key);
+      if (index<0 || expected && JSON.stringify(lines[index])!==JSON.stringify(selection(expected))) throw fail('cart_changed');
+      return index;
+    }
+    return Object.freeze({state,key:CART_KEY,reload,forget,
+      add(value){return mutate(lines=>{const line=selection(value),index=lines.findIndex(existing=>lineKey(existing)===lineKey(line));if (index<0) lines.push(line);else {line.quantity+=lines[index].quantity;if (line.quantity>20) throw fail('cart_quantity_limit');lines[index]=line;}return lines;});},
+      update(key,patch,expected){return mutate(lines=>{const index=checkedLine(lines,key,expected),next=selection({...lines[index],...patch});const duplicate=lines.findIndex((line,i)=>i!==index&&lineKey(line)===lineKey(next));if (duplicate>=0){next.quantity+=lines[duplicate].quantity;if(next.quantity>20)throw fail('cart_quantity_limit');lines.splice(duplicate,1);const source=lines.findIndex(line=>lineKey(line)===key);lines[source]=next;}else lines[index]=next;return lines;});},
+      remove(key,expected){return mutate(lines=>{lines.splice(checkedLine(lines,key,expected),1);return lines;});},
+      clear(){return mutate(()=>[]);}
+    });
+  }
+  const identifier=(value,max=160)=>typeof value==='string'&&new RegExp('^[A-Za-z0-9_-]{1,'+max+'}$').test(value);
+  const bounded=(value,max=1000)=>typeof value==='string'&&value.length>0&&value.length<=max&&cleanUnicode(value);
+  const iso=value=>typeof value==='string'&&/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)&&Number.isFinite(Date.parse(value));
+  function blockersShape(value){return Array.isArray(value)&&value.length>0&&value.length<=50&&value.every(b=>object(b)&&identifier(b.code,100)&&bounded(b.message,1000));}
+  function componentShape(c){return object(c)&&identifier(c.code,100)&&bounded(c.label,200)&&c.currency==='USD'&&['verified','estimated','unknown','conditional'].includes(c.status)&&(c.status==='unknown'?c.amountMinor===null:integer(c.amountMinor,0,1e12))&&(bounded(c.source,300)||c.status==='unknown'&&c.source===null)&&(c.note===undefined||typeof c.note==='string'&&c.note.length<=1000);}
+  function quoteShape(envelope,revision,now,expectedLines){
+    const q=envelope?.quote,costs=q?.costs,invalid=()=>{throw fail('invalid_quote');};
+    if(!object(envelope)||envelope.schemaVersion!==1||!object(q)||!identifier(q.quoteId)||!identifier(q.cartHash)||q.cartRevision!==revision||!identifier(q.cartRevision,80)||q.currency!=='USD'||!iso(q.createdAt)||!iso(q.expiresAt)||Date.parse(q.createdAt)>now+5000||Date.parse(q.expiresAt)<=now||Date.parse(q.expiresAt)<=Date.parse(q.createdAt)||Date.parse(q.expiresAt)-Date.parse(q.createdAt)>30000)invalid();
+    if(!object(costs)||!Array.isArray(costs.components)||!costs.components.length||costs.components.length>30||!costs.components.every(componentShape)||new Set(costs.components.map(c=>c.code)).size!==costs.components.length||!Array.isArray(costs.potentialChargesOnArrival)||costs.potentialChargesOnArrival.length>20||!costs.potentialChargesOnArrival.every(componentShape))invalid();
+    const fee=costs.components.filter(c=>c.code==='anox_service_fee');
+    if(fee.length!==1||fee[0].amountMinor!==500||fee[0].status!=='conditional'||costs.estimatedTotalMinor!==null||costs.verifiedPayableTotalMinor!==null||!object(q.checkout)||q.checkout.enabled!==false||!blockersShape(q.checkout.blockers))invalid();
+    // This release has no supported purchase provider. A total or payment capability
+    // requires a separately reviewed contract; a response flag cannot activate it.
+    if(!Array.isArray(q.lines)||!q.lines.length||q.lines.length>10||expectedLines&&q.lines.length!==expectedLines.length)invalid();
+    q.lines.forEach((line,i)=>{
+      let normalized;try{normalized=selection(line);}catch{invalid();}
+      if(line.currency!=='USD'||!bounded(line.title,500)||!integer(line.unitPriceMinor,0,1e12)||!integer(line.lineTotalMinor,0,1e12)||line.lineTotalMinor!==line.unitPriceMinor*line.quantity||!['InStock','OutOfStock','unknown'].includes(line.availability)||!iso(line.validatedAt)||Date.parse(line.validatedAt)>now+10000||Date.parse(q.expiresAt)>Date.parse(line.validatedAt)+30000||!object(line.selection)||line.selection.valid!==true||!object(line.offer)||line.offer.domain!==line.merchantDomain||!https(line.offer.url,['buy.trychannel3.com'])||!(line.offer.maxCommissionRate===null||typeof line.offer.maxCommissionRate==='number'&&Number.isFinite(line.offer.maxCommissionRate)&&line.offer.maxCommissionRate>=0&&line.offer.maxCommissionRate<=1))invalid();
+      if(expectedLines&&(lineKey(normalized)!==lineKey(expectedLines[i])||line.quantity!==expectedLines[i].quantity))invalid();
+    });
+    const products=costs.components.find(c=>c.code==='products');
+    const subtotal=q.lines.reduce((sum,line)=>sum+BigInt(line.lineTotalMinor),0n);
+    if(!products||products.status!=='estimated'||BigInt(products.amountMinor??-1)!==subtotal)invalid();
+    return freeze(copy(q));
+  }
+  function capabilitiesShape(value){
+    if(!object(value)||value.schemaVersion!==1||value.quote?.enabled!==true||value.quote.limits?.maxLines!==10||value.quote.limits.maxDistinctProducts!==5||value.quote.limits.maxQuantityPerLine!==20||value.serviceFee?.amountMinor!==500||value.serviceFee.currency!=='USD'||value.serviceFee.appliesOn!=='successful_order'||value.checkout?.enabled!==false||!blockersShape(value.checkout.blockers)||value.orders?.read!==true||value.orders.cancel!==false||value.orders.refund!==false)throw fail('invalid_capabilities');
+    return freeze(copy(value));
+  }
+  function quoteLimits(cart){
+    const blockers=[];
+    if(cart.lines.length>10)blockers.push({code:'quote_too_many_lines',message:'A quote supports up to 10 selections. Remove selections before requesting costs.'});
+    if(new Set(cart.lines.map(line=>JSON.stringify([line.productId,optionsOf(line.options)]))).size>5)blockers.push({code:'quote_too_many_products',message:'A quote supports up to 5 distinct product and option combinations. Reduce the selection before requesting costs.'});
+    return blockers;
+  }
+  function orderShape(envelope){
+    const o=envelope?.order;
+    if(envelope?.schemaVersion!==1||!object(o)||!identifier(o.orderId)||!iso(o.createdAt)||o.currency!=='USD'||!integer(o.totalMinor,0,1e12)||!['pending','confirmed','fulfilling','shipped','delivered','canceled','failed'].includes(o.status)||!object(o.payment)||!['pending','processing','succeeded','failed','canceled','partially_refunded','refunded'].includes(o.payment.status)||o.capabilities?.cancel!==false||o.capabilities?.refund!==false)throw fail('invalid_order');
+    const fulfillment=object(o.fulfillment)?o.fulfillment:null;
+    if(fulfillment&&fulfillment.status!==undefined&&!['pending','unfulfilled','processing','partially_fulfilled','fulfilling','fulfilled','shipped','in_transit','out_for_delivery','delivered','exception','returned','canceled','unknown'].includes(fulfillment.status))throw fail('invalid_order');
+    return freeze({orderId:o.orderId,createdAt:o.createdAt,status:o.status,payment:{status:o.payment.status},capabilities:{cancel:false,refund:false},fulfillment:fulfillment?{status:fulfillment.status||'unknown',tracking:(Array.isArray(fulfillment.tracking)?fulfillment.tracking:[]).slice(0,20).map(t=>({carrier:safeText(t?.carrier,80),trackingNumber:safeText(t?.trackingNumber,160),url:https(t?.url)}))}:null,merchantOrderReference:safeText(o.merchantOrderReference,200),amountMinor:o.totalMinor,currency:o.currency==='USD'?'USD':null});
+  }
+  function ordersShape(envelope){
+    if(envelope?.schemaVersion!==1||!Array.isArray(envelope.orders)||envelope.orders.length>100||!(envelope.nextCursor===null||identifier(envelope.nextCursor)))throw fail('invalid_order');
+    return freeze({orders:envelope.orders.map(order=>orderShape({schemaVersion:1,order})),nextCursor:envelope.nextCursor});
+  }
+  function createClient({auth,fetch:transport=globalThis.fetch,crypto:random=globalThis.crypto,now=Date.now}={}) {
+    const state={quote:null,quoteStatus:'idle',error:'',capabilities:null};
+    const account=()=>typeof auth.sessionVersion==='function'?auth.sessionVersion():0;
+    let epoch=0,pending=null,requestBody='',requestId='',capabilityPending=null,owner=account();
+    function invalidate(){epoch++;state.quote=null;state.quoteStatus='idle';state.error='';pending=null;requestBody='';requestId='';owner=account();}
+    function currentQuote(cart){if(owner!==account()){invalidate();return null;}const q=state.quote;return q&&q.cartRevision===cart.revision&&Date.parse(q.expiresAt)>now()&&(!auth.state||auth.state.session)?q:null;}
+    function requestQuote(cart){
+      if(owner!==account())invalidate();
+      let lines;try{lines=cart.lines.map(raw=>{const line=selection(raw);return {provider:line.provider,productId:line.productId,merchantDomain:line.merchantDomain,condition:line.condition,quantity:line.quantity,options:line.options};});}catch(error){return Promise.reject(error);}
+      if(!lines.length||!identifier(cart.revision,80))return Promise.reject(fail('invalid_selection'));
+      if(quoteLimits({lines}).length){state.error='quote_too_large';state.quoteStatus='error';return Promise.reject(fail('quote_too_large'));}
+      const revision=cart.revision,body=JSON.stringify({cartRevision:revision,lines,destination:{country:'DZ'},currency:'USD'});
+      if(pending&&body===requestBody)return pending;
+      if(body!==requestBody){invalidate();requestBody=body;}
+      if(state.quote||!requestId){if(typeof random?.randomUUID!=='function')return Promise.reject(fail('secure_random_unavailable'));requestId=random.randomUUID();}
+      const ticket=epoch,accountVersion=account();state.quote=null;state.quoteStatus='loading';state.error='';
+      const task=Promise.resolve().then(()=>auth.api('/commerce/quotes',{method:'POST',body,idempotencyKey:requestId})).then(value=>{
+        if(ticket!==epoch)return null;if(accountVersion!==account()||cart.revision!==revision){invalidate();return null;}
+        const result=quoteShape(value,revision,now(),lines);state.quote=result;state.quoteStatus='ready';return result;
+      }).catch(error=>{if(ticket===epoch&&accountVersion===account()){state.quoteStatus='error';state.error=error.code||'quote_unavailable';if(['quote_expired','quote_invalid','invalid_quote'].includes(error.code))requestId='';}throw error;});
+      pending=task;const settled=()=>{if(pending===task)pending=null;};task.then(settled,settled);return task;
+    }
+    async function capabilities(){
+      if(state.capabilities)return state.capabilities;if(capabilityPending)return capabilityPending;
+      capabilityPending=(async()=>{const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);try{
+        const response=await transport(auth.config.apiBase+'/commerce/capabilities',{credentials:'omit',cache:'no-store',redirect:'error',referrerPolicy:'no-referrer',signal:controller.signal});
+        const reader=response.body?.getReader();if(!response.ok||!reader)throw fail('capabilities_unavailable');let raw='',bytes=0;const decoder=new TextDecoder();
+        for(;;){const {done,value}=await reader.read();if(done)break;bytes+=value.byteLength;if(bytes>32768){await reader.cancel();throw fail('invalid_capabilities');}raw+=decoder.decode(value,{stream:true});}raw+=decoder.decode();
+        state.capabilities=capabilitiesShape(JSON.parse(raw));return state.capabilities;
+      }finally{clearTimeout(timer);controller.abort();}})();
+      try{return await capabilityPending;}finally{capabilityPending=null;}
+    }
+    return Object.freeze({state,invalidate,currentQuote,requestQuote,capabilities,canCheckout:()=>false});
+  }
+  return Object.freeze({createCart,lineKey,selection,optionsOf,createClient,quoteShape,capabilitiesShape,quoteLimits,orderShape,ordersShape});
+});
+/* ANOX_COMMERCE_CLIENT_END */
 
   (function(){
     "use strict";
@@ -2395,17 +2771,19 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     function normalizeProduct(raw,provider){
       if(!isObject(raw)||!/^[-a-zA-Z0-9_]{1,80}$/.test(raw.id)||!/^[-a-zA-Z0-9_]{1,120}$/.test(raw.slug))throw Error('Invalid catalog identity');
       if(!isObject(provider)||!/^[-a-z0-9]{1,40}$/.test(provider.id)||!['preview','live'].includes(provider.mode))throw Error('Invalid provider identity');
-      const name=localizedRecord(raw.name),mode=provider.mode;
-      requireInteger(raw.priceCents,0,1e8,'catalog price');requireInteger(raw.weightGrams,0,1e6,'catalog weight');
+      const name=localizedRecord(raw.name),mode=provider.mode,presentationOnly=provider.id==='channel3-live'&&mode==='live'&&raw.presentationOnly===true;
+      if(presentationOnly){if(raw.priceCents!==null||raw.compareAtPriceCents!==null||raw.stock!==null||raw.availability!=='unknown'||raw.variantDetailsKnown!==false||raw.purchasable!==false||!Array.isArray(raw.variants)||raw.variants.length||raw.source?.merchantUrl!==null||raw.source?.verifiedAt!==null||raw.source?.availabilityVerifiedAt!==null)throw Error('Invalid presentation-only record');}
+      else requireInteger(raw.priceCents,0,1e8,'catalog price');requireInteger(raw.weightGrams,0,1e6,'catalog weight');
       if(raw.currency&&raw.currency!=='USD')throw Error('Provider must normalize base currency');
       if(!Object.hasOwn(CATEGORIES,raw.category)||!/^[-a-z]{1,30}$/.test(raw.kind||'')||!text(raw.brand,100))throw Error('Invalid product classification');
       const id=provider.id==='anox-preview'?raw.id:provider.id+'__'+raw.id;
       const slug=provider.id==='anox-preview'?raw.slug:provider.id+'--'+raw.slug;
-      if(!Array.isArray(raw.variants)||!raw.variants.length||raw.variants.length>300)throw Error('Invalid variants');
+      if(!Array.isArray(raw.variants)||(!presentationOnly&&!raw.variants.length)||raw.variants.length>300)throw Error('Invalid variants');
       const variants=raw.variants.map(v=>{if(!isObject(v)||!text(v.color,80).trim()||!text(v.size,80).trim()||v.color.length>80||v.size.length>80)throw Error('Invalid variant');requireInteger(v.stock,0,100000,'stock');return {color:v.color,size:v.size,stock:v.stock,id:JSON.stringify([id,v.color,v.size])};});
       if(new Set(variants.map(v=>v.id)).size!==variants.length)throw Error('Duplicate variants');
       const source=isObject(raw.source)?raw.source:{},merchantUrl=safeURL(source.merchantUrl),verifiedAt=normalizedDate(source.verifiedAt),availabilityAt=normalizedDate(source.availabilityVerifiedAt);
-      if(mode==='live'&&(!merchantUrl.startsWith('https:')||!verifiedAt||Date.parse(verifiedAt)>Date.now()+60000))throw Error('Incomplete live provenance');
+      if(mode==='live'&&!presentationOnly&&(!merchantUrl.startsWith('https:')||!verifiedAt||Date.parse(verifiedAt)>Date.now()+60000))throw Error('Incomplete live provenance');
+      if(presentationOnly&&(!normalizedDate(source.fetchedAt)||Date.parse(source.fetchedAt)>Date.now()+60000))throw Error('Incomplete presentation provenance');
       const media=(Array.isArray(raw.media)?raw.media:[]).slice(0,8).flatMap(m=>{
         if(!isObject(m))return [];const url=safeURL(m.url),inline=typeof m.data==='string'&&m.data.length<=700000&&/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/.test(m.data)?m.data:null;
         if(!inline&&!url.startsWith('https:'))return [];
@@ -2414,7 +2792,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       const handling={};for(const key of ['battery','liquid','fragrance','restricted'])handling[key]=['yes','no','unknown'].includes(raw.handling&&raw.handling[key])?raw.handling[key]:'unknown';
       const dimensions=isObject(raw.dimensionsMm)&&['length','width','height'].every(k=>whole(raw.dimensionsMm[k],1,100000))?{length:raw.dimensionsMm.length,width:raw.dimensionsMm.width,height:raw.dimensionsMm.height}:null;
       const classification={hsCode:typeof raw.hsCode==='string'&&/^\d{2,10}$/.test(raw.hsCode)?raw.hsCode:null,status:'unverified'};
-      return deepFreeze({dimensionsMm:dimensions,classification,id,slug,name,brand:text(raw.brand,100),category:raw.category,kind:raw.kind,currency:'USD',priceCents:raw.priceCents,priceUsd:raw.priceCents/100,weightGrams:raw.weightGrams,estimatedWeight:raw.weightGrams/1000,colors:[...new Set(variants.map(v=>v.color))],sizes:[...new Set(variants.map(v=>v.size))],variants,stock:variants.reduce((n,v)=>n+v.stock,0),isNew:raw.isNew===true,isPopular:raw.isPopular===true,demo:mode==='preview',rating:null,reviewCount:0,compareAtPriceCents:whole(raw.compareAtPriceCents,0,1e8)?raw.compareAtPriceCents:null,updatedAt:normalizedDate(raw.updatedAt),availability:['in_stock','out_of_stock'].includes(raw.availability)?raw.availability:'unknown',comparisonGroup:text(raw.comparisonGroup,50)||raw.kind,specs:(Array.isArray(raw.specs)?raw.specs:[]).slice(0,30).map(s=>({key:text(s.key,50),label:localizedRecord(s.label),value:localizedRecord(s.value)})),description:localizedRecord(raw.description,1000),media,handling,variantDetailsKnown:raw.variantDetailsKnown===true,source:{authorization:provider.authorization?.status||'unverified',sourceType:provider.sourceType||'internal',fetchedAt:normalizedDate(source.fetchedAt),schema:'anox.catalog-source/2',providerId:provider.id,itemId:raw.id,mode,merchantUrl:mode==='live'?merchantUrl:null,verifiedAt:mode==='live'?verifiedAt:null,availabilityVerifiedAt:mode==='live'?availabilityAt:null,availability:mode==='preview'?'illustrative':source.availability==='verified'&&availabilityAt?'verified':'unknown'},purchasable:mode==='live'&&raw.purchasable===true});
+      return deepFreeze({dimensionsMm:dimensions,classification,id,slug,name,brand:text(raw.brand,100),category:raw.category,kind:raw.kind,currency:'USD',presentationOnly,priceCents:raw.priceCents,priceUsd:presentationOnly?null:raw.priceCents/100,weightGrams:raw.weightGrams,estimatedWeight:raw.weightGrams/1000,colors:[...new Set(variants.map(v=>v.color))],sizes:[...new Set(variants.map(v=>v.size))],variants,stock:presentationOnly?null:variants.reduce((n,v)=>n+v.stock,0),isNew:raw.isNew===true,isPopular:raw.isPopular===true,demo:mode==='preview',rating:null,reviewCount:0,compareAtPriceCents:whole(raw.compareAtPriceCents,0,1e8)?raw.compareAtPriceCents:null,updatedAt:normalizedDate(raw.updatedAt),availability:['in_stock','out_of_stock'].includes(raw.availability)?raw.availability:'unknown',comparisonGroup:text(raw.comparisonGroup,50)||raw.kind,specs:(Array.isArray(raw.specs)?raw.specs:[]).slice(0,30).map(s=>({key:text(s.key,50),label:localizedRecord(s.label),value:localizedRecord(s.value)})),description:localizedRecord(raw.description,1000),media,handling,variantDetailsKnown:raw.variantDetailsKnown===true,source:{authorization:provider.authorization?.status||'unverified',sourceType:provider.sourceType||'internal',fetchedAt:normalizedDate(source.fetchedAt),schema:'anox.catalog-source/2',providerId:provider.id,itemId:raw.id,mode,merchantUrl:mode==='live'&&!presentationOnly?merchantUrl:null,verifiedAt:mode==='live'?verifiedAt:null,availabilityVerifiedAt:mode==='live'?availabilityAt:null,availability:mode==='preview'?'illustrative':source.availability==='verified'&&availabilityAt?'verified':'unknown'},purchasable:mode==='live'&&raw.purchasable===true});
     }
     function normalizeLiveQuery(value){return text(value,2000).normalize('NFC').replace(/\s+/g,' ').trim().slice(0,100);}
     class CatalogRepository{
@@ -3230,7 +3608,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       const f=filters,estimates=new Map(),estimate=product=>{if(!estimates.has(product.id))estimates.set(product.id,productQuote(product));return estimates.get(product.id);};
       const list=source.filter(product=>
         (!f.category||product.category===f.category)&&(!f.brand||product.brand===f.brand)&&
-        (!f.maxPrice||product.priceCents<=f.maxPrice*100)&&(!f.budget||estimate(product).totalDzd<=f.budget)&&
+        (!f.maxPrice||(whole(product.priceCents,0,1e8)&&product.priceCents<=f.maxPrice*100))&&(!f.budget||estimate(product).totalDzd<=f.budget)&&
         (!f.available||(product.source?.mode==='live'?product.availability==='in_stock'&&product.updatedAt&&Date.now()-Date.parse(product.updatedAt)<=86400000:product.stock>0))&&(!f.isNew||product.isNew)&&(!f.popular||product.isPopular)
       );
       if(sort==="low"||sort==="high")list.sort((a,b)=>((!DEVELOPER_MODE?a.priceCents:estimate(a).totalCents)-(!DEVELOPER_MODE?b.priceCents:estimate(b).totalCents))*(sort==="high"?-1:1));
@@ -3324,7 +3702,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
   if(!isObject(result)||typeof result.productId!=='string')return '';
   const product=Catalog.get(result.productId)||Catalog.get('nike-live__'+result.productId);
   if(!product||product.demo||product.source?.mode!=='live')return '';
-  return '<article class="anox-chat-product"><div class="anox-chat-product-media">'+productArt(product)+'</div><div><small>'+esc(product.brand)+'</small><h4>'+esc(localized(product.name))+'</h4><strong><bdi>'+formatUSD(product.priceCents)+'</bdi></strong><p>'+esc(text(result.reason,300))+'</p><a href="#product/'+esc(product.slug)+'" data-nav>'+esc(tx('عرض المنتج','View product'))+'</a></div></article>';
+  return '<article class="anox-chat-product"><div class="anox-chat-product-media">'+productArt(product)+'</div><div><small>'+esc(product.brand)+'</small><h4>'+esc(localized(product.name))+'</h4><strong>'+V2Price(product)+'</strong><p>'+esc(text(result.reason,300))+'</p><a href="#product/'+esc(product.slug)+'" data-nav>'+esc(tx('عرض المنتج','View product'))+'</a></div></article>';
 }
     function anoxConversationMessages(){
       return anoxConversation.turns.map(turn=>'<article class="anox-conversation-turn" data-role="'+turn.role+'" aria-label="'+esc(turn.role==="user"?tx("أنت","You"):"AnoX")+'"><p>'+esc(turn.text)+'</p>'+(turn.products?.length?'<div class="anox-chat-products">'+turn.products.map(anoxChatProductCard).join("")+'</div>':'')+'</article>').join("");
@@ -3651,6 +4029,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       return variant?Math.max(0,Math.min(variant.stock,20)-inCart(product.id,color,size,exceptKey)):0;
     }
     function openProduct(id,{editLine=null,moveWishlist=false}={}){
+      if(!DEVELOPER_MODE&&id.startsWith("channel3-live__")){navigateHash(channel3Href(id.slice(15)));return;}
       const product=productBy(id);if(!product)return;
       const route=currentRoute();
       if(route.name!=="product")ui.productBase=location.hash||"#shop";
@@ -3778,14 +4157,14 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
         return '<article class="cart-line"><a class="line-art" href="#product/'+product.slug+'" data-product="'+product.id+'" aria-label="'+esc(localized(product.name))+'">'+productArt(product,line.color)+'</a><div class="line-info"><span class="product-brand">'+esc(product.brand)+'</span><h3>'+esc(localized(product.name))+'</h3><p>'+esc(colorName(line.color)+" · "+line.size)+'</p><div class="line-actions"><div class="quantity"><button type="button" data-cart-delta="-1" data-line="'+esc(key)+'" aria-label="'+esc(tx("إنقاص كمية ","Decrease quantity for ")+localized(product.name))+'" '+(line.qty<=1?"disabled":"")+'>'+icon("minus")+'</button><span>'+line.qty+'</span><button type="button" data-cart-delta="1" data-line="'+esc(key)+'" aria-label="'+esc(tx("زيادة كمية ","Increase quantity for ")+localized(product.name))+'" '+(line.qty>=Math.min(variant.stock,20)?"disabled":"")+'>'+icon("plus")+'</button></div>'+button(tx("تعديل الخيارات","Edit options"),'data-edit-line="'+esc(key)+'"',"text-btn")+button(tx("إزالة","Remove"),'data-remove-line="'+esc(key)+'"',"text-btn")+'</div></div><div class="line-price"><strong><bdi>'+formatUSD(product.priceCents*line.qty)+'</bdi></strong><span><bdi>'+formatDZD(itemDZD(product,line.qty))+'</bdi></span></div></article>';
       }).join("");
     }
-    function renderCart(){if(!DEVELOPER_MODE)return renderCommerceBoundary("cart");
+    function renderCart(){if(!DEVELOPER_MODE)return renderSelectionCart();
       pageTitle(navLabel("cart"));
       $("main").innerHTML=pageShell(tx("راجع سلتك","Review your cart"),state.cart.length?cartQuantity()+" "+tx("قطعة · كل تكاليف الوصول تقديرية","items · all landed costs are estimated"):"",
         state.cart.length?'<div class="split"><section class="surface">'+cartLinesMarkup()+'</section><aside>'+summaryMarkup(cartQuote())+'<div class="actions actions-spaced">'+button(tx("متابعة إلى إتمام الطلب","Continue to checkout"),'data-checkout-start',"btn primary full")+'</div><p class="fine" style="margin-top:13px">'+esc(tx("ستُراجع التفاصيل قبل حفظ طلب محلي. لا توجد دفعة فعلية.","You’ll review the details before saving a local order. No actual payment is taken."))+'</p></aside></div>':
           emptyMarkup(tx("سلتك فارغة","Your cart is empty"),tx("ابدأ بمنتج يعجبك، وستظهر تكلفة وصوله التقديرية هنا.","Start with a product you like and its estimated landed cost will appear here.")),
         "YOUR CART");
     }
-    function cartDrawerMarkup(){if(!DEVELOPER_MODE)return '<p>'+esc(tx("الشراء والدفع عبر الموقع غير متاحين حاليًا. يمكنك حفظ المنتجات في المفضلة أو التواصل معنا بشأن طلب شراء.","Online purchasing and payment are currently unavailable. Save products to your wishlist or contact us about a purchase."))+'</p><div class="actions">'+routeLink("wishlist",navLabel("wishlist"),"btn secondary")+routeLink("contact",tx("تواصل معنا","Contact us"),"btn primary")+'</div>';
+    function cartDrawerMarkup(){if(!DEVELOPER_MODE)return selectionDrawerMarkup();
       return state.cart.length?'<div>'+cartLinesMarkup()+'</div><div style="margin-top:28px">'+summaryMarkup(cartQuote(),{compact:true})+'</div><div class="drawer-checkout">'+routeLink("cart",tx("عرض السلة","View cart")+" · "+(cartQuote()?formatUSD(cartQuote().totalCents):tx("راجع العناصر","Review items")),"btn primary full")+'</div>':
         emptyMarkup(tx("السلة فارغة","Your cart is empty"),tx("أضف منتجًا لترى تكلفة وصوله التقديرية.","Add a product to see its estimated landed cost."));
     }
@@ -4330,8 +4709,9 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     async function clearLocalData(){
       if(ui.clearing)return;ui.clearing=true;
       discardForms();
-      try{if(await Storage.clear()){resetDeviceView(Storage.generation);toast(tx("مُسحت بيانات AnoX المحلية من هذا المتصفح.","Local AnoX data was cleared from this browser."),"success");}
+      try{await selectionCart.forget();commerceAPI.invalidate();leaveProductDetail();if(await Storage.clear()){resetDeviceView(Storage.generation);toast(tx("مُسحت بيانات AnoX المحلية من هذا المتصفح.","Local AnoX data was cleared from this browser."),"success");}
       else toast(tx("تعذر إكمال المسح الآمن. استخدم إعدادات بيانات المواقع في المتصفح.","Safe clearing could not finish. Use your browser’s site-data settings."),"error");}
+      catch{toast(tx('تعذر إكمال المسح الآمن. استخدم إعدادات بيانات المواقع في المتصفح.','Safe clearing could not finish. Use your browser’s site-data settings.'),'error');}
       finally{ui.clearing=false;}
     }
     async function copyText(value,title){
@@ -4803,7 +5183,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       await test('Cart admission: edits cannot consume a changed or removed source line',async()=>{for(const removed of [false,true]){const io=memoryJournal(),locks=memoryLocks(),a=admissionClient(io,locks),b=admissionClient(io,locks);await a.journal.load();a.box.data.cart=[line];await a.journal.save();await b.journal.load();const reviewed=clone(a.box.data.cart[0]);if(removed)b.box.data.cart=[];else b.box.data.cart[0].qty=2;await b.journal.save();assert(!(await a.journal.save({guard:(remote,current)=>cartEditUnchanged(remote,current,cartKey(reviewed),reviewed),mutate:current=>{current.cart=[{...reviewed,qty:1}];}})));equal(a.box.data.cart,removed?[]:[{...line,qty:2}]);await a.journal.save();equal(a.journal.read().data.cart,removed?[]:[{...line,qty:2}]);}assert(!cartEditUnchanged({cart:[]},{cart:[]},cartKey(line),undefined));});
       await test('Costs: DZD headline precedes the detailed USD breakdown',()=>{const markup=summaryMarkup(cost,{settings:DEFAULT_SETTINGS,locked:true});assert(markup.indexOf('class="landed-total"')<markup.indexOf('class="summary-row"'));assert(markup.includes('cost-boundaries'));});
       await test('Design: readable tokens, touch targets, RTL and reduced motion retained',()=>{const css=document.querySelector('style').textContent;assert(css.includes('--text-base:1rem;--text-label:.875rem'));assert(css.includes('.catalog-pagination .btn{min-width:44px}'));assert(css.includes('prefers-reduced-motion:reduce'));assert(css.includes('env(safe-area-inset-bottom)'));assert(css.includes('html[dir="rtl"] h1'));assert(css.includes('letter-spacing:0;line-height:1.45'));});
-      await test('Browser: embedded favicon avoids implicit network requests',()=>{const favicon=document.querySelector('link[rel="icon"]');assert(favicon&&favicon.type==='image/svg+xml'&&/^data:image\/svg\+xml;base64,[A-Za-z0-9+/]+=*$/.test(favicon.getAttribute('href')));});
+      await test('Browser: same-origin SVG favicon is intentional',()=>{const favicon=document.querySelector('link[rel="icon"]'),url=new URL(favicon?.getAttribute('href')||'',location.href);assert(favicon&&favicon.type==='image/svg+xml'&&url.origin===location.origin&&url.pathname==='/favicon.svg'&&url.search==='?v=3');});
       const focusFixture=()=>{let focused=null;const node=tabIndex=>({tabIndex,hidden:false,getClientRects:()=>[{}],closest:()=>null,focus(){focused=this;}}),first=node(0),middle=node(0),last=node(0),excluded=node(-1),root={querySelectorAll:()=>[first,middle,excluded,last],focus(){focused=this;}};return {root,first,middle,last,excluded,get focused(){return focused;}};};
       await test('Keyboard: ordinary modal Tab progresses through interior controls',()=>{const f=focusFixture();let prevented=0;assert(moveDialogFocus({key:'Tab',preventDefault(){prevented++;}},f.root,f.first));assert(f.focused===f.middle);moveDialogFocus({key:'Tab',shiftKey:true,preventDefault(){prevented++;}},f.root,f.last);assert(f.focused===f.middle);equal(prevented,2);});
       await test('Keyboard: modal boundaries wrap in both directions and recover outside focus',()=>{const f=focusFixture(),event=shiftKey=>({key:'Tab',shiftKey,preventDefault(){}});moveDialogFocus(event(false),f.root,f.last);assert(f.focused===f.first);moveDialogFocus(event(true),f.root,f.first);assert(f.focused===f.last);moveDialogFocus(event(false),f.root,{});assert(f.focused===f.first);moveDialogFocus(event(true),f.root,{});assert(f.focused===f.last);});
@@ -5082,13 +5462,13 @@ function V2FilterSelect({id,key,label,values,value,choice=false,help=''}){
 }
 function catalogPresentationSource(){const route=currentRoute();return Catalog.liveSource(route.name==='search'?normalizeLiveQuery(route.params.get('q')||''):'');}
 function filterMarkup(suffix){
-  const f=ui.filters,choice=V2CatalogChoices(),all=catalogPresentationSource(),source=(f.category?all.filter(p=>p.category===f.category):all).filter(p=>p.demo||p.variantDetailsKnown);
+  const f=ui.filters,choice=V2CatalogChoices(),all=catalogPresentationSource(),presentationOnly=!DEVELOPER_MODE&&all.every(p=>p.presentationOnly),source=(f.category?all.filter(p=>p.category===f.category):all).filter(p=>p.demo||p.variantDetailsKnown);
   const any=tx('الكل','All'),options=(values,label=v=>v)=>[['',any],...values.map(v=>[v,label(v)])];
   const select=(key,label,values,value,extra={})=>V2FilterSelect({id:`${key}-${suffix}`,key,label,values,value,...extra});
   return `<div class="v2-filter-fields">
     ${select('category',tx('الفئة','Category'),options(Object.keys(CATEGORIES),categoryLabel),f.category)}
     ${select('brand',tx('العلامة','Brand'),options([...new Set(all.map(p=>p.brand))]),f.brand)}
-    <details class="v2-filter-section"${choice.size||choice.color?' open':''}><summary>${esc(tx('المقاس واللون','Size & color'))}</summary>
+    ${presentationOnly?'':`<details class="v2-filter-section"${choice.size||choice.color?' open':''}><summary>${esc(tx('المقاس واللون','Size & color'))}</summary>
       ${select('size',tx('المقاس أو الخيار','Size or option'),options([...new Set([...source.flatMap(p=>p.sizes),...(choice.size?[choice.size]:[])])]),choice.size,{choice:true})}
       ${select('color',tx('اللون','Color'),options([...new Set([...source.flatMap(p=>p.colors),...(choice.color?[choice.color]:[])])],colorName),choice.color,{choice:true})}
     </details>
@@ -5096,7 +5476,8 @@ function filterMarkup(suffix){
       ${select('maxPrice',tx('سعر المنتج بالدولار','Item price in USD'),[...new Set([0,50,75,150,300,f.maxPrice])].sort((a,b)=>a-b).map(v=>[v,v?tx('حتى ','Up to ')+formatUSD(v*100):any]),f.maxPrice)}
       ${DEVELOPER_MODE?select('budget',tx('ميزانية الوصول بالدينار','Landed budget in DZD'),[0,10000,15000,25000,50000,100000].map(v=>[v,v?tx('حتى ','Up to ')+formatDZD(v):any]),f.budget,{help:tx('تقدير لقطعة واحدة، دون الجمارك.','One-item estimate, excluding customs.')}):''}
     </details>
-    <fieldset class="v2-filter-checks"><legend>${esc(tx('الاكتشاف','Discover'))}</legend>${[['available',tx('متاح للاختيار','Available to select')],['isNew',tx('المضاف حديثًا','Recently added')],['popular',tx('مختارات AnoX','AnoX picks')]].map(([k,label])=>`<label><input type="checkbox" data-filter="${k}"${f[k]?' checked':''}><span>${esc(label)}</span></label>`).join('')}</fieldset>
+    <fieldset class="v2-filter-checks"><legend>${esc(tx('الاكتشاف','Discover'))}</legend>${[['available',tx('متاح للاختيار','Available to select')],['isNew',tx('المضاف حديثًا','Recently added')],['popular',tx('مختارات AnoX','AnoX picks')]].map(([k,label])=>`<label><input type="checkbox" data-filter="${k}"${f[k]?' checked':''}><span>${esc(label)}</span></label>`).join('')}</fieldset>`}
+    ${presentationOnly?'<p class="field-help">'+esc(tx('الأسعار والخيارات والتوفر تُراجع في صفحة المنتج.','Prices, options and availability are checked on the product page.'))+'</p>':''}
   </div>`;
 }
 function filterChips(){
@@ -5113,17 +5494,19 @@ function catalogResults(products,query=''){
   const live=Catalog.usingLive(query),pagination=live?{items:products,page:1,start:products.length?1:0,end:products.length,total:products.length}:catalogPage(products,ui.page),route=currentRoute();ui.page=pagination.page;
   const pageParams=filterParams();for(const [k,v] of Object.entries(V2CatalogChoices()))if(v)pageParams.set(k,v);if(route.name==='search'&&query)pageParams.set('q',query);
   const resultLabel=products.length?`${pagination.start}–${pagination.end} ${tx('من','of')} ${pagination.total} ${tx('منتج','products')}`:tx('لا توجد نتائج','No results');
-  const sorts=[['featured',tx('مختاراتنا','Featured')],['low',DEVELOPER_MODE?tx('تكلفة الوصول: الأقل','Landed cost: low first'):tx('السعر: الأقل','Price: low first')],['high',DEVELOPER_MODE?tx('تكلفة الوصول: الأعلى','Landed cost: high first'):tx('السعر: الأعلى','Price: high first')],['newest',tx('الأحدث','Newest')]];
+  const sorts=(!DEVELOPER_MODE&&catalogPresentationSource().every(p=>p.presentationOnly))?[['featured',tx('مختاراتنا','Featured')]]:[['featured',tx('مختاراتنا','Featured')],['low',DEVELOPER_MODE?tx('تكلفة الوصول: الأقل','Landed cost: low first'):tx('السعر: الأقل','Price: low first')],['high',DEVELOPER_MODE?tx('تكلفة الوصول: الأعلى','Landed cost: high first'):tx('السعر: الأعلى','Price: high first')],['newest',tx('الأحدث','Newest')]];
   const toolbar=`<div class="v2-catalog-toolbar"><div><button type="button" class="btn secondary small v2-filter-trigger" data-open="filters">${icon('filter')}${esc(tx('الفلاتر','Filters'))}</button><span id="results-count" class="v2-results-count" role="status" tabindex="-1">${esc(resultLabel)}</span></div><label class="v2-sort"><span>${esc(tx('الترتيب','Sort'))}</span><select class="select" data-sort>${sorts.map(([v,l])=>`<option value="${v}"${ui.sort===v?' selected':''}>${esc(l)}</option>`).join('')}</select></label></div>`;
   const liveMore=liveLoadMoreMarkup(query);
   const content=products.length?`<div class="product-grid v2-catalog-grid">${pagination.items.map(p=>productCard(p)).join('')}</div>${live?'':catalogPaginationMarkup(pagination,route.name==='search'?'search':'shop',pageParams)}`:emptyMarkup(tx('مساحة لاختيار مختلف','Room for a different choice'),tx('وسّع الفلاتر أو أرسل رابط المنتج الذي تبحث عنه.','Try fewer filters, or send the link to what you want.'),tx('طلب منتج','Request a product'),'request','search');
-  return `${toolbar}<div class="v2-selected-filters">${filterChips()}</div>${!products.length?button(tx('مسح الفلاتر','Clear filters'),'data-clear-filters','text-btn'):''}${live?liveContextNotice():''}${content}${liveMore}`;
+  const unsupported=!DEVELOPER_MODE&&catalogPresentationSource().some(p=>p.presentationOnly)&&(ui.filters.maxPrice||ui.filters.available||V2CatalogChoices().size||V2CatalogChoices().color||['low','high'].includes(ui.sort));
+  const notice=unsupported?'<p class="notice warning" role="status" data-catalog-filter-unavailable>'+esc(tx('لا يمكن تطبيق فلاتر السعر أو التوفر أو الخيارات على نتائج الاكتشاف المحفوظة. امسح الفلاتر وافتح المنتج للتحقق من بياناته الحالية.','Price, availability and option filters cannot be applied to cached discovery results. Clear filters and open a product to check its current details.'))+'</p>':'';
+  return `${toolbar}${notice}<div class="v2-selected-filters">${filterChips()}</div>${!products.length?button(tx('مسح الفلاتر','Clear filters'),'data-clear-filters','text-btn'):''}${live?liveContextNotice():''}${content}${liveMore}`;
 }
 function V2CategoryHeader(){
   const category=ui.filters.category,cap=ui.filters.maxPrice;
-  const title=category?v2CategoryLabel(category):cap===50?tx('اختيارات بأقل من 50 دولارًا','The under-$50 edit'):tx('عالم من الاختيارات','A world to choose from');
+  const title=category?v2CategoryLabel(category):DEVELOPER_MODE&&cap===50?tx('اختيارات بأقل من 50 دولارًا','The under-$50 edit'):tx('عالم من الاختيارات','A world to choose from');
   const desc=category&&V2_CATEGORY_COPY[category]?localized(V2_CATEGORY_COPY[category]):tx('اكتشف المنتجات، ثم تواصل معنا لمراجعة تكلفة إيصالها إلى الجزائر.','Discover products, then contact us to review fulfillment costs to Algeria.');
-  return `<header class="v2-category-heading"><nav class="v2-breadcrumb" aria-label="${esc(tx('مسار التنقل','Breadcrumb'))}">${routeLink('home',tx('الرئيسية','Home'))}<span aria-hidden="true">/</span>${category?routeLink('shop',tx('تسوّق','Shop'))+'<span aria-hidden="true">/</span>':''}<span aria-current="page">${esc(title)}</span></nav><div class="v2-category-title"><div><span class="v2-kicker">ANOX / ${category?esc(category.toUpperCase()):'DISCOVER'}</span><h1>${esc(title)}</h1><p>${esc(desc)}</p></div><span class="v2-category-note">${esc(tx('USD + تقدير الوصول بالدينار','USD + your DZD landed estimate'))}</span></div>${discoveryNavigation()}</header>`;
+  return `<header class="v2-category-heading"><nav class="v2-breadcrumb" aria-label="${esc(tx('مسار التنقل','Breadcrumb'))}">${routeLink('home',tx('الرئيسية','Home'))}<span aria-hidden="true">/</span>${category?routeLink('shop',tx('تسوّق','Shop'))+'<span aria-hidden="true">/</span>':''}<span aria-current="page">${esc(title)}</span></nav><div class="v2-category-title"><div><span class="v2-kicker">ANOX / ${category?esc(category.toUpperCase()):'DISCOVER'}</span><h1>${esc(title)}</h1><p>${esc(desc)}</p></div><span class="v2-category-note">${esc(DEVELOPER_MODE?tx('USD + تقدير الوصول بالدينار','USD + your DZD landed estimate'):tx('السعر الحالي في صفحة المنتج','Current price on product page'))}</span></div>${discoveryNavigation()}</header>`;
 }
 function V2CatalogPage(heading,products,query='',extra=''){
   $('main').innerHTML=`<div class="v2-page v2-catalog-page ${extra}"><div class="v2-container">${heading}<div class="v2-catalog-layout"><aside class="v2-filter-panel" aria-label="${esc(tx('فلاتر المنتجات','Product filters'))}"><div class="v2-filter-heading"><h2>${esc(tx('الفلاتر','Filters'))}</h2>${button(tx('مسح الكل','Clear all'),'data-clear-filters','text-btn')}</div>${filterMarkup('side')}</aside><section aria-label="${esc(tx('المنتجات','Products'))}">${catalogResults(products,query)}</section></div></div></div>`;
@@ -5248,7 +5631,7 @@ function renderHome() {
     '<section class="anox-home-hero anox-home-shell" aria-labelledby="anox-home-title"><div class="anox-home-intro"><p class="anox-home-eyebrow">'+esc(tx('من أمريكا إلى الجزائر','FROM THE US TO ALGERIA'))+'</p><h1 id="anox-home-title"><span>'+esc(tx('اختيارات أبعد.','Good finds.'))+'</span><span>'+esc(tx('تكلفة أوضح.','A clearer cost.'))+'</span></h1><p class="anox-home-description">'+esc(tx('اكتشف منتجات من أمريكا، وتواصل معنا لمراجعة تكلفة شرائها وإيصالها إلى الجزائر.','Discover U.S. products and contact us to review purchasing and fulfillment costs to Algeria.'))+'</p>'+routeLink('shop',tx('استكشف المنتجات','Explore products'),'v2-primary-link')+'</div><figure class="anox-home-visual">'+V2HeroPicture()+'</figure></section>'+
     '<div class="anox-home-shell">'+(categories.length?'<nav class="anox-home-categories" aria-label="'+esc(tx('تسوّق حسب الفئة','Shop by category'))+'"><span>'+esc(tx('تسوّق حسب الفئة','Shop by category'))+'</span><div>'+categories.map(key=>routeLink('shop?category='+encodeURIComponent(key),v2CategoryLabel(key),'anox-home-category')).join('')+'</div></nav>':'')+
     discoveryNavigation('home')+liveContextNotice()+catalogBlock+liveLoadMoreMarkup('')+
-    '<section class="anox-home-request" aria-labelledby="anox-request-title"><div><h2 id="anox-request-title">'+esc(tx('لديك منتج آخر في بالك؟','Something else in mind?'))+'</h2><p>'+esc(tx('راسلنا برابط المنتج والخيارات التي تبحث عنها.','Email us the product link and the options you need.'))+'</p></div>'+routeLink('request',tx('أضف رابط منتج','Add a product link'),'v2-inline-link')+'</section></div></div>';
+    '<section class="anox-home-request"><div><h2>Estée Lauder Advanced Night Repair Discovery Set</h2><p>'+esc(tx('متاح لدى Macy’s بسعر 55 دولارًا. قد تحصل AnoX على عمولة من الروابط المؤهلة.','Available at Macy’s for $55. AnoX may earn a commission from qualifying links.'))+'</p></div><a href="https://sovrn.co/11xlid1" target="_blank" rel="sponsored noopener noreferrer" class="v2-inline-link">'+esc(tx('عرض لدى Macy’s','View at Macy’s'))+'</a></section>'+    '<section class="anox-home-request" aria-labelledby="anox-request-title"><div><h2 id="anox-request-title">'+esc(tx('لديك منتج آخر في بالك؟','Something else in mind?'))+'</h2><p>'+esc(tx('راسلنا برابط المنتج والخيارات التي تبحث عنها.','Email us the product link and the options you need.'))+'</p></div>'+routeLink('request',tx('أضف رابط منتج','Add a product link'),'v2-inline-link')+'</section></div></div>';
 }
 
 function V2HeroPicture(){
@@ -5283,13 +5666,13 @@ function v2NavigationLinks(category=""){
   const browse=category?[
     [tx("كل ","All ")+v2CategoryLabel(category),{category}],
     [tx("المضاف حديثًا","Recently added"),{category,isNew:"1"}],
-    [tx("أقل من 50 دولارًا","Under $50"),{category,maxPrice:"50"}]
+    [DEVELOPER_MODE?tx("أقل من 50 دولارًا","Under $50"):tx("كل المنتجات","All products"),DEVELOPER_MODE?{category,maxPrice:"50"}:{category}]
   ]:Object.keys(CATEGORIES).map(key=>[v2CategoryLabel(key),{category:key}]);
   return '<div class="v2-mega-group"><h3>'+esc(category?tx("تسوّق الفئة","Shop the category"):tx("كل الفئات","All categories"))+'</h3><ul>'+browse.map(([label,params])=>'<li>'+v2ShopLink(label,params)+'</li>').join("")+'</ul></div><div class="v2-mega-group"><h3>'+esc(tx("مجموعات AnoX","AnoX collections"))+'</h3><ul>'+brands.map(brandName=>'<li>'+v2ShopLink(brandName,{...(category?{category}:{}),brand:brandName})+'</li>').join("")+'</ul></div>';
 }
 function v2MegaPanel(key,category=""){
   const products=v2CategoryProducts(category),feature=products.find(product=>product.isNew)||products[0];
-  return '<div class="v2-mega-panel" id="v2-mega-'+esc(key)+'" data-v2-mega-panel="'+esc(key)+'" hidden><div class="v2-mega-grid">'+v2NavigationLinks(category)+'<div class="v2-mega-group v2-mega-more"><h3>'+esc(tx("اكتشف المزيد","Discover more"))+'</h3><ul><li>'+routeLink("new",tx("المضاف حديثًا","Recently added"))+'</li><li>'+v2ShopLink(tx("أقل من 50 دولارًا","Under $50"),{maxPrice:"50"})+'</li><li>'+routeLink("request",navLabel("request"))+'</li><li>'+routeLink("how",navLabel("how"))+'</li></ul></div>'+(feature?'<a class="v2-mega-feature" href="#product/'+esc(feature.slug)+'" data-product="'+esc(feature.id)+'"><span class="v2-mega-art">'+productArt(feature)+'</span><span><small>'+esc(tx("اختيار يستحق الاكتشاف","In focus"))+'</small><strong>'+esc(localized(feature.name))+'</strong><span>'+esc(tx("اكتشف التفاصيل","Explore the details"))+' '+icon("arrow","arrow")+'</span></span></a>':'')+'</div></div>';
+  return '<div class="v2-mega-panel" id="v2-mega-'+esc(key)+'" data-v2-mega-panel="'+esc(key)+'" hidden><div class="v2-mega-grid">'+v2NavigationLinks(category)+'<div class="v2-mega-group v2-mega-more"><h3>'+esc(tx("اكتشف المزيد","Discover more"))+'</h3><ul><li>'+routeLink("new",tx("المضاف حديثًا","Recently added"))+'</li><li>'+v2ShopLink(DEVELOPER_MODE?tx("أقل من 50 دولارًا","Under $50"):tx("كل المنتجات","All products"),DEVELOPER_MODE?{maxPrice:"50"}:{})+'</li><li>'+routeLink("request",navLabel("request"))+'</li><li>'+routeLink("how",navLabel("how"))+'</li></ul></div>'+(feature?'<a class="v2-mega-feature" href="#product/'+esc(feature.slug)+'" data-product="'+esc(feature.id)+'"><span class="v2-mega-art">'+productArt(feature)+'</span><span><small>'+esc(tx("اختيار يستحق الاكتشاف","In focus"))+'</small><strong>'+esc(localized(feature.name))+'</strong><span>'+esc(tx("اكتشف التفاصيل","Explore the details"))+' '+icon("arrow","arrow")+'</span></span></a>':'')+'</div></div>';
 }
 function v2MegaTrigger(key,label,category=""){
   const route=currentRoute(),selected=!!category&&route.name==="shop"&&route.params.get("category")===category;
@@ -5348,7 +5731,7 @@ function v2BindNavigation(){
 }
 function updateShell(){
   v2CloseMega();
-  const route=currentRoute(),count=cartQuantity();
+  const route=currentRoute(),count=DEVELOPER_MODE?cartQuantity():selectionCart.state.lines.reduce((sum,line)=>sum+line.quantity,0);
   document.documentElement.lang=state.lang;document.documentElement.dir=state.lang==="ar"?"rtl":"ltr";document.documentElement.dataset.theme=state.theme;
   $("announcement").hidden=true;$("announcement").textContent="";
   $("skip-link").textContent=tx("انتقل إلى المحتوى","Skip to content");
@@ -5356,7 +5739,7 @@ function updateShell(){
   if(authRoute()){renderAuthShell();return;}
   $("site-header").classList.add("v2-site-header");
   const tool=(name,iconName,attributes,badge=0)=>'<button type="button" class="v2-header-action v2-action-'+esc(name)+'" '+attributes+' aria-label="'+esc(navLabel(name)+(badge?' · '+badge:''))+'"><span class="v2-action-icon">'+icon(iconName)+(badge?'<span class="v2-header-badge">'+badge+'</span>':'')+'</span><span class="v2-action-label">'+esc(navLabel(name))+'</span></button>';
-  $("site-header").innerHTML='<div class="v2-utility"><div class="container v2-utility-inner"><span>'+esc(tx("اكتشاف من أمريكا، إلى الجزائر","US discovery, for Algeria"))+'</span><div class="v2-utility-links">'+'<button type="button" data-language="'+(state.lang==="ar"?"en":"ar")+'" aria-label="'+esc(tx("التبديل إلى الإنجليزية","Switch to Arabic"))+'">'+(state.lang==="ar"?"EN":"العربية")+'</button><button type="button" class="v2-theme-button" data-theme aria-label="'+esc(tx("تبديل المظهر","Toggle theme"))+'">'+icon(state.theme==="dark"?"sun":"moon")+'</button></div></div></div><div class="container v2-header-main"><a class="brand v2-header-brand" href="#home" data-nav aria-label="'+esc(tx("الصفحة الرئيسية لـ AnoX","AnoX home"))+'">'+brand()+'</a><button type="button" class="v2-header-search" data-open="search" aria-haspopup="dialog" aria-label="'+esc(tx("ابحث عن منتجات أو مجموعات أو الصق رابط منتج","Search products, collections, or paste a product link"))+'">'+icon("search")+'<span>'+esc(tx("ابحث عن منتج أو الصق رابطًا…","Search products or paste a link…"))+'</span><kbd aria-hidden="true">/</kbd></button><div class="v2-header-actions">'+anoxConversationTrigger()+tool("account","user",'data-route="account"')+tool("cart","cart",'data-open="cart" aria-haspopup="dialog"',count)+'<button type="button" class="v2-header-action v2-menu-toggle" data-open="menu" aria-label="'+esc(tx("القائمة","Menu"))+'" aria-haspopup="dialog">'+icon("menu")+'</button></div></div><div class="v2-category-band"><nav class="container v2-category-nav" aria-label="'+esc(tx("فئات المنتجات","Product categories"))+'"><ul class="v2-category-list">'+'<li class="v2-category-simple">'+routeLink("new",tx("جديد","New"))+'</li>'+V2_PRIMARY_CATEGORIES.map(key=>v2MegaTrigger(key.toLowerCase(),v2CategoryLabel(key),key)).join("")+'<li class="v2-category-simple">'+routeLink("brands",tx("العلامات","Brands"))+'</li><li class="v2-category-simple">'+v2ShopLink(tx("اختيارات بسعر أقل","Deals"),{maxPrice:"50"})+'</li><li class="v2-category-simple v2-request-link">'+routeLink("request",navLabel("request"))+'</li></ul></nav></div>'+V2MobileCategories();
+  $("site-header").innerHTML='<div class="v2-utility"><div class="container v2-utility-inner"><span>'+esc(tx("اكتشاف من أمريكا، إلى الجزائر","US discovery, for Algeria"))+'</span><div class="v2-utility-links">'+'<button type="button" data-language="'+(state.lang==="ar"?"en":"ar")+'" aria-label="'+esc(tx("التبديل إلى الإنجليزية","Switch to Arabic"))+'">'+(state.lang==="ar"?"EN":"العربية")+'</button><button type="button" class="v2-theme-button" data-theme aria-label="'+esc(tx("تبديل المظهر","Toggle theme"))+'">'+icon(state.theme==="dark"?"sun":"moon")+'</button></div></div></div><div class="container v2-header-main"><a class="brand v2-header-brand" href="#home" data-nav aria-label="'+esc(tx("الصفحة الرئيسية لـ AnoX","AnoX home"))+'">'+brand()+'</a><button type="button" class="v2-header-search" data-open="search" aria-haspopup="dialog" aria-label="'+esc(tx("ابحث عن منتجات أو مجموعات أو الصق رابط منتج","Search products, collections, or paste a product link"))+'">'+icon("search")+'<span>'+esc(tx("ابحث عن منتج أو الصق رابطًا…","Search products or paste a link…"))+'</span><kbd aria-hidden="true">/</kbd></button><div class="v2-header-actions">'+anoxConversationTrigger()+tool("account","user",'data-route="account"')+tool("cart","cart",'data-open="cart" aria-haspopup="dialog"',count)+'<button type="button" class="v2-header-action v2-menu-toggle" data-open="menu" aria-label="'+esc(tx("القائمة","Menu"))+'" aria-haspopup="dialog">'+icon("menu")+'</button></div></div><div class="v2-category-band"><nav class="container v2-category-nav" aria-label="'+esc(tx("فئات المنتجات","Product categories"))+'"><ul class="v2-category-list">'+'<li class="v2-category-simple">'+routeLink("new",tx("جديد","New"))+'</li>'+V2_PRIMARY_CATEGORIES.map(key=>v2MegaTrigger(key.toLowerCase(),v2CategoryLabel(key),key)).join("")+'<li class="v2-category-simple">'+routeLink("brands",tx("العلامات","Brands"))+'</li><li class="v2-category-simple">'+v2ShopLink(DEVELOPER_MODE?tx("اختيارات بسعر أقل","Deals"):tx("اكتشف","Discover"),DEVELOPER_MODE?{maxPrice:"50"}:{})+'</li><li class="v2-category-simple v2-request-link">'+routeLink("request",navLabel("request"))+'</li></ul></nav></div>'+V2MobileCategories();
   $("mobile-nav").setAttribute("aria-label",tx("التنقل على الهاتف","Mobile navigation"));
   $("mobile-nav").innerHTML=[["home","home"],["shop","bag"],["account","user"],["cart","cart"]].map(([name,iconName])=>'<a href="#'+name+'" data-nav '+(route.name===name?'aria-current="page"':"")+'>'+icon(iconName)+'<span>'+esc(navLabel(name))+'</span>'+(name==="cart"&&count?'<span class="badge">'+count+'</span>':"")+'</a>').join("");
   v2BindNavigation();renderFooter();updateCompareBar();updateStorageBanner();
@@ -5364,11 +5747,11 @@ function updateShell(){
 }
 function menuMarkup(){
   const route=currentRoute();
-  return '<nav class="v2-mobile-menu" aria-label="'+esc(tx("قائمة الموقع","Site menu"))+'"><div class="v2-mobile-main-links">'+["new","brands"].map(name=>'<a href="#'+name+'" data-nav '+(route.name===name?'aria-current="page"':"")+'>'+esc(navLabel(name))+'</a>').join("")+'</div><h3 class="v2-mobile-menu-label">'+esc(tx("تسوّق حسب الفئة","Shop by category"))+'</h3>'+Object.keys(CATEGORIES).map(key=>'<details class="v2-mobile-category"><summary>'+esc(v2CategoryLabel(key))+'</summary><div class="v2-mobile-category-links">'+v2NavigationLinks(key)+'</div></details>').join("")+'<div class="v2-mobile-main-links">'+v2ShopLink(tx("أقل من 50 دولارًا","Under $50"),{maxPrice:"50"})+["request","wishlist","account","help"].map(name=>'<a href="#'+name+'" data-nav '+(route.name===name?'aria-current="page"':"")+'>'+esc(navLabel(name))+'</a>').join("")+'</div></nav><div class="v2-menu-tools">'+button(state.lang==="ar"?"English":"العربية",'data-language="'+(state.lang==="ar"?"en":"ar")+'"',"btn secondary small")+button(tx("تبديل المظهر","Toggle theme"),"data-theme","btn secondary small")+'</div>';
+  return '<nav class="v2-mobile-menu" aria-label="'+esc(tx("قائمة الموقع","Site menu"))+'"><div class="v2-mobile-main-links">'+["new","brands"].map(name=>'<a href="#'+name+'" data-nav '+(route.name===name?'aria-current="page"':"")+'>'+esc(navLabel(name))+'</a>').join("")+'</div><h3 class="v2-mobile-menu-label">'+esc(tx("تسوّق حسب الفئة","Shop by category"))+'</h3>'+Object.keys(CATEGORIES).map(key=>'<details class="v2-mobile-category"><summary>'+esc(v2CategoryLabel(key))+'</summary><div class="v2-mobile-category-links">'+v2NavigationLinks(key)+'</div></details>').join("")+'<div class="v2-mobile-main-links">'+v2ShopLink(DEVELOPER_MODE?tx("أقل من 50 دولارًا","Under $50"):tx("كل المنتجات","All products"),DEVELOPER_MODE?{maxPrice:"50"}:{})+["request","wishlist","account","help"].map(name=>'<a href="#'+name+'" data-nav '+(route.name===name?'aria-current="page"':"")+'>'+esc(navLabel(name))+'</a>').join("")+'</div></nav><div class="v2-menu-tools">'+button(state.lang==="ar"?"English":"العربية",'data-language="'+(state.lang==="ar"?"en":"ar")+'"',"btn secondary small")+button(tx("تبديل المظهر","Toggle theme"),"data-theme","btn secondary small")+'</div>';
 }
 
 function v2CategoryLabel(key){return key==='Shoes'?tx('سنيكرز','Sneakers'):key==='Electronics'?tx('تقنية','Tech'):categoryLabel(key);}
-function V2MobileCategories(){return '<nav class="v2-mobile-categories" aria-label="'+esc(tx('تصفح الفئات','Browse categories'))+'">'+routeLink('new',tx('جديد','New'))+V2_PRIMARY_CATEGORIES.map(key=>v2ShopLink(v2CategoryLabel(key),{category:key})).join('')+routeLink('brands',tx('العلامات','Brands'))+v2ShopLink(tx('اختيارات بسعر أقل','Deals'),{maxPrice:'50'})+routeLink('request',navLabel('request'))+'</nav>';}
+function V2MobileCategories(){return '<nav class="v2-mobile-categories" aria-label="'+esc(tx('تصفح الفئات','Browse categories'))+'">'+routeLink('new',tx('جديد','New'))+V2_PRIMARY_CATEGORIES.map(key=>v2ShopLink(v2CategoryLabel(key),{category:key})).join('')+routeLink('brands',tx('العلامات','Brands'))+v2ShopLink(DEVELOPER_MODE?tx('اختيارات بسعر أقل','Deals'):tx('اكتشف','Discover'),DEVELOPER_MODE?{maxPrice:'50'}:{})+routeLink('request',navLabel('request'))+'</nav>';}
 
 
 /* Component: product.js */
@@ -5429,6 +5812,7 @@ function renderRoute({focus=true}={}){
       ui.rendering=true;
       try{
         const route=currentRoute();
+        if(route.name!=="product"||!channel3Id(route))leaveProductDetail();
         if(!authRoute())authReset();
         if(ui.dialog)closeDialog(false);
         if(route.name!=="product"){ui.editKey="";ui.moveWishlist="";}
@@ -5440,10 +5824,11 @@ function renderRoute({focus=true}={}){
           case "search":renderSearch();break;
           case "wishlist":renderWishlist();break;
           case "cart":renderCart();break;
-          case "checkout":if(DEVELOPER_MODE)renderCheckout();else renderCommerceBoundary('checkout');break;
+          case "checkout":if(DEVELOPER_MODE)renderCheckout();else renderSelectionCart();break;
           case "account":renderAccount();break;
           case "signin":case "signup":renderAuth();break;
-          case "order":if(DEVELOPER_MODE)renderOrder();else renderCommerceBoundary('order');break;
+          case "orders":renderOwnedOrders();break;
+          case "order":if(DEVELOPER_MODE)renderOrder();else renderOwnedOrders();break;
           case "request":if(DEVELOPER_MODE)renderRequest(false);else renderPublicInquiry(false);break;
           case "business":if(DEVELOPER_MODE)renderRequest(true);else renderPublicInquiry(true);break;
           case "requests":if(DEVELOPER_MODE)renderRequests();else renderCommerceBoundary('requests');break;
@@ -5453,10 +5838,11 @@ function renderRoute({focus=true}={}){
           case "brands":renderCollections();break;
           case "new":renderNew();break;
           case "how":renderHow();break;
-          case "track":if(DEVELOPER_MODE)renderTrack();else renderCommerceBoundary('track');break;
+          case "track":if(DEVELOPER_MODE)renderTrack();else renderOwnedOrders();break;
           case "help":renderHelp();break;
           case "debug":if(DEVELOPER_MODE)renderDeveloperTests();else renderHelp();break;
           case "product":{
+            if(channel3Id(route)){renderChannel3Product();break;}
             let slug;
             try{slug=decodeURIComponent(route.path.slice(8));}catch{slug="";}
             const product=productBy(slug);
@@ -5617,7 +6003,7 @@ function renderSuggestions(){
     if(matchingBrands.length){markup+=label(tx("المجموعات","Collections"));markup+=matchingBrands.map(brandName=>option({type:"brand",brand:brandName},icon("box")+copy(brandName,tx("اكتشف المجموعة","Explore the collection"))+icon("arrow","arrow"))).join("");}
     if(products.length){
       markup+=label(tx("المنتجات","Products"));
-      markup+=products.slice(0,5).map(product=>option({type:"product",id:product.id},'<span class="v2-suggestion-art">'+productArt(product)+'</span>'+copy(localized(product.name),product.brand+" · "+v2CategoryLabel(product.category))+'<bdi>'+formatUSD(product.priceCents)+'</bdi>')).join("");
+      markup+=products.slice(0,5).map(product=>option({type:"product",id:product.id},'<span class="v2-suggestion-art">'+productArt(product)+'</span>'+copy(localized(product.name),product.brand+" · "+v2CategoryLabel(product.category))+V2Price(product))).join("");
       markup+=option({type:"search",query},copy(tx("عرض كل النتائج","View all results"),products.length+" "+tx("منتج","products"))+icon("arrow","arrow"));
     }else{
       markup+='<p class="v2-search-note">'+esc(tx("لا توجد منتجات مطابقة. جرّب كلمة أخرى أو ابدأ طلب منتج خاص.","No products matched. Try another word or start a product request."))+'</p>';
@@ -5663,11 +6049,13 @@ function renderSearch(){
 /* Component: storefront.js */
 /* Storefront presentation only. Pricing and catalog records stay in the verified core. */
 function V2Price(product) {
+  if(product.presentationOnly||!whole(product.priceCents,0,1e8))return '<div class="v2-price"><span>'+esc(tx('تحقق من السعر الحالي في صفحة المنتج','Check current price on product page'))+'</span></div>';
   const sale=whole(product.compareAtPriceCents,0,1e8)&&product.compareAtPriceCents>product.priceCents;
   return '<div class="v2-price"><bdi>'+formatUSD(product.priceCents)+'</bdi>'+(sale?'<del>'+formatUSD(product.compareAtPriceCents)+'</del>':'')+'</div>';
 }
 function liveProductMeta(product){
   if(product.source?.mode!=='live')return DEVELOPER_MODE?'<span class="fine">'+esc(tx('بيانات تجريبية، ليست للبيع','Demonstration data, not for sale'))+'</span>':'';
+  if(product.presentationOnly)return '<div class="v2-live-product-meta"><span>'+esc(tx('تحقق من الخيارات والتوفر في صفحة المنتج','Check options and availability on the product page'))+'</span></div>';
   const old=!product.updatedAt||Date.now()-Date.parse(product.updatedAt)>86400000;
   const availability=old?tx('يجب تأكيد التوفر','Confirm availability'):product.availability==='in_stock'?tx('المصدر يذكر أنه متوفر','Source reports available'):product.availability==='out_of_stock'?tx('المصدر يذكر أنه غير متوفر','Source reports unavailable'):tx('التوفر غير محدد','Availability not specified');
   return '<div class="v2-live-product-meta"><span>'+esc(availability)+'</span><span>'+esc(product.updatedAt?tx('تحديث المصدر: ','Source updated: ')+dateLabel(product.updatedAt,true):tx('وقت تحديث المصدر غير متاح','Source update time unavailable'))+'</span></div>';
@@ -5685,7 +6073,7 @@ function V2LandedCost(product,{compact=true}={}) {
 
 function productCard(product,context='catalog') {
   const liked=state.wishlist.includes(product.id),name=localized(product.name),live=product.source?.mode==='live';
-  const productAttributes='href="#product/'+esc(product.slug)+'" data-product="'+esc(product.id)+'"';
+  const productAttributes='href="'+esc(!DEVELOPER_MODE&&product.id.startsWith('channel3-live__')?channel3Href(product.id.slice(15)):'#product/'+product.slug)+'" data-product="'+esc(product.id)+'"';
   const wishlistAction=context==='wishlist'?'<div class="v2-product-card-action"><button type="button" class="v2-card-option" data-options="'+esc(product.id)+'" data-move-wishlist="true" '+(!product.stock?'disabled':'')+'>'+esc(product.stock?tx('اختر الخيارات','Choose options'):tx('غير متوفر','Unavailable'))+'</button></div>':(!product.stock&&!live?'<p class="v2-product-availability">'+esc(tx('غير متوفر','Unavailable'))+'</p>':'');
   const action=live?liveProductLink(product):wishlistAction;
   return '<article class="v2-product-card"><div class="v2-product-card-visual"><a class="v2-product-card-image" '+productAttributes+' aria-label="'+esc(tx('عرض المنتج: ','View product: ')+name)+'">'+productArt(product,product.colors[0],0,!live)+'</a><button type="button" class="v2-product-wishlist" data-wishlist="'+esc(product.id)+'" aria-label="'+esc(navLabel('wishlist')+' · '+name)+'" aria-pressed="'+liked+'">'+icon('heart')+'</button></div><div class="v2-product-card-info"><span class="v2-product-card-brand">'+esc(product.brand)+'</span><a class="v2-product-card-name" '+productAttributes+'>'+esc(name)+'</a>'+V2Price(product)+liveProductMeta(product)+action+'</div></article>';
@@ -5781,19 +6169,22 @@ function renderProductionAccount(){
   const entry=signedIn?button(tx('تسجيل الخروج','Sign out'),'data-cloud-signout','btn secondary'):routeLink('signin',tx('تسجيل الدخول','Sign in'),'btn primary')+routeLink('signup',tx('إنشاء حساب','Create account'),'btn secondary');
   const records=cloudAccount.orders.map(order=>'<article class="order-card"><div><h3>'+esc(order.orderId)+'</h3><p>'+esc(dateLabel(order.createdAt))+'</p><span>'+esc(order.paymentStatus||order.status)+'</span></div><bdi>'+esc(order.amountTotal!==null&&order.currency?formatMoney(order.amountTotal,order.currency,CURRENCIES[order.currency]?.minorDigits??2):'—')+'</bdi></article>').join('');
   $('main').innerHTML=pageShell(heading,signedIn?tx('معلومات الحساب والطلبات المستلمة من AnoX.','Account information and orders received from AnoX.'):tx('سجّل الدخول للوصول إلى حسابك.','Sign in to access your account.'),'<div class="anox-policy"><div class="actions">'+entry+'</div>'+(signedIn?'<section class="anox-policy-section"><h2>'+esc(tx('الملف الشخصي','Profile'))+'</h2><p><bdi>'+esc(user.email||'')+'</bdi></p></section><section class="anox-policy-section"><h2>'+esc(tx('الطلبات','Orders'))+'</h2>'+(cloudAccount.loadStatus==='loading'?'<p role="status">'+esc(tx('جارٍ التحميل…','Loading…'))+'</p>':cloudAccount.loadStatus==='error'?'<p role="alert">'+esc(cloudAuthMessage({code:cloudAccount.error}))+'</p>'+button(tx('إعادة المحاولة','Try again'),'data-account-retry','btn secondary'):records||'<p>'+esc(tx('لا توجد طلبات في هذا الحساب.','There are no orders in this account.'))+'</p>')+'</section>':'')+'<section class="anox-policy-section"><h2>'+esc(tx('الخصوصية','Privacy'))+'</h2><p>'+esc(tx('مسح بيانات المتصفح منفصل عن حذف بيانات حسابك.','Clearing browser data is separate from deleting account data.'))+'</p>'+routeLink('privacy',tx('إدارة خيارات البيانات','Manage data choices'))+'</section></div>');
+  if(signedIn){const section=$('main').querySelector('.anox-policy');section?.insertAdjacentHTML('beforeend','<div class="actions">'+routeLink('orders',tx('طلبات الشراء والتتبع','Commerce orders and tracking'),'btn secondary')+'</div>');}
   if(signedIn&&cloudAccount.loadStatus==='idle')void cloudLoadAccount();
 }
 
 const productResolution=new Map();
 const wishlistRecords=new Map(),wishlistFailures=new Set();let wishlistLoading=false;
 function renderLiveWishlist(){
+  const channelIds=state.wishlist.filter(id=>id.startsWith('channel3-live__')&&/^[A-Za-z0-9_-]{1,80}$/.test(id.slice(15))).slice(0,50);
+  const channelSaved=channelIds.length?'<div class="stack">'+channelIds.map(id=>{const product=productBy(id),saved=selectionCart.state.lines.find(line=>line.productId===id.slice(15)),title=product?localized(product.name):saved?.display.title||tx('منتج محفوظ: ','Saved product: ')+id.slice(15);return '<article class="surface"><a href="'+esc(channel3Href(id.slice(15)))+'" data-nav data-channel3-saved>'+esc(title)+'</a><p class="fine">'+esc(tx('افتح المنتج للتحقق من السعر والخيارات الحالية.','Open the product to check its current price and options.'))+'</p>'+button(tx('إزالة','Remove'),'data-commerce-wishlist="'+esc(id.slice(15))+'"','text-btn')+'</article>';}).join('')+'</div>':'';
   const ids=state.wishlist.filter(id=>id.startsWith('nike-live__')).slice(0,50);
   const missing=ids.filter(id=>!productBy(id)&&!wishlistRecords.has(id)&&!wishlistFailures.has(id));
   const products=ids.map(id=>productBy(id)||wishlistRecords.get(id)).filter(Boolean);
   const failed=ids.some(id=>wishlistFailures.has(id));
   pageTitle(navLabel('wishlist'));
   const status=missing.length||wishlistLoading?'<p role="status">'+esc(tx('جارٍ تحميل المنتجات المحفوظة…','Loading saved products…'))+'</p>':failed?'<p role="status">'+esc(tx('تعذر تحميل بعض المنتجات المحفوظة. حاول مجددًا.','Some saved products could not be loaded. Please try again.'))+'</p>'+button(tx('إعادة المحاولة','Try again'),'data-wishlist-retry','btn secondary'):'';
-  $('main').innerHTML=pageShell(tx('احفظ ما يعجبك لوقت لاحق','Saved for later'),tx('ارجع إلى المنتجات المحفوظة لمراجعة التفاصيل لدى المصدر.','Revisit your saved products to review details at the source.'),status+(products.length?productGrid(products,'wishlist'):!ids.length?emptyMarkup(tx('المفضلة فارغة','Your wishlist is empty'),tx('احفظ المنتجات التي ترغب بمقارنتها أو زيارتها لاحقًا.','Save products you want to compare or revisit later.')):''),'WISHLIST');
+  $('main').innerHTML=pageShell(tx('احفظ ما يعجبك لوقت لاحق','Saved for later'),tx('ارجع إلى المنتجات المحفوظة لمراجعة التفاصيل لدى المصدر.','Revisit your saved products to review details at the source.'),status+channelSaved+(products.length?productGrid(products,'wishlist'):!ids.length&&!channelIds.length?emptyMarkup(tx('المفضلة فارغة','Your wishlist is empty'),tx('احفظ المنتجات التي ترغب بمقارنتها أو زيارتها لاحقًا.','Save products you want to compare or revisit later.')):''),'WISHLIST');
   if(missing.length&&!wishlistLoading)void loadWishlistProducts(missing);
 }
 async function loadWishlistProducts(ids){
@@ -5824,6 +6215,185 @@ document.addEventListener('click',async event=>{
  if(node.hasAttribute('data-inquiry-email'))window.AnoXAnalytics.track('product_request_started',{route:'request'});
 });
 window.addEventListener('hashchange',()=>{const route=window.AnoXAnalytics.routeName(location.hash);window.AnoXAnalytics.track('page_view',{route});if(route==='partners')window.AnoXAnalytics.track('partner_page_view',{route});if(route==='product')window.AnoXAnalytics.track('product_view',{route,provider:'channel3-live'});if(route==='search')window.AnoXAnalytics.track('product_search',{route});});
+
+/* Production commerce: saved choices, fresh product details and server quotes.
+   The preview journal above is intentionally a separate state and route path. */
+const commerceAPI=window.AnoXCommerce.createClient({auth:window.AnoXAuth});
+let selectionStorage;try{selectionStorage=window.localStorage;}catch{}
+let selectionRevision='',commerceQuoteTimer=null,commerceDetailTimer=null,commerceAuthVersion=window.AnoXAuth.sessionVersion();
+const selectionCart=window.AnoXCommerce.createCart({storage:selectionStorage,locks:navigator.locks,onChange:()=>{
+  if(selectionRevision!==selectionCart.state.revision){selectionRevision=selectionCart.state.revision;commerceAPI.invalidate();}
+  if(!DEVELOPER_MODE){updateShell();if(['cart','checkout'].includes(currentRoute().name))renderSelectionCart();}
+}});
+selectionRevision=selectionCart.state.revision;
+let detailView={key:'',id:'',status:'idle',detail:null,options:{},quantity:1,view:0,merchant:'',condition:null,editing:null,controller:null,error:'',busy:false};
+let commerceCapabilitiesStatus='idle';
+const commerceOrders={key:'',status:'idle',orders:[],order:null,error:'',epoch:0};
+function channel3Id(route=currentRoute()){
+  const raw=route.path.startsWith('product/channel3/')?route.path.slice(17):route.path.startsWith('product/channel3-live--')?route.path.slice(23):'';
+  return /^[A-Za-z0-9_-]{1,80}$/.test(raw)?raw:'';
+}
+function channel3Href(id,options={},extra={}){
+  const query=new URLSearchParams();Object.entries(options).forEach(([name,value])=>query.set('option_'+name,value));
+  Object.entries(extra).forEach(([name,value])=>{if(value!==undefined&&value!==null)query.set(name,String(value));});
+  return '#product/channel3/'+encodeURIComponent(id)+(query.size?'?'+query.toString():'');
+}
+function leaveProductDetail(){clearTimeout(commerceDetailTimer);detailView.controller?.abort();detailView={...detailView,key:'',id:'',detail:null,status:'idle',controller:null,editing:null};}
+function detailOptions(params){const options={};for(const [name,value] of params){if(name.startsWith('option_')){const key=name.slice(7);if(Object.hasOwn(options,key))throw Error('invalid_selection');Object.defineProperty(options,key,{value,enumerable:true,configurable:true,writable:true});}}return window.AnoXCommerce.optionsOf(options);}
+function detailOffer(){const offers=(detailView.detail?.offers||[]).filter(o=>o.merchantDomain===detailView.merchant&&o.condition===detailView.condition);const identities=offers.map(o=>JSON.stringify([o.priceCents,o.currency,o.availability,o.url,o.maxCommissionRate]));return offers.length&&offers.length<=20&&new Set(identities).size===1?offers[0]:null;}
+function effectiveDetailOptions(detail=detailView.detail){return Object.fromEntries((detail?.variants.selected||[]).map(o=>[o.name,o.label]));}
+function selectedDetailAvailability(){
+  const d=detailView.detail,o=detailOffer();if(!d||!o||d.selectionMismatch.length)return 'unknown';
+  const choices=effectiveDetailOptions(),values=d.variants.options.map(option=>option.values.find(value=>value.label===choices[option.name]));
+  if(o.availability==='out_of_stock'||values.some(value=>value?.availability==='out_of_stock'))return 'out_of_stock';
+  if(o.availability!=='in_stock'||values.some(value=>!value||value.exists!==true||(value.productId&&value.productId!==detailView.id)||value.availability!=='in_stock'))return 'unknown';
+  return 'in_stock';
+}
+function detailFresh(){const detail=detailView.detail;return detail?.freshness.status==='fresh'&&Date.parse(detail.freshness.expiresAt)>Date.now();}
+function detailSelectionReady(){
+  const d=detailView.detail,o=detailOffer();if(detailView.status!=='ready'||!detailFresh()||!o||o.currency!=='USD'||o.priceCents===null||o.availability==='out_of_stock'||d.selectionMismatch.length)return false;
+  const choices=effectiveDetailOptions();return d.variants.options.every(option=>option.values.some(v=>v.label===choices[option.name]&&v.exists===true&&(!v.productId||v.productId===detailView.id)&&v.availability!=='out_of_stock'));
+}
+function renderChannel3Product(force=false){
+  const route=currentRoute(),id=channel3Id(route),key=route.path+'?'+route.params.toString();
+  if(!id){$('main').innerHTML=pageShell(tx('رابط المنتج غير صالح','Invalid product link'),'',routeLink('shop',navLabel('shop'),'btn secondary'));return;}
+  if(force||key!==detailView.key){
+    detailView.controller?.abort();const controller=new AbortController();let options;
+    try{options=detailOptions(route.params);}catch{$('main').innerHTML=pageShell(tx('خيارات غير صالحة','Invalid product options'),'',routeLink('product/channel3/'+id,tx('إعادة فتح المنتج','Reopen product'),'btn secondary'));return;}
+    let editing=detailView.id===id?detailView.editing:null;
+    if(route.params.has('edit')&&route.params.has('line')){
+      const index=Number(route.params.get('line'));const line=selectionCart.state.lines[index];
+      if(route.params.get('edit')===selectionCart.state.revision&&Number.isSafeInteger(index)&&line)editing={key:window.AnoXCommerce.lineKey(line),expected:clone(line)};
+      else if(!editing){$('main').innerHTML=pageShell(tx('تغيّرت السلة','Cart changed'),tx('راجع الاختيار المحفوظ قبل تعديله.','Review the saved selection before editing it.'),routeLink('cart',navLabel('cart'),'btn primary'));return;}
+    }
+    const same=detailView.id===id;
+    detailView={key,id,status:'loading',detail:null,options,quantity:editing?.expected.quantity||(same?detailView.quantity:1),view:0,merchant:route.params.get('merchant')||'',condition:route.params.get('condition')||null,editing,controller,error:'',busy:false};
+    void window.AnoXLiveCatalog.getChannel3Product(id,{options,signal:controller.signal}).then(detail=>{
+      if(detailView.key!==key||detailView.controller!==controller||currentRoute().path+'?'+currentRoute().params.toString()!==key)return;
+      detailView.detail=detail;detailView.status='ready';
+      const offer=detail.offers.find(o=>o.merchantDomain===detailView.merchant&&o.condition===detailView.condition)||(!route.params.has('merchant')?detail.offers[0]:null);
+      if(offer){detailView.merchant=offer.merchantDomain;detailView.condition=offer.condition;}
+      clearTimeout(commerceDetailTimer);if(detail.freshness.status==='fresh')commerceDetailTimer=setTimeout(()=>{if(detailView.controller===controller)renderDetailContent();},Math.max(1,Date.parse(detail.freshness.expiresAt)-Date.now()+25));
+      renderDetailContent();
+    }).catch(error=>{if(detailView.controller!==controller||controller.signal.aborted)return;detailView.status='error';detailView.error=error.code||'detail_unavailable';renderDetailContent();});
+  }
+  renderDetailContent();
+}
+function detailAvailability(value){return value==='in_stock'?tx('المصدر يذكر أنه متوفر','Source reports available'):value==='out_of_stock'?tx('المصدر يذكر أنه غير متوفر','Source reports unavailable'):tx('التوفر غير مؤكد','Availability unconfirmed');}
+function detailGalleryMarkup(){
+  const images=detailView.detail.images,index=Math.min(detailView.view,Math.max(0,images.length-1)),main=images[index];
+  if(!main)return '<section class="v2-product-gallery commerce-gallery"><div class="commerce-image-empty">'+esc(tx('لا توجد صورة متاحة','No image available'))+'</div></section>';
+  return '<section class="v2-product-gallery commerce-gallery" aria-label="'+esc(tx('صور المنتج','Product gallery'))+'"><div class="commerce-gallery-stage" data-commerce-swipe tabindex="0" aria-label="'+esc(tx('استخدم مفاتيح الأسهم لتغيير الصورة','Use arrow keys to change the image'))+'"><img class="commerce-main-image" src="'+esc(main.url)+'" alt="'+esc(main.altText||detailView.detail.title)+'" decoding="async" data-commerce-image></div><div class="actions commerce-gallery-controls">'+button(tx('السابق','Previous'),'data-commerce-gallery="'+(index?index-1:images.length-1)+'"','btn secondary small')+'<span role="status">'+(index+1)+' / '+images.length+'</span>'+button(tx('التالي','Next'),'data-commerce-gallery="'+((index+1)%images.length)+'"','btn secondary small')+'</div><div class="v2-gallery-thumbs commerce-thumbs">'+images.map((img,i)=>'<button type="button" class="gallery-thumb v2-gallery-thumb" data-commerce-gallery="'+i+'" aria-label="'+esc(tx('الصورة ','Image ')+(i+1))+'" aria-pressed="'+(i===index)+'"><img src="'+esc(img.url)+'" alt="" loading="lazy" decoding="async" width="80" height="80" data-commerce-image></button>').join('')+'</div></section>';
+}
+function renderDetailContent(focusSelector=''){
+  if(currentRoute().name!=='product'||channel3Id()!==detailView.id)return;
+  $('main').dataset.commerceDetailKey=detailView.key;
+  pageTitle(detailView.detail?.title||tx('المنتج','Product'));
+  if(detailView.status==='loading'){$('main').innerHTML=pageShell(tx('تفاصيل المنتج','Product details'),'', '<p role="status">'+esc(tx('جارٍ التحقق من تفاصيل المنتج وخياراته…','Checking current product details and options…'))+'</p>');return;}
+  if(detailView.status==='error'){$('main').innerHTML=pageShell(tx('تعذر تحميل المنتج','Product could not load'),tx('تعذّر التحقق من تفاصيل المصدر الآن. أعد المحاولة.','The current source details could not be checked. Try again.'),button(tx('إعادة المحاولة','Try again'),'data-commerce-detail-retry','btn primary'));return;}
+  const d=detailView.detail,o=detailOffer(),selected=effectiveDetailOptions(),fresh=detailFresh(),ready=detailSelectionReady(),scroll=scrollY;
+  const options=d.variants.options.map((option,i)=>'<div class="commerce-option"><label for="commerce-option-'+i+'">'+esc(option.name)+'</label><select class="select" id="commerce-option-'+i+'" data-commerce-option="'+esc(option.name)+'"><option value="">'+esc(tx('اختر','Choose'))+'</option>'+option.values.map(v=>'<option value="'+esc(v.label)+'"'+(selected[option.name]===v.label?' selected':'')+(v.availability==='out_of_stock'?' disabled':'')+'>'+esc(v.label)+(v.exists===false?tx(' — قد تتغير الخيارات الأخرى',' — other options may change'):'')+'</option>').join('')+'</select></div>').join('');
+  const offers=fresh&&d.offers.length?'<div class="commerce-option"><label for="commerce-merchant">'+esc(tx('المتجر والعرض','Merchant and offer'))+'</label><select class="select" id="commerce-merchant" data-commerce-merchant>'+(!o?'<option value="" selected>'+esc(tx('العرض المطلوب غير متاح أو غير محدد؛ اختر عرضًا آخر','Requested offer unavailable or ambiguous; choose another offer'))+'</option>':'')+d.offers.map((offer,i)=>'<option value="'+i+'"'+(offer===o?' selected':'')+'>'+esc(offer.merchantDomain+(offer.condition?' · '+offer.condition:'')+' · '+(offer.priceCents!==null&&offer.currency==='USD'?formatUSD(offer.priceCents):tx('السعر غير معروف','Price unknown')))+'</option>').join('')+'</select></div>':'<p class="notice">'+esc(tx('لا يوجد عرض حالي موثّق لهذا المنتج.','No current offer has been verified for this product.'))+'</p>';
+  const specs=[...(d.materials.length?[[tx('المواد','Materials'),d.materials.join(', ')]]:[]),...Object.entries(d.structuredAttributes).map(([name,values])=>[name,values.join(', ')]),[tx('كمية المخزون','Stock quantity'),tx('غير متوفرة من المصدر','Not provided by the source')],[tx('وزن المنتج لدى المصدر','Source product weight'),fresh&&o?.dimensions?.weight?o.dimensions.weight.number+' '+o.dimensions.weight.unit:tx('غير متوفر؛ الوزن المفوتر للشحن يحتاج تأكيدًا','Not provided; carrier billable weight requires verification')]];
+  const mismatch=d.selectionMismatch.length?'<div class="notice warning" role="alert">'+esc(tx('لم يؤكد المصدر الخيارات المطلوبة. الخيارات المعروضة تختلف؛ راجعها قبل حفظها.','The source did not confirm the requested options. Displayed options differ; review them before saving.'))+'</div><ul>'+d.selectionMismatch.map(v=>'<li>'+esc(v.name+': '+v.requested+' → '+(v.effective||tx('غير متاح','unavailable')))+'</li>').join('')+'</ul>'+button(tx('استخدام الخيارات المعروضة','Use displayed options'),'data-commerce-accept-options','btn secondary'):'';
+  const presentation=!fresh?'<p class="notice warning" role="status">'+esc(tx('التفاصيل للعرض فقط. تعذّر تحديث السعر والتوفر؛ أعد التحقق قبل الحفظ.','These details are for presentation only. Price and availability could not be refreshed; check again before saving.'))+'</p>'+button(tx('تحديث التفاصيل','Refresh details'),'data-commerce-detail-retry','btn secondary'):'';
+  $('main').innerHTML='<div class="v2-pdp-page v2-container"><article class="v2-product-detail">'+detailGalleryMarkup()+'<div class="v2-product-information"><nav class="v2-breadcrumb">'+routeLink('shop',navLabel('shop'))+' / '+routeLink('cart',navLabel('cart'))+'</nav><div class="v2-pdp-intro"><p class="v2-pdp-brand">'+esc(d.brands.map(b=>b.name).join(' · '))+'</p><h1>'+esc(d.title)+'</h1><div class="v2-price"><bdi>'+(o?.priceCents!==null&&o?.currency==='USD'&&fresh?formatUSD(o.priceCents):esc(tx('السعر غير معروف','Price unknown')))+'</bdi></div><p class="fine">'+esc(tx('سعر المنتج بالدولار الأمريكي؛ الشحن والضرائب غير مشمولة.','US item price; shipping and taxes are not included.'))+'</p><p>'+esc(detailAvailability(fresh?selectedDetailAvailability():'unknown'))+'</p><p class="fine">'+esc(tx('تم التحقق: ','Checked: ')+dateLabel(d.freshness.fetchedAt,true))+'</p></div>'+presentation+mismatch+offers+options+'<div class="commerce-option"><label for="commerce-quantity">'+esc(tx('الكمية','Quantity'))+'</label><input class="input" id="commerce-quantity" data-commerce-quantity type="number" min="1" max="20" step="1" value="'+detailView.quantity+'"></div><div class="v2-pdp-actions"><button type="button" class="btn primary" data-commerce-add'+(!ready||detailView.busy?' disabled':'')+'>'+esc(detailView.editing?tx('حفظ تعديل الاختيار','Save selection changes'):tx('أضف إلى السلة','Add to cart'))+'</button><button type="button" class="v2-pdp-wish" data-commerce-wishlist="'+esc(detailView.id)+'" aria-label="'+esc(navLabel('wishlist'))+'" aria-pressed="'+state.wishlist.includes('channel3-live__'+detailView.id)+'">'+icon('heart')+'</button></div><p class="fine">'+esc(tx('حفظ الاختيار لا يحجز مخزونًا ولا يفوّض شراءً. الشراء الموحد غير متاح حتى ربط متجر ودفع معتمدين.','Saving a selection does not reserve stock or authorize a purchase. Unified checkout requires an authorized merchant and payment integration.'))+'</p><div class="v2-product-services">'+V2Disclosure(tx('الوصف الكامل','Full description'),'<p class="commerce-description">'+esc(d.description||tx('لم يقدّم المصدر وصفًا إضافيًا.','The source did not provide an additional description.'))+'</p>'+(d.keyFeatures.length?'<ul>'+d.keyFeatures.map(v=>'<li>'+esc(v)+'</li>').join('')+'</ul>':''))+V2Disclosure(tx('مواصفات المصدر','Source specifications'),'<dl class="spec-list">'+specs.map(([name,value])=>'<div><dt>'+esc(name)+'</dt><dd>'+esc(value)+'</dd></div>').join('')+'</dl>')+V2Disclosure(tx('المتجر والإسناد','Merchant and attribution'),'<p>'+esc(tx('يبقى المتجر البائع. ظهور المنتج لا يعني تفويض الشراء أو تأكيد عمولة تابعة.','The merchant remains the seller. A listing does not establish purchasing authorization or confirmed affiliate revenue.'))+'</p>'+routeLink('affiliate',tx('إفصاح الروابط التابعة','Affiliate disclosure')))+(fresh&&o?.url?'<a class="text-btn" href="'+esc(o.url)+'" target="_blank" rel="noopener noreferrer" data-retailer-link="channel3-live">'+esc(tx('رابط المصدر الاختياري','Optional source link'))+'</a>':'')+'</div></div></article></div>';
+  window.scrollTo({top:scroll,behavior:'instant'});if(focusSelector)$('main').querySelector(focusSelector)?.focus({preventScroll:true});
+}
+function detailNavigateOptions(options,id=detailView.id){
+  const route=currentRoute(),extra={merchant:detailView.merchant,condition:detailView.condition};
+  for(const key of ['edit','line'])if(route.params.has(key))extra[key]=route.params.get(key);
+  navigateHash(channel3Href(id,options,extra));
+}
+function selectionNotice(){return selectionCart.state.notice?'<p class="notice warning" role="status">'+esc(selectionCart.state.notice==='cart_restoration_incomplete'?tx('استُعيدت الاختيارات الصحيحة فقط. راجع السلة؛ بعض البيانات المحفوظة غير صالحة.','Only valid selections were restored. Review your cart; some saved data was invalid.'):tx('التخزين الآمن بين التبويبات غير متاح. التغييرات في هذه الجلسة فقط وقد تُفقد عند إغلاق الصفحة.','Safe storage across tabs is unavailable. Changes are session only and may be lost when this page closes.'))+'</p>':'';}
+function selectionLinesMarkup(){return selectionCart.state.lines.map((line,i)=>'<article class="commerce-cart-line" data-commerce-line="'+i+'">'+(line.display.imageUrl?'<img src="'+esc(line.display.imageUrl)+'" alt="" width="110" height="110" loading="lazy" data-commerce-image>':'')+'<div><h2>'+routeLink(channel3Href(line.productId,line.options,{merchant:line.merchantDomain,condition:line.condition}).slice(1),line.display.title||line.productId)+'</h2><p>'+esc(line.merchantDomain+(line.condition?' · '+line.condition:''))+'</p><p class="fine">'+esc(Object.entries(line.options).map(([name,value])=>name+': '+value).join(' · ')||tx('لا توجد خيارات محفوظة','No options saved'))+'</p><p class="fine">'+esc(tx('السعر المحفوظ للوحدة، يحتاج تحديثًا: ','Saved unit price, requires refresh: '))+'<bdi>'+(line.display.priceCents===null?esc(tx('غير معروف','Unknown')):formatUSD(line.display.priceCents))+'</bdi></p><div class="actions"><label for="commerce-cart-qty-'+i+'">'+esc(tx('الكمية','Quantity'))+'</label><input class="input commerce-quantity" id="commerce-cart-qty-'+i+'" type="number" min="1" max="20" step="1" value="'+line.quantity+'" data-commerce-cart-quantity="'+i+'">'+button(tx('تعديل الخيارات','Edit options'),'data-commerce-edit="'+i+'"','text-btn')+button(tx('إزالة','Remove'),'data-commerce-remove="'+i+'"','text-btn')+'</div></div></article>').join('');}
+function commerceErrorMessage(code){
+  if(['operation_in_progress','quote_in_progress'].includes(code))return tx('التحقق قيد التنفيذ. أعد المحاولة باستخدام الاختيارات نفسها.','A quote is still being checked. Retry with the same selections.');
+  if(['UNAUTHORIZED','NotAuthorizedException','STALE_SESSION','unauthorized'].includes(code))return tx('سجّل الدخول مجددًا لمراجعة العرض.','Sign in again to review the quote.');
+  if(code==='quote_too_large')return tx('يمكن للعرض مراجعة 10 اختيارات و5 مجموعات منتج وخيارات كحد أقصى. قلّل الاختيارات أولًا.','A quote supports up to 10 selections and 5 distinct product and option combinations. Reduce the selection first.');
+  if(code==='cart_changed')return tx('تغيّر الاختيار في تبويب آخر. راجع السلة وحاول مجددًا.','This selection changed in another tab. Review the cart and try again.');
+  if(['cart_quantity_limit','invalid_selection'].includes(code))return tx('راجع الخيارات والكمية من 1 إلى 20.','Review the options and choose a quantity from 1 to 20.');
+  return tx('تعذّر التحقق من البيانات الحالية. لم يحدث شراء أو دفع. حاول مجددًا.','Current information could not be verified. No purchase or payment occurred. Try again.');
+}
+function commerceCostMarkup(quote){
+  const costs=quote.costs,status={verified:tx('موثّق','Verified'),estimated:tx('تقديري','Estimated'),unknown:tx('غير معروف','Unknown'),conditional:tx('عند النجاح فقط','On success only')};
+  const lines=quote.lines.map((line,i)=>{const saved=selectionCart.state.lines[i]?.display.priceCents,changed=saved!==null&&saved!==undefined&&saved!==line.unitPriceMinor;return '<article data-commerce-quote-line><h3>'+esc(line.title)+'</h3><p class="fine">'+esc(line.merchantDomain+' · '+Object.entries(line.options).map(([name,value])=>name+': '+value).join(' · '))+'</p><dl class="spec-list"><div><dt>'+esc(tx('سعر الوحدة الحالي','Fresh unit price'))+'</dt><dd><bdi>'+formatUSD(line.unitPriceMinor)+'</bdi></dd></div><div><dt>'+esc(tx('الكمية','Quantity'))+'</dt><dd>'+line.quantity+'</dd></div><div><dt>'+esc(tx('مجموع المنتجات لهذا الاختيار','Line subtotal'))+'</dt><dd><bdi>'+formatUSD(line.lineTotalMinor)+'</bdi></dd></div></dl><p>'+esc(detailAvailability(line.availability==='InStock'?'in_stock':line.availability==='OutOfStock'?'out_of_stock':'unknown'))+'</p>'+(changed?'<p class="notice warning" role="alert" data-commerce-price-change>'+esc(tx('تغيّر السعر. السعر المحفوظ للوحدة: ','Price changed. Saved unit price: '))+'<bdi>'+formatUSD(saved)+'</bdi>'+esc(tx('؛ سعر الوحدة الحالي: ','; Fresh unit price: '))+'<bdi>'+formatUSD(line.unitPriceMinor)+'</bdi>. '+esc(tx('راجع السعر الجديد؛ لم يحدث شراء أو تفويض للدفع.','Review the new price; no purchase or payment authorization occurred.'))+'</p>':'')+'</article>';}).join('');
+  return '<section class="surface commerce-cost" aria-labelledby="commerce-cost-title"><h2 id="commerce-cost-title">'+esc(tx('تفاصيل التكلفة من الخادم','Server cost breakdown'))+'</h2>'+lines+'<dl class="spec-list">'+costs.components.map(c=>'<div><dt>'+esc(c.label||c.code)+' <small>'+esc(status[c.status])+'</small></dt><dd><bdi>'+(c.amountMinor===null?esc(tx('غير معروف','Unknown')):formatUSD(c.amountMinor))+'</bdi></dd></div>').join('')+'</dl><dl class="spec-list commerce-totals"><div><dt>'+esc(tx('الإجمالي التقديري','Estimated Total'))+'</dt><dd>'+(costs.estimatedTotalMinor===null?esc(tx('غير متاح — تكاليف غير معروفة','Unavailable — costs are unknown')):formatUSD(costs.estimatedTotalMinor))+'</dd></div><div><dt>'+esc(tx('المبلغ المستحق الموثّق','Verified Payable Total'))+'</dt><dd>'+(costs.verifiedPayableTotalMinor===null?esc(tx('غير متاح','Unavailable')):formatUSD(costs.verifiedPayableTotalMinor))+'</dd></div></dl><h3>'+esc(tx('رسوم محتملة عند الوصول','Potential Charges on Arrival'))+'</h3><p>'+esc((costs.potentialChargesOnArrival||[]).map(v=>typeof v==='string'?v:v.label||v.code).join(', ')||tx('لم يؤكد المصدر أي تغطية شاملة لهذه الرسوم.','No complete coverage of arrival charges has been confirmed.'))+'</p><p class="fine">'+esc(tx('رسوم AnoX هي 5 دولارات فقط لكل طلب ناجح. لا تُحصّل أي رسوم الآن.','The AnoX fee is exactly $5 per successful order. No fee is collected now.'))+'</p><p class="fine">'+esc(tx('صالح حتى: ','Valid until: ')+dateLabel(quote.expiresAt,true))+'</p></section>';
+}
+function renderOwnedOrders(){
+  const route=currentRoute(),single=route.name==='order'||route.name==='track',id=route.params.get('id')||route.params.get('order')||'';
+  pageTitle(tx('الطلبات والتتبع','Orders and tracking'));
+  if(!cloudAccount.session){commerceOrders.epoch++;commerceOrders.key='';commerceOrders.orders=[];commerceOrders.order=null;$('main').innerHTML=pageShell(tx('طلباتك','Your orders'),tx('سجّل الدخول لعرض طلبات هذا الحساب وحالات الدفع والشحن من الخادم.','Sign in to read this account’s order, payment and fulfillment states from the server.'),routeLink('signin',navLabel('signin'),'btn primary'));return;}
+  if(single&&!/^[A-Za-z0-9_-]{1,160}$/.test(id)){$('main').innerHTML=pageShell(tx('مرجع الطلب غير صالح','Invalid order reference'),'',routeLink('orders',tx('عرض الطلبات','View orders'),'btn primary'));return;}
+  const cursor=!single?route.params.get('cursor')||'':'';
+  if(cursor&&!/^[A-Za-z0-9_-]{1,160}$/.test(cursor)){$('main').innerHTML=pageShell(tx('مرجع الصفحة غير صالح','Invalid page reference'),'',routeLink('orders',tx('عرض الطلبات','View orders'),'btn primary'));return;}
+  const key=single?'order:'+id:'orders:'+cursor;
+  if(commerceOrders.key!==key){
+    const epoch=++commerceOrders.epoch,version=window.AnoXAuth.sessionVersion();commerceOrders.key=key;commerceOrders.status='loading';commerceOrders.orders=[];commerceOrders.order=null;commerceOrders.error='';
+    const path=single?'/commerce/orders/'+id:'/commerce/orders'+(cursor?'?cursor='+cursor:'');
+    void window.AnoXAuth.api(path).then(response=>{
+      if(epoch!==commerceOrders.epoch||version!==window.AnoXAuth.sessionVersion())return;
+      if(single)commerceOrders.order=window.AnoXCommerce.orderShape(response);else Object.assign(commerceOrders,window.AnoXCommerce.ordersShape(response));
+      commerceOrders.status='ready';if(['orders','order','track'].includes(currentRoute().name))renderOwnedOrders();
+    }).catch(error=>{if(epoch!==commerceOrders.epoch||version!==window.AnoXAuth.sessionVersion())return;commerceOrders.status='error';commerceOrders.error=error.code||'order_unavailable';if(['orders','order','track'].includes(currentRoute().name))renderOwnedOrders();});
+  }
+  const row=(label,value)=>'<div><dt>'+esc(label)+'</dt><dd>'+esc(value)+'</dd></div>';
+  const details=order=>'<article class="surface"><h2>'+esc(order.orderId)+'</h2><p class="fine">'+esc(dateLabel(order.createdAt,true))+'</p><dl class="spec-list">'+row(tx('حالة الطلب','Order status'),order.status)+row(tx('حالة الدفع','Payment status'),order.payment.status)+row(tx('حالة الشحن','Fulfillment status'),order.fulfillment?.status||tx('لم تُقدّم معلومات','Not provided'))+(order.merchantOrderReference?row(tx('مرجع المتجر','Merchant reference'),order.merchantOrderReference):'')+(order.fulfillment?.tracking||[]).map(t=>row(tx('التتبع','Tracking'),[t.carrier,t.trackingNumber].filter(Boolean).join(' · '))).join('')+(order.amountMinor!==null&&order.currency==='USD'?row(tx('المبلغ المسجل لدى الخادم','Server-recorded amount'),formatUSD(order.amountMinor)):'')+'</dl>'+(!single?routeLink('order?id='+encodeURIComponent(order.orderId),tx('تفاصيل الطلب والتتبع','Order details and tracking'),'btn secondary'):'')+'</article>';
+  let content=commerceOrders.status==='loading'?'<p role="status">'+esc(tx('جارٍ تحميل الطلبات من الخادم…','Loading orders from the server…'))+'</p>':commerceOrders.status==='error'?'<p class="notice warning" role="alert">'+esc(['not_found','order_not_found'].includes(commerceOrders.error)?tx('لا يوجد طلب متاح بهذا المرجع لهذا الحساب.','No order with this reference is available to this account.'):commerceErrorMessage(commerceOrders.error))+'</p>'+button(tx('إعادة المحاولة','Try again'),'data-commerce-orders-retry','btn secondary'):single?details(commerceOrders.order):commerceOrders.orders.length?'<div class="stack">'+commerceOrders.orders.map(details).join('')+'</div>':emptyMarkup(tx('لا توجد طلبات','No orders'),tx('تُعرض هنا الطلبات الموثّقة من الخادم فقط. السلة المحفوظة ليست طلبًا.','Only server-recorded orders appear here. A saved cart is not an order.'));
+  if(!single&&commerceOrders.status==='ready'&&commerceOrders.nextCursor)content+='<div class="actions actions-spaced">'+routeLink('orders?cursor='+encodeURIComponent(commerceOrders.nextCursor),tx('الصفحة التالية','Next page'),'btn secondary')+'</div>';
+  if(single)content+='<div class="actions actions-spaced">'+routeLink('orders',tx('كل الطلبات','All orders'),'btn secondary')+'</div><p class="fine">'+esc(tx('الإلغاء والاسترداد غير مدعومين حاليًا. تواصل مع AnoX لمراجعة الطلب.','Cancellation and refunds are currently unsupported. Contact AnoX to review an order.'))+'</p>';
+  $('main').innerHTML=pageShell(tx('طلباتك والتتبع','Your orders and tracking'),tx('حالات الطلب والدفع والشحن الواردة من خادم AnoX. لا يثبت رابط التأكيد أو بيانات المتصفح أن الدفع نجح.','Order, payment and fulfillment states come from the AnoX server. Confirmation links and browser data do not establish payment success.'),content);
+}
+
+function renderSelectionCart(){
+  if(commerceCapabilitiesStatus==='idle'&&selectionCart.state.lines.length){commerceCapabilitiesStatus='loading';void commerceAPI.capabilities().then(()=>{commerceCapabilitiesStatus='ready';}).catch(()=>{commerceCapabilitiesStatus='error';}).finally(()=>{if(['cart','checkout'].includes(currentRoute().name))renderSelectionCart();});}
+  pageTitle(navLabel('cart'));const cart=selectionCart.state,q=commerceAPI.currentQuote(cart),loading=commerceAPI.state.quoteStatus==='loading';
+  clearTimeout(commerceQuoteTimer);if(q)commerceQuoteTimer=setTimeout(()=>{if(['cart','checkout'].includes(currentRoute().name))renderSelectionCart();},Math.min(2147483647,Math.max(1,Date.parse(q.expiresAt)-Date.now()+25)));
+  if(!cart.lines.length){$('main').innerHTML=pageShell(navLabel('cart'),'',selectionNotice()+emptyMarkup(tx('السلة فارغة','Your cart is empty'),tx('اختر منتجًا وخياراته لحفظها هنا.','Select a product and its options to save them here.')));return;}
+  const limitBlockers=window.AnoXCommerce.quoteLimits(cart);const capabilityNotice=commerceCapabilitiesStatus==='error'?'<p role="alert" class="notice warning">'+esc(tx('خدمة التحقق من التكلفة غير متاحة الآن. لا يمكن الدفع.','The cost verification service is unavailable. Payment is unavailable.'))+'</p>'+button(tx('إعادة الاتصال','Retry connection'),'data-commerce-capabilities-retry','btn secondary'):commerceCapabilitiesStatus==='loading'?'<p role="status">'+esc(tx('جارٍ التحقق من اتصال الخدمة…','Checking service connection…'))+'</p>':'';const blockers=[...limitBlockers,...(q?.checkout.blockers||[{code:'MERCHANT_CHECKOUT_UNAVAILABLE',message:tx('لا توجد واجهة شراء متجر معتمدة مرتبطة بـ AnoX. الدفع غير متاح.','No authorized merchant purchasing integration is connected to AnoX. Payment is unavailable.')}])];
+  const quoteAction=cloudAccount.session?'<button type="button" class="btn primary" data-commerce-quote'+(loading?' disabled aria-busy="true"':limitBlockers.length||commerceCapabilitiesStatus!=='ready'?' disabled':'')+'>'+esc(loading?tx('جارٍ التحقق…','Checking…'):tx('تحديث السعر والتكلفة','Refresh price and costs'))+'</button>':routeLink('signin',tx('سجّل الدخول للتحقق من التكلفة','Sign in to check costs'),'btn primary');
+  const error=commerceAPI.state.error?'<p class="notice warning" role="alert">'+esc(commerceErrorMessage(commerceAPI.state.error))+'</p>':'';
+  const expired=commerceAPI.state.quote&&!q?'<p role="status" class="notice warning">'+esc(tx('انتهت صلاحية العرض. أعد التحقق من السعر والتكاليف.','The quote expired. Check current prices and costs again.'))+'</p>':'';
+  $('main').innerHTML=pageShell(tx('اختياراتك المحفوظة','Your saved selections'),tx('راجع الخيارات والكمية، ثم اطلب تكلفة موثّقة. الحفظ لا يحجز مخزونًا ولا ينشئ طلبًا.','Review options and quantity, then request current costs. Saving does not reserve stock or create an order.'),selectionNotice()+'<div class="commerce-cart-layout"><section aria-label="'+esc(tx('اختيارات السلة','Cart selections'))+'">'+selectionLinesMarkup()+'</section><aside class="stack">'+capabilityNotice+error+expired+(q?commerceCostMarkup(q):'<section class="surface"><h2>'+esc(tx('تكلفة الوصول','Cost to Algeria'))+'</h2><p>'+esc(tx('الضرائب والشحن والجمارك والتحويل غير معروفة حتى التحقق منها. لا يتوفر إجمالي مضمون.','Tax, shipping, customs and conversion remain unknown until verified. A guaranteed total is unavailable.'))+'</p><p>'+esc(tx('رسوم AnoX: 5 دولارات لكل طلب ناجح.','AnoX fee: $5 per successful order.'))+'</p></section>')+'<div class="actions">'+quoteAction+'</div><section class="surface"><h2>'+esc(tx('إتمام الشراء','Checkout'))+'</h2><ul>'+blockers.map(b=>'<li>'+esc(b.message)+'</li>').join('')+'</ul><button type="button" class="btn primary" data-commerce-checkout disabled aria-describedby="commerce-checkout-blocked">'+esc(tx('الدفع غير متاح','Payment unavailable'))+'</button><p id="commerce-checkout-blocked" class="fine">'+esc(tx('لا تتم معالجة شراء أو تحصيل رسوم في هذه المرحلة.','No purchase or fee can be processed at this stage.'))+'</p></section></aside></div>');
+}
+function selectionDrawerMarkup(){const count=selectionCart.state.lines.reduce((sum,line)=>sum+line.quantity,0);return '<p>'+esc(count?count+' '+tx('قطعة محفوظة؛ لم تُشترَ بعد.','saved items; no purchase has been made.'):tx('السلة فارغة.','Your cart is empty.'))+'</p>'+selectionNotice()+'<div class="actions">'+routeLink('cart',tx('مراجعة السلة والتكلفة','Review cart and costs'),'btn primary')+'</div>';}
+async function addDetailSelection(){
+  if(detailView.busy)return;if(!detailSelectionReady()){renderDetailContent();return;}const current=detailView,o=detailOffer(),d=current.detail;current.busy=true;renderDetailContent();
+  const line={provider:'channel3',productId:current.id,merchantDomain:o.merchantDomain,condition:o.condition,options:effectiveDetailOptions(d),quantity:current.quantity,offerUrl:o.url,display:{title:d.title,merchantDomain:o.merchantDomain,currency:'USD',priceCents:o.priceCents,imageUrl:d.images[0]?.url||'',maxCommissionRate:o.maxCommissionRate,stock:null}};
+  try{if(current.editing)await selectionCart.update(current.editing.key,line,current.editing.expected);else await selectionCart.add(line);toast(tx('حُفظ الاختيار في السلة. لم يحدث شراء.','Selection saved to cart. No purchase occurred.'),'success');if(current.editing&&detailView===current)navigate('cart');}
+  catch(error){selectionCart.reload();toast(commerceErrorMessage(error.code),'warning');}
+  finally{current.busy=false;if(detailView===current)renderDetailContent('[data-commerce-add]');}
+}
+document.addEventListener('click',event=>{
+  const node=event.target.closest('button,a');if(!node)return;
+  if(node.hasAttribute('data-commerce-detail-retry')){event.preventDefault();renderChannel3Product(true);}
+  if(node.hasAttribute('data-commerce-accept-options')){event.preventDefault();detailNavigateOptions(effectiveDetailOptions());}
+  if(node.hasAttribute('data-commerce-gallery')){const index=Number(node.dataset.commerceGallery);if(detailView.detail&&whole(index,0,detailView.detail.images.length-1)){detailView.view=index;renderDetailContent('[data-commerce-gallery="'+index+'"]');}}
+  if(node.hasAttribute('data-commerce-wishlist')){const id=node.dataset.commerceWishlist;if(/^[A-Za-z0-9_-]{1,80}$/.test(id)){const key='channel3-live__'+id;state.wishlist=state.wishlist.includes(key)?state.wishlist.filter(v=>v!==key):[...state.wishlist.slice(-49),key];void Storage.save();updateShell();if(currentRoute().name==='wishlist')renderLiveWishlist();else renderDetailContent('[data-commerce-wishlist]');}}
+  if(node.hasAttribute('data-commerce-add')){event.preventDefault();void addDetailSelection();}
+  if(node.hasAttribute('data-commerce-edit')){const index=Number(node.dataset.commerceEdit),line=selectionCart.state.lines[index];if(line)navigateHash(channel3Href(line.productId,line.options,{merchant:line.merchantDomain,condition:line.condition,edit:selectionCart.state.revision,line:index}));}
+  if(node.hasAttribute('data-commerce-remove')){const line=selectionCart.state.lines[Number(node.dataset.commerceRemove)];if(line)void selectionCart.remove(window.AnoXCommerce.lineKey(line),line).catch(error=>{selectionCart.reload();toast(commerceErrorMessage(error.code),'warning');});}
+  if(node.hasAttribute('data-commerce-capabilities-retry')){commerceCapabilitiesStatus='idle';renderSelectionCart();}
+  if(node.hasAttribute('data-commerce-quote')){event.preventDefault();if(node.disabled)return;const pending=commerceAPI.requestQuote(selectionCart.state);renderSelectionCart();void pending.catch(()=>{}).finally(()=>{if(['cart','checkout'].includes(currentRoute().name))renderSelectionCart();});}
+  if(node.hasAttribute('data-commerce-orders-retry')){event.preventDefault();commerceOrders.key='';renderOwnedOrders();}
+});
+document.addEventListener('change',event=>{
+  const node=event.target;
+  if(node.matches('[data-commerce-option]')){if(!node.value)return;const value=detailView.detail?.variants.options.find(option=>option.name===node.dataset.commerceOption)?.values.find(value=>value.label===node.value);if(!value)return;if(value.productId&&value.productId!==detailView.id)detailNavigateOptions({...effectiveDetailOptions(),[node.dataset.commerceOption]:node.value},value.productId);else detailNavigateOptions({...effectiveDetailOptions(),[node.dataset.commerceOption]:node.value});}
+  if(node.matches('[data-commerce-merchant]')&&node.value!==''){const offer=detailView.detail?.offers[Number(node.value)];if(offer){detailView.merchant=offer.merchantDomain;detailView.condition=offer.condition;const route=currentRoute(),params=new URLSearchParams(route.params);params.set('merchant',offer.merchantDomain);if(offer.condition===null)params.delete('condition');else params.set('condition',offer.condition);detailView.key=route.path+'?'+params.toString();history.replaceState(history.state,'','#'+detailView.key);renderDetailContent('#commerce-merchant');}}
+  if(node.matches('[data-commerce-quantity]')){const quantity=Number(node.value);if(whole(quantity,1,20))detailView.quantity=quantity;else {node.value=detailView.quantity;toast(commerceErrorMessage('invalid_selection'),'warning');}}
+  if(node.matches('[data-commerce-cart-quantity]')){const line=selectionCart.state.lines[Number(node.dataset.commerceCartQuantity)];if(line)void selectionCart.update(window.AnoXCommerce.lineKey(line),{quantity:Number(node.value)},line).catch(error=>{selectionCart.reload();toast(commerceErrorMessage(error.code),'warning');});}
+});
+let detailPointer=null;
+document.addEventListener('pointerdown',event=>{if(event.target.closest('[data-commerce-swipe]')&&event.isPrimary)detailPointer={x:event.clientX,y:event.clientY,id:event.pointerId};});
+document.addEventListener('pointerup',event=>{const start=detailPointer;detailPointer=null;if(!start||start.id!==event.pointerId||!event.target.closest('[data-commerce-swipe]'))return;const x=event.clientX-start.x,y=event.clientY-start.y;if(Math.abs(x)>50&&Math.abs(x)>Math.abs(y)*1.5)stepDetailGallery(x<0?1:-1);});
+document.addEventListener('pointercancel',()=>{detailPointer=null;});
+function stepDetailGallery(delta){const images=detailView.detail?.images;if(!images?.length)return;detailView.view=(detailView.view+delta+images.length)%images.length;renderDetailContent('[data-commerce-swipe]');}
+document.addEventListener('keydown',event=>{if(event.target.closest('.commerce-gallery')&&['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();if(event.key==='Home'||event.key==='End'){detailView.view=event.key==='Home'?0:detailView.detail.images.length-1;renderDetailContent('[data-commerce-swipe]');}else stepDetailGallery(event.key==='ArrowRight'?1:-1);}});
+document.addEventListener('error',event=>{const node=event.target;if(node instanceof HTMLImageElement&&node.hasAttribute('data-commerce-image')){const replacement=document.createElement('span');replacement.className='commerce-image-empty';replacement.textContent=tx('الصورة غير متاحة','Image unavailable');node.replaceWith(replacement);}},true);
+window.addEventListener('storage',event=>{if(event.key===selectionCart.key||event.key===null)selectionCart.reload({cleared:event.newValue===null});});
+window.addEventListener('anox-auth-change',()=>{const version=window.AnoXAuth.sessionVersion();if(version!==commerceAuthVersion){commerceAuthVersion=version;commerceAPI.invalidate();commerceOrders.key='';commerceOrders.epoch++;commerceOrders.orders=[];commerceOrders.order=null;if(['cart','checkout'].includes(currentRoute().name))renderSelectionCart();if(['orders','order','track'].includes(currentRoute().name))renderOwnedOrders();}});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(['cart','checkout'].includes(currentRoute().name))renderSelectionCart();if(channel3Id()&&detailView.status==='ready'&&!detailFresh())renderDetailContent();}});
 
     async function boot(){
   updateShell();

@@ -1,0 +1,106 @@
+chromium: 10 browser groups passed
+firefox: 10 browser groups passed
+{
+  "checks": [
+    {
+      "engine": "chromium",
+      "name": "cached cards show presentation only without price, stock, retailer links or unsupported controls",
+      "pass": true
+    },
+    {
+      "engine": "chromium",
+      "name": "legacy price-filter URLs disclose unavailable data and recover without extra upstream requests",
+      "pass": true
+    },
+    {
+      "engine": "chromium",
+      "name": "empty storefront requests one lazy discovery section",
+      "pass": true
+    },
+    {
+      "engine": "chromium",
+      "name": "three pages render with stable deduplication and one image per card",
+      "pass": true
+    },
+    {
+      "engine": "chromium",
+      "name": "sections have independent results and retain their own pagination",
+      "pass": true
+    },
+    {
+      "engine": "chromium",
+      "name": "search resets cursor; stale responses cannot replace new results",
+      "pass": true
+    },
+    {
+      "engine": "chromium",
+      "name": "expired cursor keeps products and requires explicit restart",
+      "pass": true
+    },
+    {
+      "engine": "chromium",
+      "name": "upstream error offers deliberate retry without request loops",
+      "pass": true
+    },
+    {
+      "engine": "chromium",
+      "name": "browser runtime and production CSP remain valid",
+      "pass": true
+    },
+    {
+      "engine": "chromium",
+      "name": "existing self-tests: 135/135",
+      "pass": true
+    },
+    {
+      "engine": "firefox",
+      "name": "cached cards show presentation only without price, stock, retailer links or unsupported controls",
+      "pass": true
+    },
+    {
+      "engine": "firefox",
+      "name": "legacy price-filter URLs disclose unavailable data and recover without extra upstream requests",
+      "pass": true
+    },
+    {
+      "engine": "firefox",
+      "name": "empty storefront requests one lazy discovery section",
+      "pass": true
+    },
+    {
+      "engine": "firefox",
+      "name": "three pages render with stable deduplication and one image per card",
+      "pass": true
+    },
+    {
+      "engine": "firefox",
+      "name": "sections have independent results and retain their own pagination",
+      "pass": true
+    },
+    {
+      "engine": "firefox",
+      "name": "search resets cursor; stale responses cannot replace new results",
+      "pass": true
+    },
+    {
+      "engine": "firefox",
+      "name": "expired cursor keeps products and requires explicit restart",
+      "pass": true
+    },
+    {
+      "engine": "firefox",
+      "name": "upstream error offers deliberate retry without request loops",
+      "pass": true
+    },
+    {
+      "engine": "firefox",
+      "name": "browser runtime and production CSP remain valid",
+      "pass": true
+    },
+    {
+      "engine": "firefox",
+      "name": "existing self-tests: 135/135",
+      "pass": true
+    }
+  ]
+}
