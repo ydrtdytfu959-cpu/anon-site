@@ -12,7 +12,7 @@
   const channel3Provider = Object.freeze({id:"channel3-live", merchant:"Channel3", mode:"live", transport:"api", pagination:"cursor", timeoutMs:18000, sourceType:"catalog-api", authorization:Object.freeze({status:"provider-terms",evidence:"Channel3 customer output"}), approvedLive:false, imageHosts:Object.freeze(["cdn.trychannel3.com"]), merchantHosts:Object.freeze(["buy.trychannel3.com"]), staleAfterMs:86400000});
   const CHANNEL3_SECTIONS = Object.freeze(["featured","men","women","shoes","clothing","beauty","accessories","sports","brands"]);
   const MAX_BYTES=2*1024*1024;
-  let retryAt=0;
+  let retryAt=0, cjRetryAt=0;
   const DEFAULT_LIMIT = 24;
 
   const stringValue = value => typeof value === "string" ? value.trim() : "";
@@ -188,14 +188,14 @@
     if(nextOffset!==null&&(!Number.isSafeInteger(nextOffset)||nextOffset<=offset||nextOffset>100000||!raw.length))throw Error("catalog_pagination");
     return {q,limit,offset,items,total,nextOffset,invalidCount:raw.length-items.length,fetchedAt};
   }
-  async function readJson(url,signal,timeoutMs=8000) {
+  async function readJson(url,signal,timeoutMs=8000,cjSource=false) {
     if(signal?.aborted)throw Error("catalog_aborted");
-    if(Date.now()<retryAt)throw Error("catalog_rate_limited");
+    if(Date.now()<(cjSource?cjRetryAt:retryAt))throw Error("catalog_rate_limited");
     const controller=new AbortController(),abort=()=>controller.abort(),timer=setTimeout(abort,timeoutMs);
     signal?.addEventListener("abort",abort,{once:true});
     try{
       const response=await fetch(url,{credentials:"omit",cache:"no-store",referrerPolicy:"no-referrer",redirect:"error",signal:controller.signal});
-      if(response.status===429){const header=response.headers.get("retry-after"),seconds=Number(header);retryAt=Date.now()+Math.min(300000,Math.max(1000,Number.isFinite(seconds)?seconds*1000:(Date.parse(header)-Date.now())||30000));throw Error("catalog_rate_limited");}
+      if(response.status===429){const header=response.headers.get("retry-after"),seconds=Number(header);const until=Date.now()+Math.min(300000,Math.max(1000,Number.isFinite(seconds)?seconds*1000:(Date.parse(header)-Date.now())||30000));if(cjSource)cjRetryAt=until;else retryAt=until;throw Error("catalog_rate_limited");}
       if(!response.ok)throw Error(`catalog_http_${response.status}`);
       if(!/application\/(?:[a-z0-9.-]+\+)?json/i.test(response.headers.get("content-type")||"")||Number(response.headers.get("content-length"))>MAX_BYTES)throw Error("catalog_payload_limit");
       const reader=response.body?.getReader();if(!reader)throw Error("catalog_payload");
@@ -252,11 +252,11 @@
     if(!Number.isSafeInteger(limit)||limit<1||limit>24||!Number.isSafeInteger(offset)||offset<0||offset>5000)
       throw catalogError("catalog_options");
     const url=buildCatalogUrl({limit,offset});
-    return parseCjNikePreviewPage(await readJson(url,signal,12000),{limit,offset});
+    return parseCjNikePreviewPage(await readJson(url,signal,12000,true),{limit,offset});
   }
   async function getCjNikePreviewProduct(productId,{signal}={}) {
     if(typeof productId!=="string"||!/^[A-Za-z0-9_-]{1,80}$/.test(productId))throw catalogError("catalog_identity");
-    const payload=await readJson(API_BASE+"/products/"+encodeURIComponent(productId),signal,12000);
+    const payload=await readJson(API_BASE+"/products/"+encodeURIComponent(productId),signal,12000,true);
     const result=normalizeCjNikePreview(payload?.product);
     if(!result||result.id!=="cj-nike-"+productId)throw catalogError("catalog_identity");
     return result;
