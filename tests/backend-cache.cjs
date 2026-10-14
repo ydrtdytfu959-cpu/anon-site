@@ -59,6 +59,23 @@ test('search cards cache presentation only, without prices, offers, stock or var
   assert.equal(f.calls.length,1);
   assert.ok(!JSON.stringify([...f.store.rows.values()]).includes('buy.trychannel3.com'));
 });
+test('backend stores only verified official seller identity in cached cards',async()=>{
+ const source={...product('official'),brands:[{name:'Nike'}],offers:[
+  {url:'https://buy.trychannel3.com/a',domain:'nike.com'},
+  {url:'https://wrong.example/other',domain:'adidas.com'},
+  {url:'https://buy.trychannel3.com/b',domain:'kickscrew.com'}
+ ]};
+ const f=fixture(()=>({products:[source],next_page_token:null}));
+ const query=event({q:'Nike',limit:'24'});
+ const first=body(await f.handler(query)),second=body(await f.handler(query));
+ const item=first.data.products[0];
+ assert.deepEqual(item.sellerDomains,['nike.com']);
+ assert.equal(Object.hasOwn(item,'offers'),false);
+ assert.deepEqual(second.data.products[0].sellerDomains,['nike.com']);
+ assert.equal(f.calls.length,1);
+ assert.ok(!JSON.stringify([...f.store.rows.values()]).includes('buy.trychannel3.com'));
+});
+
 test('pre-policy page and cursor identities cannot return cached offers or restart upstream',async()=>{
   const {createHash}=require('node:crypto'),hash=value=>createHash('sha256').update(JSON.stringify(value)).digest('hex');
   const f=fixture(),contextHash=hash([1,'channel3','search','','shoes',{},24]),key='page#'+hash([1,contextHash,null]);
