@@ -17,7 +17,7 @@
   const CHANNEL3_CURATED_QUERIES = Object.freeze({
     featured:"Nike", men:"Levi's men", women:"Nike women",
     shoes:"adidas", clothing:"Levi's", beauty:"e.l.f. cosmetics",
-    accessories:"Nike accessories", sports:"Nike", brands:"Sephora"
+    accessories:"Nike accessories", sports:"Nike sports", brands:"Sephora"
   });
   const MAX_BYTES=2*1024*1024;
   let retryAt=0;
