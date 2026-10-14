@@ -9,7 +9,7 @@ function adapter(fetch = async () => { throw Error('Unexpected network request')
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../catalog-live.js'), 'utf8'), context);
   return context.module.exports;
 }
-const product = (id = 'p1', patch = {}) => ({ id, title: 'Running shoe', brands: [{ id: 'b1', name: 'Brand' }],
+const product = (id = 'p1', patch = {}) => ({ id, title: 'Running shoe', brands: [{ id: 'b1', name: 'Nike' }],
   images: [{ cleaned_url: 'https://cdn.trychannel3.com/clean.jpg', url: 'https://cdn.trychannel3.com/main.jpg' }],
   offers: [{ url: 'https://buy.trychannel3.com/p1', domain: 'shop.com', availability: 'InStock', condition: 'new', price: { price: 45.99, currency: 'USD' } }], ...patch });
 function envelope(products = [product()], next = null, patch = {}) {
