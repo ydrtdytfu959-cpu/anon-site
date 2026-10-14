@@ -214,6 +214,54 @@
   }
 
 
+  // CJ is a second, independent source. Only NIKE-advertiser listings whose
+  // destination is nike.com are eligible; brand text never proves a retailer.
+  // Cards are presentation-only: cached feed prices and stock are not quotes.
+  function normalizeCjNikePreview(raw, index = 0, fetchedAt = new Date().toISOString()) {
+    if(!raw || typeof raw!=="object" || Array.isArray(raw) || stringValue(raw.advertiserName)!=="NIKE")return null;
+    const id=stringValue(raw.productId),title=stringValue(raw.title);
+    if(!/^[A-Za-z0-9_-]{1,80}$/.test(id)||!title||title.length>200)return null;
+    const brand=stringValue(raw.brand).toLowerCase();
+    if(brand!=="nike"&&brand!=="jordan")return null;
+    const url=safeHttpsUrl(raw.productUrl);
+    if(!url||!["nike.com","www.nike.com"].includes(new URL(url).hostname.toLowerCase()))return null;
+    const photo=trustedImageUrl(raw.imageUrl);
+    if(!photo||new URL(photo).hostname.toLowerCase()!=="static.nike.com")return null;
+    const name=localized(title,title);
+    const category=categoryFor({category:title});
+    return {id,slug:id,name,brand:"Nike",category,kind:"product",currency:"USD",
+      priceCents:null,compareAtPriceCents:null,presentationOnly:true,weightGrams:0,
+      variantDetailsKnown:false,stock:null,variants:[],media:[{url:photo,alt:name,width:420,height:390}],
+      description:localized(firstValue(raw.description,title),title),updatedAt:fetchedAt,
+      availability:"unknown",purchasable:false,
+      source:{merchantUrl:url,merchantDomain:new URL(url).hostname.toLowerCase(),
+        verifiedAt:null,fetchedAt,availabilityVerifiedAt:null,availability:"unknown",
+        sourceType:"affiliate-feed"}};
+  }
+  function parseCjNikePreviewPage(payload,{limit=24,offset=0}={}) {
+    if(!payload||payload.source!=="CJ"||payload.advertiser!=="NIKE"||
+       !Array.isArray(payload.products)||payload.products.length>limit||
+       !Number.isSafeInteger(payload.totalCount)||payload.totalCount<0)throw catalogError("catalog_payload");
+    const fetchedAt=new Date().toISOString();
+    const items=payload.products.map((raw,i)=>normalizeCjNikePreview(raw,offset+i,fetchedAt)).filter(Boolean);
+    const nextOffset=payload.products.length&&offset+payload.products.length<payload.totalCount?
+      offset+payload.products.length:null;
+    return {items,total:payload.totalCount,nextOffset,invalidCount:payload.products.length-items.length,fetchedAt};
+  }
+  async function fetchCjNikePreviewPage({limit=24,offset=0,signal}={}) {
+    if(!Number.isSafeInteger(limit)||limit<1||limit>24||!Number.isSafeInteger(offset)||offset<0||offset>5000)
+      throw catalogError("catalog_options");
+    const url=buildCatalogUrl({limit,offset});
+    return parseCjNikePreviewPage(await readJson(url,signal,12000),{limit,offset});
+  }
+  async function getCjNikePreviewProduct(productId,{signal}={}) {
+    if(typeof productId!=="string"||!/^[A-Za-z0-9_-]{1,80}$/.test(productId))throw catalogError("catalog_identity");
+    const payload=await readJson(API_BASE+"/products/"+encodeURIComponent(productId),signal,12000);
+    const result=normalizeCjNikePreview(payload?.product);
+    if(!result||result.id!==productId)throw catalogError("catalog_identity");
+    return result;
+  }
+
   function channel3Category(raw) {
     const path=Array.isArray(raw?.category?.path)?raw.category.path.map(entry=>stringValue(entry?.title)).filter(Boolean):[];
     const value=[stringValue(raw?.category?.title),...path].join(" ").toLowerCase();
@@ -561,5 +609,5 @@
     return parseChannel3Detail(await readJson(buildChannel3DetailUrl(productId, selected), signal, channel3Provider.timeoutMs), productId, {options:selected});
   }
 
-  return Object.freeze({ provider, nikeProvider: provider, channel3Provider, API_BASE, CHANNEL3_API_BASE, IMAGE_HOSTS, buildCatalogUrl, buildChannel3Url, getProduct, normalizeNikeProduct, normalizeChannel3Product, parseCatalogPage, parseChannel3Page, fetchPage, fetchChannel3Page, buildChannel3DetailUrl, parseChannel3Detail, getChannel3Product });
+  return Object.freeze({ provider, nikeProvider: provider, channel3Provider, API_BASE, CHANNEL3_API_BASE, IMAGE_HOSTS, buildCatalogUrl, buildChannel3Url, getProduct, normalizeNikeProduct, normalizeCjNikePreview, parseCjNikePreviewPage, fetchCjNikePreviewPage, getCjNikePreviewProduct, normalizeChannel3Product, parseCatalogPage, parseChannel3Page, fetchPage, fetchChannel3Page, buildChannel3DetailUrl, parseChannel3Detail, getChannel3Product });
 });
