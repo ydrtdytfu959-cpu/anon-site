@@ -57,13 +57,14 @@ test('Astra mixes six official stores per featured page with bounded independent
 test('mixed official discovery scans 24 upstream records and preserves every unused verified item',async()=>{
  const terms=['Nike','adidas',"Levi's",'e.l.f. cosmetics','Sephora','TJ Maxx'];
  const domains=['nike.com','adidas.com','levi.com','elfcosmetics.com','sephora.com','tjmaxx.tjx.com'];
+ const brands=['Nike','Adidas',"Levi's",'e.l.f. Cosmetics','Sephora Collection','Other'];
  const calls=[],api=adapter(async url=>{
    const u=new URL(url),i=terms.indexOf(u.searchParams.get('q'));
    assert.ok(i>=0);
    assert.equal(u.searchParams.get('limit'),'24');
    calls.push({i,cursor:u.searchParams.get('page_token')});
    const raw=Array.from({length:24},(_,n)=>product('valid-'+i+'-'+n,{
-     offers:[{domain:domains[i],url:'https://buy.trychannel3.com/official'}]
+     brands:[{name:brands[i]}],offers:[{domain:domains[i],url:'https://buy.trychannel3.com/official'}]
    }));
    return new Response(JSON.stringify(envelope(raw,null)),{headers:{'content-type':'application/json'}});
  });
