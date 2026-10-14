@@ -32,7 +32,8 @@ test('AnoX limits discovery to four approved product brands and two trusted reta
     product('empty',{brands:[]}),
     product('sneaky',{title:'Nike Sephora TJ Maxx',brands:[{name:'Other'}]}),
     product('spoof',{brands:[{name:'Other'}],offers:[{domain:'sephora.com.evil.example',url:'https://buy.trychannel3.com/evil',price:{currency:'USD',price:12}}]}),
-    product('missing-proof',{brands:[{name:'Other'}],offers:[{domain:'sephora.com',url:'http://invalid.example/a',price:{currency:'USD',price:12}}]})
+    product('missing-proof',{brands:[{name:'Other'}],offers:[{domain:'sephora.com',url:'http://invalid.example/a',price:{currency:'USD',price:12}}]}),
+    product('external-link',{brands:[{name:'Other'}],offers:[{domain:'sephora.com',url:'https://evil.example/offer',price:{currency:'USD',price:12}}]})
   ];
   const page=api.parseChannel3Page(envelope([...accepted,...rejected], 'next'));
   assert.deepEqual(page.items.map(p=>p.id),accepted.map(p=>p.id));
