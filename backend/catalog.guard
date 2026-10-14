@@ -1,0 +1,21 @@
+# Phase 1 guardrails, supplementing least-privilege assertions in backend-template tests.
+let tables = Resources.*[ Type == 'AWS::DynamoDB::Table' ]
+rule catalog_cache_is_expiring_and_encrypted when %tables !empty {
+  %tables {
+    DeletionPolicy == 'Retain'
+    UpdateReplacePolicy == 'Retain'
+    Properties.BillingMode == 'PAY_PER_REQUEST'
+    Properties.TimeToLiveSpecification.Enabled == true
+    Properties.TimeToLiveSpecification.AttributeName == 'expiresAt'
+    Properties.SSESpecification.SSEEnabled == true
+  }
+}
+rule runtime_scope {
+  Resources.Channel3Function.Properties.Runtime == 'nodejs24.x'
+  Resources.Channel3Function.Properties.Timeout == 20
+  Resources.Channel3Role.Properties.Policies.*.PolicyDocument.Statement.* {
+    Effect == 'Allow'
+    Resource is_struct
+    Action[*] IN ['secretsmanager:GetSecretValue', 'dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:DeleteItem', 'logs:CreateLogStream', 'logs:PutLogEvents']
+  }
+}

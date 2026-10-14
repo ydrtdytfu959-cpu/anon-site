@@ -1,0 +1,17 @@
+{
+  "name": "anox-catalog",
+  "private": true,
+  "version": "1.0.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "node backend/build-template.cjs && node scripts/build-catalog.cjs",
+    "check": "node backend/build-template.cjs --check && node scripts/build-catalog.cjs --check",
+    "test": "node --test tests/*.cjs",
+    "test:browser": "node scripts/browser-catalog.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

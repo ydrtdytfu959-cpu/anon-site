@@ -9,7 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3">
   <meta name="robots" content="index,follow">
   <meta name="description" content="AnoX — اكتشف المنتجات، وقارن التفاصيل وتكلفة وصولها التقديرية إلى الجزائر.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-uXG7osO41Po/hcdIUXcO21b2StCm3ltlT8NP09545Ig=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — U.S. products for Algeria">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-IBAvhsH1VOuulvvzzcQ9QCOQISvKzm6/nT4Af6dq5zI=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — U.S. products for Algeria">
   <meta property="og:description" content="AnoX LLC — discover U.S. products and discuss purchasing and fulfillment to Algeria.">
   <meta property="og:url" content="https://anox.app/">
   <title>AnoX — اختيارات أبعد. تكلفة أوضح.</title>
@@ -1414,8 +1414,8 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
   const CHANNEL3_API_BASE = "https://zmumi2wruk.execute-api.us-east-2.amazonaws.com/catalog/search";
   const IMAGE_HOSTS = Object.freeze(["static.nike.com","cdn.trychannel3.com"]);
   const provider = Object.freeze({id:"nike-live", merchant:"Nike", mode:"live", transport:"api", sourceType:"affiliate-feed", authorization:Object.freeze({status:"unverified",evidence:null}), approvedLive:false, imageHosts:Object.freeze(["static.nike.com"]), merchantHosts:Object.freeze(["nike.com","www.nike.com"]), staleAfterMs:86400000});
-  const channel3Provider = Object.freeze({id:"channel3-live", merchant:"Channel3", mode:"live", transport:"api", sourceType:"catalog-api", authorization:Object.freeze({status:"provider-terms",evidence:"Channel3 customer output"}), approvedLive:false, imageHosts:Object.freeze(["cdn.trychannel3.com"]), merchantHosts:Object.freeze(["buy.trychannel3.com"]), staleAfterMs:86400000});
-  const DEFAULT_CHANNEL3_QUERY = "popular fashion";
+  const channel3Provider = Object.freeze({id:"channel3-live", merchant:"Channel3", mode:"live", transport:"api", pagination:"cursor", timeoutMs:18000, sourceType:"catalog-api", authorization:Object.freeze({status:"provider-terms",evidence:"Channel3 customer output"}), approvedLive:false, imageHosts:Object.freeze(["cdn.trychannel3.com"]), merchantHosts:Object.freeze(["buy.trychannel3.com"]), staleAfterMs:86400000});
+  const CHANNEL3_SECTIONS = Object.freeze(["featured","men","women","shoes","clothing","beauty","accessories","sports","brands"]);
   const MAX_BYTES=2*1024*1024;
   let retryAt=0;
   const DEFAULT_LIMIT = 24;
@@ -1593,10 +1593,10 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     if(nextOffset!==null&&(!Number.isSafeInteger(nextOffset)||nextOffset<=offset||nextOffset>100000||!raw.length))throw Error("catalog_pagination");
     return {q,limit,offset,items,total,nextOffset,invalidCount:raw.length-items.length,fetchedAt};
   }
-  async function readJson(url,signal) {
+  async function readJson(url,signal,timeoutMs=8000) {
     if(signal?.aborted)throw Error("catalog_aborted");
     if(Date.now()<retryAt)throw Error("catalog_rate_limited");
-    const controller=new AbortController(),abort=()=>controller.abort(),timer=setTimeout(abort,8000);
+    const controller=new AbortController(),abort=()=>controller.abort(),timer=setTimeout(abort,timeoutMs);
     signal?.addEventListener("abort",abort,{once:true});
     try{
       const response=await fetch(url,{credentials:"omit",cache:"no-store",referrerPolicy:"no-referrer",redirect:"error",signal:controller.signal});
@@ -1663,7 +1663,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     const compareAtPriceCents=cents(offer.price?.compare_at_price),inStock=String(offer.availability).toLowerCase()==="instock",variantInfo=channel3Variants(raw,inStock),name=localized(title,title);
     const media=(Array.isArray(raw.images)?raw.images:[]).slice(0,1).flatMap(image=>{const url=trustedImageUrl(firstValue(image?.cleaned_url,image?.url));if(!url)return [];return [{url,alt:localized(stringValue(image?.alt_text)||title,title),width:420,height:390}];});
     const category=channel3Category(raw),kind=safeKey(firstValue(raw?.category?.slug,raw?.category?.title,category),"product").toLowerCase();
-    return {id,slug:id,name,brand:channel3Brand(raw),category,kind:/^[a-z][a-z0-9-]{0,29}$/.test(kind)?kind:"product",currency:"USD",priceCents,
+    return {id,slug:id,name,brand:channel3Brand(raw),category,kind:/^[a-z][a-z-]{0,29}$/.test(kind)?kind:"product",currency:"USD",priceCents,
       compareAtPriceCents:compareAtPriceCents!==null&&compareAtPriceCents>priceCents?compareAtPriceCents:null,weightGrams:0,variantDetailsKnown:variantInfo.known,
       stock:variantInfo.variants.reduce((sum,variant)=>sum+variant.stock,0),variants:variantInfo.variants,media,
       description:localized(firstValue(raw.description,Array.isArray(raw.key_features)?raw.key_features.join(". "):"",title),title),updatedAt:fetchedAt,
@@ -1671,20 +1671,85 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       source:{merchantUrl:safeHttpsUrl(offer.url),merchantDomain:stringValue(offer.domain),verifiedAt:fetchedAt,fetchedAt,availabilityVerifiedAt:fetchedAt,availability:inStock?"verified":"reported",sourceType:"catalog-api"},
       purchasable:false};
   }
-  function buildChannel3Url({q="",limit=DEFAULT_LIMIT}={}){
-    const query=stringValue(q)||DEFAULT_CHANNEL3_QUERY,boundedLimit=Math.max(1,Math.min(50,Math.floor(numberValue(limit)||DEFAULT_LIMIT)));
-    return CHANNEL3_API_BASE+"?q="+encodeURIComponent(query)+"&limit="+boundedLimit;
-  }
-  function parseChannel3Page(payload,{q="",limit=DEFAULT_LIMIT,offset=0}={}){
-    const data=payload&&typeof payload==="object"&&payload.data&&typeof payload.data==="object"?payload.data:payload,raw=Array.isArray(data?.products)?data.products:[],fetchedAt=new Date().toISOString();
-    const items=raw.slice(0,Math.max(1,Math.min(50,limit))).map((item,index)=>normalizeChannel3Product(item,index,fetchedAt)).filter(Boolean);
-    return {q:stringValue(q),limit,offset,items,total:items.length,nextOffset:null,nextPageToken:stringValue(data?.next_page_token)||null,invalidCount:raw.length-items.length,fetchedAt};
-  }
-  async function fetchChannel3Page(options={}){
-    return parseChannel3Page(await readJson(buildChannel3Url(options),options.signal),options);
+  function catalogError(code, status) {
+    const error = new Error(code);
+    error.code = code;
+    if (status !== undefined) error.status = status;
+    return error;
   }
 
-  return Object.freeze({ provider, channel3Provider, API_BASE, CHANNEL3_API_BASE, IMAGE_HOSTS, buildCatalogUrl, buildChannel3Url, getProduct, normalizeNikeProduct, normalizeChannel3Product, parseCatalogPage, parseChannel3Page, fetchPage, fetchChannel3Page });
+  function channel3Cursor(value) {
+    if (value === undefined || value === null) return null;
+    if (typeof value !== "string" || !value.length || value.length > 8192 || /[\u0000-\u001f\u007f]/.test(value)) {
+      throw catalogError("catalog_cursor_invalid");
+    }
+    // A lone surrogate cannot be serialized without changing the opaque token.
+    try { encodeURIComponent(value); } catch { throw catalogError("catalog_cursor_invalid"); }
+    return value;
+  }
+
+  function channel3Options({ q = "", section = "", limit = DEFAULT_LIMIT, cursor = null, filters = {} } = {}) {
+    if (typeof q !== "string" || /[\u0000-\u001f\u007f]/.test(q) ||
+        typeof section !== "string" || !Number.isSafeInteger(limit) || limit < 1 || limit > 24) {
+      throw catalogError("catalog_options");
+    }
+    try { encodeURIComponent(q); } catch { throw catalogError("catalog_options"); }
+    q = q.normalize("NFC").trim().replace(/\s+/gu, " ");
+    if (q.length > 100) throw catalogError("catalog_options");
+    if (q && section || section && !CHANNEL3_SECTIONS.includes(section)) throw catalogError("catalog_options");
+    if (!q) section = section || "featured";
+    if (!filters || typeof filters !== "object" || Array.isArray(filters)) throw catalogError("catalog_options");
+    const allowed = { availability: ["InStock", "OutOfStock"], conditions: ["new", "used"] }, clean = {};
+    for (const key of Object.keys(filters).sort()) {
+      const values = filters[key];
+      if (!Object.hasOwn(allowed, key) || !Array.isArray(values) || !values.length || values.length > 2 ||
+          values.some(value => !allowed[key].includes(value))) throw catalogError("catalog_options");
+      clean[key] = [...new Set(values)].sort();
+    }
+    return { q, section, limit, cursor: channel3Cursor(cursor), filters: clean };
+  }
+
+  function buildChannel3Url(options = {}) {
+    const { q, section, limit, cursor, filters } = channel3Options(options);
+    const params = new URLSearchParams();
+    if (q) params.set("q", q); else params.set("section", section);
+    params.set("limit", String(limit));
+    if (cursor !== null) params.set("page_token", cursor);
+    if (Object.keys(filters).length) params.set("filters", JSON.stringify(filters));
+    return CHANNEL3_API_BASE + "?" + params.toString();
+  }
+
+  function parseChannel3Page(payload, options = {}) {
+    const { q, section, limit } = channel3Options(options);
+    const data = payload?.data;
+    if (!payload || typeof payload !== "object" || Array.isArray(payload) || payload.provider !== "channel3" ||
+        !data || typeof data !== "object" || Array.isArray(data) || !Array.isArray(data.products) ||
+        !Object.hasOwn(data, "next_page_token")) throw catalogError("catalog_payload");
+    const raw = data.products;
+    if (raw.length > limit) throw catalogError("catalog_record_limit");
+    const nextCursor = channel3Cursor(data.next_page_token);
+    const fetchedAt = normalizedDate(payload.fetchedAt), expiresAt = normalizedDate(payload.expiresAt), now = Date.now();
+    if (!fetchedAt || !expiresAt || Date.parse(fetchedAt) > now + 60000 ||
+        Date.parse(expiresAt) <= Date.parse(fetchedAt) ||
+        Date.parse(expiresAt) - Date.parse(fetchedAt) > (q ? 300000 : 600000)) throw catalogError("catalog_payload");
+    if (Date.parse(expiresAt) <= now) throw catalogError("catalog_expired");
+    const items = raw.map((item, index) => normalizeChannel3Product(item, index, fetchedAt)).filter(Boolean);
+    return { q, section, limit, items, total: null, nextCursor, fetchedAt, expiresAt, invalidCount: raw.length - items.length };
+  }
+
+  async function fetchChannel3Page(options = {}) {
+    const normalized = channel3Options(options);
+    try {
+      return parseChannel3Page(await readJson(buildChannel3Url(normalized), options.signal, channel3Provider.timeoutMs), normalized);
+    } catch (error) {
+      // The backend classifies unusable continuations without exposing provider diagnostics.
+      if (normalized.cursor !== null && error.message === "catalog_http_400") throw catalogError("catalog_cursor_invalid", 400);
+      if (normalized.cursor !== null && error.message === "catalog_http_410") throw catalogError("catalog_cursor_expired", 410);
+      throw error;
+    }
+  }
+
+  return Object.freeze({ provider, nikeProvider: provider, channel3Provider, API_BASE, CHANNEL3_API_BASE, IMAGE_HOSTS, buildCatalogUrl, buildChannel3Url, getProduct, normalizeNikeProduct, normalizeChannel3Product, parseCatalogPage, parseChannel3Page, fetchPage, fetchChannel3Page });
 });
 
 ;
@@ -2262,19 +2327,34 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       }
       descriptor(id){return this.providers.get(id)||null;}
       async page(id,offset=0,limit=100,budgets=null,query=""){
-        const provider=this.descriptor(id);if(!provider)return {providerId:id,status:"unavailable",items:[],nextOffset:null,total:null,errors:["provider_missing"]};
-        let timer;const abort=new AbortController();
+        const provider=this.descriptor(id),cursorMode=provider?.pagination==='cursor';
+        const failure=errors=>({providerId:id,status:'unavailable',items:[],nextOffset:null,nextCursor:null,total:null,errors});
+        if(!provider)return failure(['provider_missing']);
+        let timer,onAbort;const abort=new AbortController(),request=cursorMode&&isObject(offset)?offset:{},external=request.signal;
         try{
-          requireInteger(offset,0,100000,"offset");requireInteger(limit,1,100,"page size");
-          const result=await Promise.race([Promise.resolve().then(()=>provider.list({offset,limit,query,signal:abort.signal})),new Promise((_,reject)=>{timer=setTimeout(()=>{abort.abort();reject(Error("timeout"));},8000);})]);
-          const scopes=[catalogBudget("page",this.limits.page),...(budgets||[catalogBudget("provider",this.limits.provider),catalogBudget("catalog",this.limits.catalog)])];
+          let options;
+          if(cursorMode){
+            limit=request.limit??24;requireInteger(limit,1,24,'page size');
+            const cursor=request.cursor??null;if(cursor!==null&&(typeof cursor!=='string'||!cursor.length||cursor.length>8192||/[\x00-\x1f\x7f]/.test(cursor)))throw Error('catalog_cursor_invalid');
+            options={q:request.q||'',section:request.section||'',limit,cursor,filters:request.filters||{},signal:abort.signal};
+          }else{requireInteger(offset,0,100000,'offset');requireInteger(limit,1,100,'page size');options={offset,limit,query,signal:abort.signal};}
+          const cancelled=new Promise((_,reject)=>{onAbort=()=>{abort.abort();reject(Error('catalog_aborted'));};if(external?.aborted)onAbort();else external?.addEventListener('abort',onAbort,{once:true});});
+          const timeout=whole(provider.timeoutMs,1000,30000)?provider.timeoutMs:8000;
+          const result=await Promise.race([Promise.resolve().then(()=>{if(abort.signal.aborted)throw Error('catalog_aborted');return provider.list(options);}),cancelled,new Promise((_,reject)=>{timer=setTimeout(()=>{abort.abort();reject(Error('timeout'));},timeout);})]);
+          const scopes=[catalogBudget('page',this.limits.page),...(budgets||[catalogBudget('provider',this.limits.provider),catalogBudget('catalog',this.limits.catalog)])];
           inspectProviderPayload(result,scopes);
-          if(result.items.length>limit)throw Error("Invalid provider page");
-          const items=[],errors=[];for(const raw of result.items){try{items.push(normalizeProduct(raw,provider));}catch{errors.push("invalid_record");}}
-          const next=result.nextOffset===null||result.nextOffset===undefined?null:requireInteger(result.nextOffset,offset+1,100000,"next offset");
-          if(next!==null&&!result.items.length)throw Error("Non-progressing page");
-          return {providerId:id,status:errors.length?"partial":"ready",items,nextOffset:next,total:whole(result.total,0,10000000)?result.total:null,errors};
-        }catch(error){return {providerId:id,status:"unavailable",items:[],nextOffset:null,total:null,errors:[/^(?:page|provider|catalog)_(?:payload|media|pixels|records|nodes)_limit$|^provider_payload_depth$|^invalid_provider_payload$/.test(error.message)?error.message:"provider_unavailable"]};}finally{clearTimeout(timer);abort.abort();}
+          if(result.items.length>limit)throw Error('Invalid provider page');
+          const items=[],errors=[];for(const raw of result.items){try{items.push(normalizeProduct(raw,provider));}catch{errors.push('invalid_record');}}
+          if(cursorMode){
+            const next=result.nextCursor??null;if(next!==null&&(typeof next!=='string'||!next.length||next.length>8192||/[\x00-\x1f\x7f]/.test(next)||next===options.cursor))throw Error('catalog_cursor_invalid');
+            if(whole(result.invalidCount,1,100))errors.push('invalid_record');
+            return {providerId:id,status:errors.length?'partial':'ready',items,nextCursor:next,total:null,fetchedAt:normalizedDate(result.fetchedAt),expiresAt:normalizedDate(result.expiresAt),errors};
+          }
+          const next=result.nextOffset===null||result.nextOffset===undefined?null:requireInteger(result.nextOffset,offset+1,100000,'next offset');
+          if(next!==null&&!result.items.length)throw Error('Non-progressing page');
+          return {providerId:id,status:errors.length?'partial':'ready',items,nextOffset:next,total:whole(result.total,0,10000000)?result.total:null,errors};
+        }catch(error){const code=error.code||error.message;return failure([/^(?:page|provider|catalog)_(?:payload|media|pixels|records|nodes)_limit$|^provider_payload_depth$|^invalid_provider_payload$|^catalog_(?:cursor_invalid|cursor_expired|expired|aborted)$/.test(code)?code:'provider_unavailable']);}
+        finally{clearTimeout(timer);external?.removeEventListener('abort',onAbort);abort.abort();}
       }
     }
     function deepFreeze(value){if(value&&typeof value==='object'&&!Object.isFrozen(value)){Object.freeze(value);Object.values(value).forEach(deepFreeze);}return value;}
@@ -2303,16 +2383,49 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       const classification={hsCode:typeof raw.hsCode==='string'&&/^\d{2,10}$/.test(raw.hsCode)?raw.hsCode:null,status:'unverified'};
       return deepFreeze({dimensionsMm:dimensions,classification,id,slug,name,brand:text(raw.brand,100),category:raw.category,kind:raw.kind,currency:'USD',priceCents:raw.priceCents,priceUsd:raw.priceCents/100,weightGrams:raw.weightGrams,estimatedWeight:raw.weightGrams/1000,colors:[...new Set(variants.map(v=>v.color))],sizes:[...new Set(variants.map(v=>v.size))],variants,stock:variants.reduce((n,v)=>n+v.stock,0),isNew:raw.isNew===true,isPopular:raw.isPopular===true,demo:mode==='preview',rating:null,reviewCount:0,compareAtPriceCents:whole(raw.compareAtPriceCents,0,1e8)?raw.compareAtPriceCents:null,updatedAt:normalizedDate(raw.updatedAt),availability:['in_stock','out_of_stock'].includes(raw.availability)?raw.availability:'unknown',comparisonGroup:text(raw.comparisonGroup,50)||raw.kind,specs:(Array.isArray(raw.specs)?raw.specs:[]).slice(0,30).map(s=>({key:text(s.key,50),label:localizedRecord(s.label),value:localizedRecord(s.value)})),description:localizedRecord(raw.description,1000),media,handling,variantDetailsKnown:raw.variantDetailsKnown===true,source:{authorization:provider.authorization?.status||'unverified',sourceType:provider.sourceType||'internal',fetchedAt:normalizedDate(source.fetchedAt),schema:'anox.catalog-source/2',providerId:provider.id,itemId:raw.id,mode,merchantUrl:mode==='live'?merchantUrl:null,verifiedAt:mode==='live'?verifiedAt:null,availabilityVerifiedAt:mode==='live'?availabilityAt:null,availability:mode==='preview'?'illustrative':source.availability==='verified'&&availabilityAt?'verified':'unknown'},purchasable:mode==='live'&&raw.purchasable===true});
     }
+    function normalizeLiveQuery(value){return text(value,2000).normalize('NFC').replace(/\s+/g,' ').trim().slice(0,100);}
     class CatalogRepository{
       constructor(registry){
-        this.registry=registry;this.records=Object.freeze([]);this.localRecords=Object.freeze([]);this.liveRecords=Object.freeze([]);this.lookup=new Map();this.providers=new Map();this.status="idle";this.liveStatus="idle";this.liveQuery="";this.liveTotal=0;this.liveNextOffset=null;this.liveError="";this.version=0;this.listeners=new Set();this.epoch=0;this.liveEpoch=0;this.pendingLoad=null;this.livePending=null;
+        this.registry=registry;this.records=Object.freeze([]);this.localRecords=Object.freeze([]);this.liveRecords=Object.freeze([]);this.detailRecords=new Map();this.lookup=new Map();this.providers=new Map();this.status='idle';this.liveStatus='idle';this.liveQuery='';this.liveSection='featured';this.liveTotal=0;this.liveNextCursor=null;this.liveError='';this.liveRestartRequired=false;this.version=0;this.listeners=new Set();this.epoch=0;this.pendingLoad=null;this.livePending=null;this.liveContexts=new Map();this.activeLiveKey='';
       }
-      all(){return DEVELOPER_MODE?this.records:this.records.filter(product=>!product.demo);}live(){return this.liveRecords;}get(id){return this.lookup.get(id);}subscribe(fn){this.listeners.add(fn);return ()=>this.listeners.delete(fn);}providerStatus(id){return this.providers.get(id)?.status||"unavailable";}
-      usingLive(query=""){const q=text(query,100).trim();return q===this.liveQuery&&["loading","ready","partial"].includes(this.liveStatus);}
-      liveSource(query=""){return this.usingLive(query)?this.liveRecords:Object.freeze([]);}
+      all(){this.refreshFreshness();return DEVELOPER_MODE?this.records:this.records.filter(product=>!product.demo);}live(){this.refreshFreshness();return this.liveContexts.get(this.activeLiveKey)?.presentationExpired?Object.freeze([]):this.liveRecords;}get(id){return this.lookup.get(id);}subscribe(fn){this.listeners.add(fn);return ()=>this.listeners.delete(fn);}providerStatus(id){this.refreshFreshness();return this.providers.get(id)?.status||'unavailable';}
+      refreshFreshness(){
+        const context=this.liveContexts.get(this.activeLiveKey);
+        if(context&&!context.presentationExpired&&context.expiresAt&&Date.parse(context.expiresAt)<=Date.now()){
+          context.presentationExpired=true;context.restartRequired=true;context.error='catalog_expired';context.status=context.records.length?'partial':'unavailable';this.showLive(context);this.rebuildRecords();
+        }
+      }
+      liveContextOptions({query='',section='featured',limit=24,filters={}}={}){
+        const q=normalizeLiveQuery(query),selected=q?'':section;
+        if(!q&&!['featured','men','women','shoes','clothing','beauty','accessories','sports','brands'].includes(selected))throw Error('Invalid discovery section');
+        requireInteger(limit,1,24,'page size');
+        const canonical=value=>Array.isArray(value)?value.map(canonical):isObject(value)?Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;
+        const clean=canonical(filters),serialized=JSON.stringify(clean);if(serialized.length>4096)throw Error('Invalid catalog filters');
+        return {query:q,section:selected,limit,filters:clean,key:JSON.stringify(['channel3-live',q?'search':'discovery',q,selected,limit,clean])};
+      }
+      usingLive(query='',section=this.liveSection){const options=this.liveContextOptions({query,section});return this.liveQuery===options.query&&this.liveSection===options.section&&this.activeLiveKey!=='';}
+      liveSource(query='',section=this.liveSection){return this.usingLive(query,section)?this.live():Object.freeze([]);}
+      showLive(context){
+        this.liveQuery=context.query;this.liveSection=context.section;this.liveRecords=context.records;this.liveStatus=context.status;this.liveTotal=context.records.length;this.liveNextCursor=context.nextCursor;this.liveError=context.error;this.liveRestartRequired=context.restartRequired;this.livePending=context.pending;
+        this.providers.set('channel3-live',deepFreeze({status:context.status,total:null,loaded:context.records.length,nextCursor:context.nextCursor,errors:context.error?[context.error]:[],fetchedAt:context.fetchedAt,expiresAt:context.expiresAt}));
+      }
+      activateLive(options={}){
+        const selected=this.liveContextOptions(options);let context=this.liveContexts.get(selected.key);
+        if(this.activeLiveKey!==selected.key){const previous=this.liveContexts.get(this.activeLiveKey);if(previous?.pending){previous.generation++;previous.controller.abort();previous.pending=null;previous.status=previous.records.length?'ready':'idle';}}
+        if(!context){context={...selected,records:Object.freeze([]),status:'idle',nextCursor:null,error:'',restartRequired:false,fetchedAt:null,expiresAt:null,pending:null,controller:null,generation:0,pages:0,cursors:new Set()};this.liveContexts.set(selected.key,context);}
+        this.liveContexts.delete(selected.key);this.liveContexts.set(selected.key,context);this.activeLiveKey=selected.key;
+        while(this.liveContexts.size>6){const oldest=this.liveContexts.keys().next().value,entry=this.liveContexts.get(oldest);entry.generation++;entry.controller?.abort();this.liveContexts.delete(oldest);}
+        if(!context.pending&&context.expiresAt&&Date.parse(context.expiresAt)<=Date.now()){context.restartRequired=true;context.error='catalog_expired';context.status=context.records.length?'partial':'unavailable';}
+        this.showLive(context);this.rebuildRecords();return context;
+      }
+      rememberDetail(product){this.detailRecords.delete(product.id);this.detailRecords.set(product.id,product);while(this.detailRecords.size>100)this.detailRecords.delete(this.detailRecords.keys().next().value);this.rebuildRecords();}
       rebuildRecords(){
-        const map=new Map(),lookup=new Map();
-        for(const p of [...this.localRecords,...this.liveRecords]){if(map.has(p.id)||lookup.has(p.slug))continue;map.set(p.id,p);lookup.set(p.id,p);lookup.set(p.slug,p);}
+        const map=new Map(),lookup=new Map(),context=this.liveContexts.get(this.activeLiveKey);
+        const fresh=context&&context.expiresAt&&Date.parse(context.expiresAt)<=Date.now()?[]:this.liveRecords;
+        for(const product of [...this.localRecords,...fresh])if(!map.has(product.id))map.set(product.id,product);
+        // Retained contexts resolve detail links; only the active fresh context is presented.
+        const retained=[...this.liveContexts.values()].flatMap(entry=>entry.records);
+        for(const product of [...this.localRecords,...this.liveRecords,...retained,...this.detailRecords.values()]){if(lookup.has(product.id)||lookup.has(product.slug))continue;lookup.set(product.id,product);lookup.set(product.slug,product);}
         this.records=Object.freeze([...map.values()]);this.lookup=lookup;this.version++;for(const fn of this.listeners){try{fn(this);}catch{}}
       }
       load(){if(this.pendingLoad)return this.pendingLoad;const pending=this.loadBounded();this.pendingLoad=pending;const settled=()=>{if(this.pendingLoad===pending)this.pendingLoad=null;};pending.then(settled,settled);return pending;}
@@ -2325,16 +2438,32 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
         }
         if(epoch!==this.epoch)return this;this.providers.clear();this.localRecords=Object.freeze([]);
         for(const batch of batches){this.providers.set(batch.id,deepFreeze({status:batch.status,total:batch.total,loaded:batch.items.length,nextOffset:batch.nextOffset,errors:batch.errors}));this.localRecords=Object.freeze([...this.localRecords,...batch.items]);}
-        this.status=ids.length&&[...this.providers.values()].every(p=>p.status==="ready")?"ready":this.localRecords.length?"partial":"unavailable";this.rebuildRecords();return this;
+        this.status=ids.length&&[...this.providers.values()].every(p=>p.status==="ready")?"ready":this.localRecords.length?"partial":"unavailable";const active=this.liveContexts.get(this.activeLiveKey);if(active)this.showLive(active);this.rebuildRecords();return this;
       }
-      loadLivePage({query="",offset=0,limit=24,append=false}={}){
-        const q=text(query,100).trim();if(append&&this.liveNextOffset===null)return Promise.resolve(this);if(!append&&this.liveQuery===q&&["loading","ready","partial"].includes(this.liveStatus))return this.livePending||Promise.resolve(this);
-        const epoch=++this.liveEpoch;this.liveQuery=q;this.liveStatus="loading";this.liveError="";
-        const pending=(async()=>{const result=await this.registry.page("channel3-live",append?offset:0,limit,null,q);if(epoch!==this.liveEpoch)return this;if(result.status==="unavailable"){this.liveStatus="unavailable";this.liveError=result.errors.join(",")||"provider_unavailable";this.liveRecords=append?this.liveRecords:Object.freeze([]);this.liveTotal=0;this.liveNextOffset=null;}else{const incoming=append?[...this.liveRecords,...result.items]:result.items,seen=new Set();this.liveRecords=Object.freeze(incoming.filter(product=>{if(seen.has(product.id))return false;seen.add(product.id);return true;}));this.liveStatus=result.status;this.liveTotal=result.total??this.liveRecords.length;this.liveNextOffset=result.nextOffset;this.providers.set("nike-live",deepFreeze({status:result.status,total:result.total,loaded:this.liveRecords.length,nextOffset:result.nextOffset,errors:result.errors}));}this.rebuildRecords();return result;})();
-        this.livePending=pending;pending.then(()=>{if(this.livePending===pending)this.livePending=null;},()=>{if(this.livePending===pending)this.livePending=null;});return pending;
+      loadLivePage({query='',section='featured',limit=24,filters={},append=false,restart=false}={}){
+        const context=this.activateLive({query,section,limit,filters});
+        if(context.pending)return context.pending;
+        if(!restart&&(context.restartRequired||(append?(context.nextCursor===null):context.status!=='idle')))return Promise.resolve(this);
+        const generation=++context.generation,cursor=append&&!restart?context.nextCursor:null,controller=new AbortController();context.controller=controller;context.status='loading';context.error='';this.showLive(context);
+        const pending=(async()=>{
+          const result=await this.registry.page('channel3-live',{q:context.query,section:context.section,limit:context.limit,cursor,filters:context.filters,signal:controller.signal});
+          if(generation!==context.generation||controller.signal.aborted||!this.liveContexts.has(context.key))return this;
+          if(result.status!=='unavailable'&&append&&!restart&&result.nextCursor!==null&&context.cursors.has(result.nextCursor)){result.status='unavailable';result.errors=['catalog_cursor_invalid'];}
+          if(result.status==='unavailable'){
+            context.status=context.records.length?'partial':'unavailable';context.error=result.errors[0]||'provider_unavailable';context.restartRequired=context.restartRequired||['catalog_cursor_invalid','catalog_cursor_expired','catalog_expired'].includes(context.error);
+          }else{
+            if(!append||restart)context.cursors.clear();if(cursor!==null)context.cursors.add(cursor);
+            const incoming=append&&!restart?[...context.records,...result.items]:result.items,seen=new Set();context.records=Object.freeze(incoming.filter(product=>{if(seen.has(product.id))return false;seen.add(product.id);return true;}).slice(0,500));
+            context.pages=append&&!restart?context.pages+1:1;context.nextCursor=context.records.length>=500?null:result.nextCursor;context.status=result.status;context.error=result.errors.join(',');context.restartRequired=false;context.presentationExpired=false;context.fetchedAt=result.fetchedAt;context.expiresAt=context.expiresAt&&append&&!restart&&Date.parse(context.expiresAt)<Date.parse(result.expiresAt)?context.expiresAt:result.expiresAt;
+          }
+          if(this.activeLiveKey===context.key)this.showLive(context);this.rebuildRecords();return result;
+        })();
+        context.pending=pending;this.showLive(context);
+        const settled=()=>{if(context.pending===pending){context.pending=null;if(this.activeLiveKey===context.key)this.showLive(context);}};pending.then(settled,settled);return pending;
       }
-      resetLive(){this.liveEpoch++;this.livePending=null;this.liveStatus="idle";this.liveQuery="";this.liveRecords=Object.freeze([]);this.liveTotal=0;this.liveNextOffset=null;this.liveError="";this.providers.delete("channel3-live");this.rebuildRecords();}
+      resetLive(){for(const context of this.liveContexts.values()){context.generation++;context.controller?.abort();}this.liveContexts.clear();this.activeLiveKey='';this.livePending=null;this.liveStatus='idle';this.liveQuery='';this.liveSection='featured';this.liveRecords=Object.freeze([]);this.liveTotal=0;this.liveNextCursor=null;this.liveError='';this.liveRestartRequired=false;this.providers.delete('channel3-live');this.rebuildRecords();}
     }
+
     /* PRODUCTION COMMERCE TRUST BOUNDARY — intentionally not implemented here.
        Client catalog, stock, pricing/settings/FX, order state, payment state and
        snapshots are all untrusted proposals, never production authorities.
@@ -2566,7 +2695,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       };
       return raw;
     });
-    const PROVIDERS=new ProductProviderRegistry();PROVIDERS.register({id:'anox-preview',mode:'preview',transport:'offline',trustedMedia:false,eager:new URLSearchParams(location.search).get('debug')==='1',async list({limit=100,offset=0}={}){return {items:OFFLINE_RECORDS.slice(offset,offset+limit),total:OFFLINE_RECORDS.length,nextOffset:offset+limit<OFFLINE_RECORDS.length?offset+limit:null};}});PROVIDERS.register({...window.AnoXLiveCatalog.channel3Provider,id:'channel3-live',mode:'live',transport:'api',trustedMedia:true,eager:false,async list({limit=24,offset=0,query='',signal}={}){if(!window.AnoXLiveCatalog)throw Error('live_adapter_missing');return window.AnoXLiveCatalog.fetchChannel3Page({q:query,limit,offset,signal});}});PROVIDERS.register({...window.AnoXLiveCatalog.provider,id:'nike-live',mode:'live',transport:'api',trustedMedia:true,eager:false,async list({limit=24,offset=0,query='',signal}={}){if(!window.AnoXLiveCatalog)throw Error('live_adapter_missing');return window.AnoXLiveCatalog.fetchPage({q:query,limit,offset,signal});}});const Catalog=new CatalogRepository(PROVIDERS);const productBy=value=>Catalog.get(value);
+    const PROVIDERS=new ProductProviderRegistry();PROVIDERS.register({id:'anox-preview',mode:'preview',transport:'offline',trustedMedia:false,eager:new URLSearchParams(location.search).get('debug')==='1',async list({limit=100,offset=0}={}){return {items:OFFLINE_RECORDS.slice(offset,offset+limit),total:OFFLINE_RECORDS.length,nextOffset:offset+limit<OFFLINE_RECORDS.length?offset+limit:null};}});PROVIDERS.register({...window.AnoXLiveCatalog.channel3Provider,id:'channel3-live',mode:'live',transport:'api',trustedMedia:true,eager:false,pagination:'cursor',async list({q='',section='',limit=24,cursor=null,filters={},signal}={}){if(!window.AnoXLiveCatalog)throw Error('live_adapter_missing');return window.AnoXLiveCatalog.fetchChannel3Page({q,section,limit,cursor,filters,signal});}});PROVIDERS.register({...window.AnoXLiveCatalog.provider,id:'nike-live',mode:'live',transport:'api',trustedMedia:true,eager:false,async list({limit=24,offset=0,query='',signal}={}){if(!window.AnoXLiveCatalog)throw Error('live_adapter_missing');return window.AnoXLiveCatalog.fetchPage({q:query,limit,offset,signal});}});const Catalog=new CatalogRepository(PROVIDERS);const productBy=value=>Catalog.get(value);
     const REGIONS=[
       ["Adrar","أدرار"],["Chlef","الشلف"],["Laghouat","الأغواط"],["Oum El Bouaghi","أم البواقي"],["Batna","باتنة"],
       ["Béjaïa","بجاية"],["Biskra","بسكرة"],["Béchar","بشار"],["Blida","البليدة"],["Bouira","البويرة"],
@@ -3014,6 +3143,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
         this.version=this.repository.version;this.cache.clear();
       }
       search(query){
+        this.repository.refreshFreshness?.();
         if(this.version!==this.repository.version)this.rebuild();
         const normalized=normalizeSearch(text(query,100));if(this.cache.has(normalized))return this.cache.get(normalized).slice();
         const tokens=[...new Set(normalized.split(' ').filter(token=>token&&!SEARCH_STOP_WORDS.has(token)))].slice(0,12);if(!tokens.length)return [];
@@ -3399,9 +3529,34 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
   const messages={loading:tx('جارٍ تحميل المنتجات…','Loading products…'),unavailable:tx('تعذر تحميل المنتجات حاليًا.','Products could not be loaded right now.'),empty:tx('لا توجد نتائج متاحة لهذا الاختيار.','No listings are available for this selection.')};
   return '<div class="v2-live-catalog-state '+kind+'" role="'+(kind==='unavailable'?'alert':'status')+'"><strong>'+esc(messages[kind])+'</strong>'+(kind==='unavailable'?button(tx('إعادة المحاولة','Try again'),'data-live-retry','btn secondary'):'')+'</div>';
 }
-    function liveLoadMoreMarkup(query=""){if(!Catalog.usingLive(query)||Catalog.liveNextOffset===null)return "";return '<div class="v2-live-load-more"><button type="button" class="btn secondary" data-live-load-more data-catalog-query="'+esc(query)+'">'+esc(tx("تحميل المزيد","Load more"))+'</button><span class="fine">'+esc((Catalog.liveTotal||Catalog.liveRecords.length)+' '+tx("منتجًا","products"))+'</span></div>';}
-    async function ensureLiveCatalog(query="",append=false){const q=text(query,100).trim();if(append&&Catalog.liveNextOffset===null)return;if(!append&&Catalog.liveQuery===q&&["loading","ready","partial"].includes(Catalog.liveStatus))return;const offset=append?(Catalog.liveNextOffset||0):0;await Catalog.loadLivePage({query:q,offset,limit:24,append});SearchService.rebuild();const route=currentRoute();if((route.name==="shop"&&q==="")||(route.name==="search"&&text(route.params.get("q")||"",100).trim()===q)||(["home","new","brands","wishlist"].includes(route.name)&&q===""))renderRoute({focus:false});}
-    async function loadMoreLiveCatalog(button){if(!button||button.disabled)return;button.disabled=true;button.setAttribute("aria-busy","true");await ensureLiveCatalog(button.dataset.catalogQuery||"",true);}
+    const DISCOVERY_SECTIONS=[['featured','مختارات','Featured'],['men','رجال','Men'],['women','نساء','Women'],['shoes','أحذية','Shoes'],['clothing','ملابس','Clothing'],['beauty','جمال','Beauty'],['accessories','إكسسوارات','Accessories'],['sports','رياضة','Sports'],['brands','علامات','Brands']];
+    function liveSectionForRoute(route=currentRoute()){
+      const section=route.params.get('section');if(DISCOVERY_SECTIONS.some(([id])=>id===section))return section;
+      return {Shoes:'shoes',Fashion:'clothing',Beauty:'beauty',Accessories:'accessories',Sports:'sports'}[route.params.get('category')]||(route.name==='brands'?'brands':'featured');
+    }
+    function discoveryNavigation(route='shop'){
+      const selected=liveSectionForRoute();return '<nav class="v2-category-links" aria-label="'+esc(tx('تصفح الاختيارات','Browse selections'))+'">'+DISCOVERY_SECTIONS.map(([id,ar,en])=>'<a href="#'+route+'?section='+id+'" data-nav data-discovery-section="'+id+'"'+(id===selected?' aria-current="page"':'')+'>'+esc(tx(ar,en))+'</a>').join('')+'</nav>';
+    }
+    function liveContextNotice(){
+      if(Catalog.liveRestartRequired)return '<div class="v2-live-catalog-state unavailable" role="alert"><p>'+esc(tx('انتهت صلاحية جلسة التصفح. ابدأ من جديد لتحديث المنتجات والأسعار.','This browsing session expired. Restart to refresh the products and prices.'))+'</p>'+button(tx('بدء التصفح من جديد','Restart browsing'),'data-live-restart','btn secondary')+'</div>';
+      if(Catalog.liveError&&Catalog.liveRecords.length)return '<div class="v2-live-catalog-state unavailable" role="alert"><p>'+esc(tx('تعذر تحميل المزيد. المنتجات المحمّلة ما زالت معروضة.','More products could not be loaded. Previously loaded products are still shown.'))+'</p>'+(Catalog.liveNextCursor!==null?button(tx('إعادة المحاولة','Try again'),'data-live-retry','btn secondary'):'')+'</div>';
+      return '';
+    }
+    function liveLoadMoreMarkup(query=''){
+      if(!Catalog.usingLive(query)||Catalog.liveNextCursor===null||Catalog.liveRestartRequired)return '';
+      return '<div class="v2-live-load-more"><button type="button" class="btn secondary" data-live-load-more data-catalog-query="'+esc(query)+'" data-catalog-section="'+esc(Catalog.liveSection)+'" '+(Catalog.liveStatus==='loading'?'disabled aria-busy="true"':'')+'>'+esc(Catalog.liveStatus==='loading'?tx('جارٍ التحميل…','Loading…'):tx('تحميل المزيد','Load more'))+'</button><span class="fine">'+esc(Catalog.liveRecords.length+' '+tx('منتجًا محمّلًا','products loaded'))+'</span></div>';
+    }
+    async function ensureLiveCatalog(query='',append=false,{section=liveSectionForRoute(),restart=false}={}){
+      const q=normalizeLiveQuery(query),selected=q?'':section;
+      const pending=Catalog.loadLivePage({query:q,section:selected,limit:24,append,restart}),key=Catalog.activeLiveKey;
+      await pending;SearchService.rebuild();const route=currentRoute(),routeQuery=route.name==='search'?normalizeLiveQuery(route.params.get('q')||''):'';
+      if(['home','shop','search','new','brands'].includes(route.name)&&Catalog.activeLiveKey===key&&routeQuery===q&&(q||liveSectionForRoute(route)===selected))renderRoute({focus:false});
+    }
+    function prepareLiveCatalog(query=''){
+      const section=query?'':liveSectionForRoute();if(!Catalog.usingLive(query,section)||Catalog.liveStatus==='idle')void ensureLiveCatalog(query,false,{section});
+      else if(!Catalog.livePending){const context=Catalog.liveContexts.get(Catalog.activeLiveKey);if(context?.expiresAt&&Date.parse(context.expiresAt)<=Date.now())Catalog.activateLive({query,section});}
+    }
+    async function loadMoreLiveCatalog(button){if(!button||button.disabled)return;button.disabled=true;button.setAttribute('aria-busy','true');try{await ensureLiveCatalog(button.dataset.catalogQuery||'',true,{section:button.dataset.catalogSection||liveSectionForRoute()});}finally{if(button.isConnected){button.disabled=false;button.removeAttribute('aria-busy');}}}
 
     const DEVELOPER_MODE=new URLSearchParams(location.search).get('debug')==='1';
     function renderCatalogUnavailable(){if(Catalog.status==='ready'&&!Catalog.all().length){pageTitle(tx('الكتالوج فارغ','Catalog is empty'));$('main').innerHTML=pageShell(tx('لا توجد منتجات حاليًا','No products yet'),tx('يمكنك حفظ طلب منتج خاص محليًا.','You can save a special product request locally.'),routeLink('request',navLabel('request'),'btn primary'));return;}pageTitle(tx('الكتالوج غير متاح','Catalog unavailable'));$('main').innerHTML=pageShell(tx('تعذر تحميل الكتالوج','The catalog could not load'),tx('سجلات الجهاز محفوظة. لا تُجرى اتصالات بالشبكة.','Device records are preserved. No network requests are made.'),button(tx('إعادة المحاولة','Try again'),'data-reload-catalog','btn primary'));}
@@ -4116,9 +4271,9 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
 
     function renderCollections(){
   if(DEVELOPER_MODE){renderPublicPage('about');return;}
-  if(Catalog.liveStatus==='idle'||Catalog.liveQuery!=='')void ensureLiveCatalog('');
+  prepareLiveCatalog('');
   const brands=[...new Set(Catalog.liveSource('').map(p=>p.brand))];pageTitle(tx('العلامات في الكتالوج','Brands in the catalog'));
-  $('main').innerHTML=pageShell(tx('العلامات في الكتالوج','Brands in the catalog'),tx('ذكر علامة لا يعني شراكة أو تأييدًا.','A brand listing does not imply partnership or endorsement.'),brands.length?'<div class="actions">'+brands.map(name=>button(esc(name),'data-brand="'+esc(name)+'"','btn secondary')).join('')+'</div>':liveCatalogStateMessage(Catalog.liveStatus==='loading'?'loading':Catalog.liveStatus==='unavailable'?'unavailable':'empty'));
+  $('main').innerHTML=pageShell(tx('العلامات في الكتالوج','Brands in the catalog'),tx('ذكر علامة لا يعني شراكة أو تأييدًا.','A brand listing does not imply partnership or endorsement.'),discoveryNavigation('brands')+liveContextNotice()+(brands.length?'<div class="actions">'+brands.map(name=>button(esc(name),'data-brand="'+esc(name)+'"','btn secondary')).join('')+'</div>':liveCatalogStateMessage(Catalog.liveStatus==='loading'?'loading':Catalog.liveStatus==='unavailable'?'unavailable':'empty'))+liveLoadMoreMarkup(''));
 }
     
     function renderHow(){renderPublicPage('about');}
@@ -4237,7 +4392,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
         ui.filters=defaultFilters();ui.sort="featured";navigate("shop",{category:data.category});return;
       }
       if(target.matches("[data-brand]")){
-        ui.filters=defaultFilters();ui.sort="featured";navigate("shop",{brand:data.brand});return;
+        ui.filters=defaultFilters();ui.sort="featured";navigate("shop",{brand:data.brand,section:Catalog.liveSection||liveSectionForRoute()});return;
       }
       if(target.matches("[data-clear-filters]")){
         ui.filters=defaultFilters();ui.sort="featured";
@@ -4892,8 +5047,9 @@ function V2ChoiceResults(products){
 function V2FilterSelect({id,key,label,values,value,choice=false,help=''}){
   return `<div class="v2-filter-field"><label for="${esc(id)}">${esc(label)}</label><select class="select" id="${esc(id)}" ${choice?'data-v2-filter':'data-filter'}="${esc(key)}">${values.map(([val,title])=>`<option value="${esc(val)}"${String(val)===String(value)?' selected':''}>${esc(title)}</option>`).join('')}</select>${help?`<p class="field-help">${esc(help)}</p>`:''}</div>`;
 }
+function catalogPresentationSource(){const route=currentRoute();return Catalog.liveSource(route.name==='search'?normalizeLiveQuery(route.params.get('q')||''):'');}
 function filterMarkup(suffix){
-  const f=ui.filters,choice=V2CatalogChoices(),all=Catalog.all(),source=(f.category?all.filter(p=>p.category===f.category):all).filter(p=>p.demo||p.variantDetailsKnown);
+  const f=ui.filters,choice=V2CatalogChoices(),all=catalogPresentationSource(),source=(f.category?all.filter(p=>p.category===f.category):all).filter(p=>p.demo||p.variantDetailsKnown);
   const any=tx('الكل','All'),options=(values,label=v=>v)=>[['',any],...values.map(v=>[v,label(v)])];
   const select=(key,label,values,value,extra={})=>V2FilterSelect({id:`${key}-${suffix}`,key,label,values,value,...extra});
   return `<div class="v2-filter-fields">
@@ -4921,31 +5077,30 @@ function filterChips(){
 }
 function catalogResults(products,query=''){
   products=V2ChoiceResults(products);
-  const pagination=catalogPage(products,ui.page),route=currentRoute();ui.page=pagination.page;
+  const live=Catalog.usingLive(query),pagination=live?{items:products,page:1,start:products.length?1:0,end:products.length,total:products.length}:catalogPage(products,ui.page),route=currentRoute();ui.page=pagination.page;
   const pageParams=filterParams();for(const [k,v] of Object.entries(V2CatalogChoices()))if(v)pageParams.set(k,v);if(route.name==='search'&&query)pageParams.set('q',query);
   const resultLabel=products.length?`${pagination.start}–${pagination.end} ${tx('من','of')} ${pagination.total} ${tx('منتج','products')}`:tx('لا توجد نتائج','No results');
   const sorts=[['featured',tx('مختاراتنا','Featured')],['low',DEVELOPER_MODE?tx('تكلفة الوصول: الأقل','Landed cost: low first'):tx('السعر: الأقل','Price: low first')],['high',DEVELOPER_MODE?tx('تكلفة الوصول: الأعلى','Landed cost: high first'):tx('السعر: الأعلى','Price: high first')],['newest',tx('الأحدث','Newest')]];
   const toolbar=`<div class="v2-catalog-toolbar"><div><button type="button" class="btn secondary small v2-filter-trigger" data-open="filters">${icon('filter')}${esc(tx('الفلاتر','Filters'))}</button><span id="results-count" class="v2-results-count" role="status" tabindex="-1">${esc(resultLabel)}</span></div><label class="v2-sort"><span>${esc(tx('الترتيب','Sort'))}</span><select class="select" data-sort>${sorts.map(([v,l])=>`<option value="${v}"${ui.sort===v?' selected':''}>${esc(l)}</option>`).join('')}</select></label></div>`;
   const liveMore=liveLoadMoreMarkup(query);
-  const content=products.length?`<div class="product-grid v2-catalog-grid">${pagination.items.map(p=>productCard(p)).join('')}</div>${Catalog.usingLive(query)?liveMore:catalogPaginationMarkup(pagination,route.name==='search'?'search':'shop',pageParams)}`:emptyMarkup(tx('مساحة لاختيار مختلف','Room for a different choice'),tx('وسّع الفلاتر أو أرسل رابط المنتج الذي تبحث عنه.','Try fewer filters, or send the link to what you want.'),tx('طلب منتج','Request a product'),'request','search');
-  return `${toolbar}<div class="v2-selected-filters">${filterChips()}</div>${!products.length?button(tx('مسح الفلاتر','Clear filters'),'data-clear-filters','text-btn'):''}${content}`;
+  const content=products.length?`<div class="product-grid v2-catalog-grid">${pagination.items.map(p=>productCard(p)).join('')}</div>${live?'':catalogPaginationMarkup(pagination,route.name==='search'?'search':'shop',pageParams)}`:emptyMarkup(tx('مساحة لاختيار مختلف','Room for a different choice'),tx('وسّع الفلاتر أو أرسل رابط المنتج الذي تبحث عنه.','Try fewer filters, or send the link to what you want.'),tx('طلب منتج','Request a product'),'request','search');
+  return `${toolbar}<div class="v2-selected-filters">${filterChips()}</div>${!products.length?button(tx('مسح الفلاتر','Clear filters'),'data-clear-filters','text-btn'):''}${live?liveContextNotice():''}${content}${liveMore}`;
 }
 function V2CategoryHeader(){
   const category=ui.filters.category,cap=ui.filters.maxPrice;
   const title=category?v2CategoryLabel(category):cap===50?tx('اختيارات بأقل من 50 دولارًا','The under-$50 edit'):tx('عالم من الاختيارات','A world to choose from');
   const desc=category&&V2_CATEGORY_COPY[category]?localized(V2_CATEGORY_COPY[category]):tx('اكتشف المنتجات، ثم تواصل معنا لمراجعة تكلفة إيصالها إلى الجزائر.','Discover products, then contact us to review fulfillment costs to Algeria.');
-  const links=[['',tx('كل المنتجات','All products')],...['Shoes','Fashion','Beauty','Electronics','Accessories'].map(c=>[c,v2CategoryLabel(c)])];
-  return `<header class="v2-category-heading"><nav class="v2-breadcrumb" aria-label="${esc(tx('مسار التنقل','Breadcrumb'))}">${routeLink('home',tx('الرئيسية','Home'))}<span aria-hidden="true">/</span>${category?routeLink('shop',tx('تسوّق','Shop'))+'<span aria-hidden="true">/</span>':''}<span aria-current="page">${esc(title)}</span></nav><div class="v2-category-title"><div><span class="v2-kicker">ANOX / ${category?esc(category.toUpperCase()):'DISCOVER'}</span><h1>${esc(title)}</h1><p>${esc(desc)}</p></div><span class="v2-category-note">${esc(tx('USD + تقدير الوصول بالدينار','USD + your DZD landed estimate'))}</span></div><nav class="v2-category-links" aria-label="${esc(tx('تصفح الفئات','Browse categories'))}">${links.map(([c,l])=>`<a href="#shop${c?'?category='+encodeURIComponent(c):''}" data-nav${category===c?' aria-current="page"':''}>${esc(l)}</a>`).join('')}</nav></header>`;
+  return `<header class="v2-category-heading"><nav class="v2-breadcrumb" aria-label="${esc(tx('مسار التنقل','Breadcrumb'))}">${routeLink('home',tx('الرئيسية','Home'))}<span aria-hidden="true">/</span>${category?routeLink('shop',tx('تسوّق','Shop'))+'<span aria-hidden="true">/</span>':''}<span aria-current="page">${esc(title)}</span></nav><div class="v2-category-title"><div><span class="v2-kicker">ANOX / ${category?esc(category.toUpperCase()):'DISCOVER'}</span><h1>${esc(title)}</h1><p>${esc(desc)}</p></div><span class="v2-category-note">${esc(tx('USD + تقدير الوصول بالدينار','USD + your DZD landed estimate'))}</span></div>${discoveryNavigation()}</header>`;
 }
 function V2CatalogPage(heading,products,query='',extra=''){
   $('main').innerHTML=`<div class="v2-page v2-catalog-page ${extra}"><div class="v2-container">${heading}<div class="v2-catalog-layout"><aside class="v2-filter-panel" aria-label="${esc(tx('فلاتر المنتجات','Product filters'))}"><div class="v2-filter-heading"><h2>${esc(tx('الفلاتر','Filters'))}</h2>${button(tx('مسح الكل','Clear all'),'data-clear-filters','text-btn')}</div>${filterMarkup('side')}</aside><section aria-label="${esc(tx('المنتجات','Products'))}">${catalogResults(products,query)}</section></div></div></div>`;
 }
 function renderShop(){
   pageTitle(ui.filters.category?v2CategoryLabel(ui.filters.category):tx('تسوّق العلامات','Shop brands'));
-  if(Catalog.liveStatus==='idle'||Catalog.liveQuery!=='')void ensureLiveCatalog('');
+  prepareLiveCatalog('');
   const usingLive=Catalog.usingLive(''),source=usingLive?Catalog.liveSource(''):[];
   if(Catalog.liveStatus==='loading'&&!Catalog.liveRecords.length){$('main').innerHTML='<div class="v2-page v2-catalog-page"><div class="v2-container">'+V2CategoryHeader()+liveCatalogStateMessage('loading')+'</div></div>';return;}
-  if(Catalog.liveStatus==='unavailable'){ $('main').innerHTML='<div class="v2-page v2-catalog-page"><div class="v2-container">'+V2CategoryHeader()+liveCatalogStateMessage('unavailable')+'</div></div>';return; }
+  if(Catalog.liveStatus==='unavailable'){ $('main').innerHTML='<div class="v2-page v2-catalog-page"><div class="v2-container">'+V2CategoryHeader()+(Catalog.liveRestartRequired?liveContextNotice():liveCatalogStateMessage('unavailable'))+'</div></div>';return; }
   V2CatalogPage(V2CategoryHeader(),filteredProducts(source),'');
 }
 
@@ -4953,16 +5108,17 @@ function refreshCatalog(){
   ui.page=1;
   const active=document.activeElement,focusId=active?.id,sortFocused=active?.matches('[data-sort]'),route=currentRoute(),params=filterParams();
   for(const [k,v] of Object.entries(V2CatalogChoices()))if(v)params.set(k,v);
+  if(route.params.get('section'))params.set('section',route.params.get('section'));
   if(route.name==='search'&&route.params.get('q'))params.set('q',route.params.get('q'));
   history.replaceState(null,'','#'+(route.name==='search'?'search':'shop')+(params.toString()?'?'+params.toString():''));
   if(route.name==='search')renderSearch();else renderShop();updateShell();
   if(ui.dialog==='filters'){
     const target=focusId?$(focusId):null;if(target)target.focus({preventScroll:true});
-    const apply=$('apply-filters');if(apply)apply.textContent=tx('عرض المنتجات','Show products')+' · '+V2ChoiceResults(filteredProducts(route.name==='search'&&route.params.get('q')?searchCatalog(route.params.get('q')):Catalog.all())).length;
+    const apply=$('apply-filters');if(apply)apply.textContent=tx('عرض المنتجات','Show products')+' · '+V2ChoiceResults(filteredProducts(catalogPresentationSource())).length;
   }else{const target=focusId?$(focusId):sortFocused?$('main').querySelector('[data-sort]'):null;target?.focus({preventScroll:true});}
 }
 function openFilters(){
-  const route=currentRoute(),count=V2ChoiceResults(filteredProducts(route.name==='search'?searchCatalog(route.params.get('q')||''):Catalog.all())).length;
+  const route=currentRoute(),count=V2ChoiceResults(filteredProducts(catalogPresentationSource())).length;
   openDialog('filters',tx('تصفية المنتجات','Filter products'),`<div class="v2-filter-drawer">${filterMarkup('drawer')}<div class="v2-filter-actions">${button(tx('مسح الكل','Clear all'),'data-clear-filters','btn secondary')}${button(tx('عرض المنتجات','Show products')+' · '+count,'id="apply-filters" data-close','btn primary')}</div></div>`);
 }
 function V2SetChoice(key,value){
@@ -5012,7 +5168,7 @@ function updateStorageBanner(){
 function updateCatalogStatus(){
   let banner=$('catalog-status');if(!banner){banner=document.createElement('div');banner.id='catalog-status';banner.className='storage-banner';banner.setAttribute('role','status');$('storage-banner').after(banner);}
   const live=Catalog.liveStatus,visible=DEVELOPER_MODE?(live==='loading'||live==='unavailable'||live==='partial'||Catalog.status!=='ready'):['home','shop','search','new','brands','wishlist'].includes(currentRoute().name)&&['loading','unavailable','partial'].includes(live);banner.hidden=!visible;
-  banner.textContent=live==='loading'?tx('جارٍ تحميل منتجات Nike…','Loading Nike products…'):live==='unavailable'?tx('تعذر تحميل كتالوج Nike الآن.','Nike catalog could not be loaded.'):live==='partial'?tx('عُرضت بعض منتجات Nike؛ يمكنك تحميل المزيد.','Some Nike products are shown; you can load more.'):Catalog.status==='loading'?tx('جارٍ تهيئة الكتالوج…','Preparing the catalog…'):Catalog.status==='partial'?tx('بعض بيانات الكتالوج المحلي غير متاحة.','Some local catalog data is unavailable.'):tx('الكتالوج غير متاح.','Catalog unavailable.');banner.inert=!!ui.dialog;
+  banner.textContent=live==='loading'?tx('جارٍ تحميل المنتجات…','Loading products…'):live==='unavailable'?tx('تعذر تحميل الكتالوج الآن.','The catalog could not be loaded.'):live==='partial'?tx('عُرضت بعض المنتجات؛ يمكنك تحميل المزيد.','Some products are shown; you can load more.'):Catalog.status==='loading'?tx('جارٍ تهيئة الكتالوج…','Preparing the catalog…'):Catalog.status==='partial'?tx('بعض بيانات الكتالوج المحلي غير متاحة.','Some local catalog data is unavailable.'):tx('الكتالوج غير متاح.','Catalog unavailable.');banner.inert=!!ui.dialog;
 }
 function pageTitle(label){document.title=label+' — AnoX';document.querySelector('meta[name="description"]')?.setAttribute('content',tx('AnoX — اختيارات من أمريكا مع تقدير واضح لوصولها إلى الجزائر.','AnoX — discoveries from the US, with a clear estimated cost to Algeria.'));}
 
@@ -5042,23 +5198,23 @@ function renderCompare(){
     }
 
 function renderNew(){
-  if(Catalog.liveStatus==='idle'||Catalog.liveQuery!=='')void ensureLiveCatalog('');pageTitle(tx('اكتشف الكتالوج','Explore the catalog'));
-  const products=Catalog.liveSource('');$('main').innerHTML=pageShell(tx('اكتشف الكتالوج','Explore the catalog'),tx('اختيارات من المصدر المتصل. تحقّق من السعر والخيارات لدى المتجر قبل الطلب.','Listings from the connected source. Confirm price and options with the retailer before requesting a purchase.'),products.length?productGrid(products):liveCatalogStateMessage(Catalog.liveStatus==='loading'?'loading':Catalog.liveStatus==='unavailable'?'unavailable':'empty'));
+  prepareLiveCatalog('');pageTitle(tx('اكتشف الكتالوج','Explore the catalog'));
+  const products=Catalog.liveSource('');$('main').innerHTML=pageShell(tx('اكتشف الكتالوج','Explore the catalog'),tx('اختيارات من المصدر المتصل. تحقّق من السعر والخيارات لدى المتجر قبل الطلب.','Listings from the connected source. Confirm price and options with the retailer before requesting a purchase.'),discoveryNavigation('new')+liveContextNotice()+(products.length?productGrid(products):liveCatalogStateMessage(Catalog.liveStatus==='loading'?'loading':Catalog.liveStatus==='unavailable'?'unavailable':'empty'))+liveLoadMoreMarkup(''));
 }
 
 
 /* Component: home.js */
 function renderHome() {
   pageTitle(tx('اختيارات أبعد. تكلفة أوضح.','Good finds. A clearer cost.'));
-  if(Catalog.liveStatus==='idle'||Catalog.liveQuery!=='')void ensureLiveCatalog('');
+  prepareLiveCatalog('');
   const catalog=Catalog.usingLive('')?Catalog.liveSource(''):[];
-  const products=catalog.slice(0,4);
+  const products=catalog;
   const categories=['Shoes','Fashion','Beauty','Accessories','Sports','Lifestyle'].filter(key=>catalog.some(product=>product.category===key));
-  const catalogBlock=Catalog.liveStatus==='loading'&&!catalog.length?liveCatalogStateMessage('loading'):Catalog.liveStatus==='unavailable'?liveCatalogStateMessage('unavailable'):products.length?'<section class="anox-home-selection" aria-labelledby="anox-selection-title"><div class="anox-home-section-head"><h2 id="anox-selection-title">'+esc(tx('اختيارات تستحق نظرة.','Worth a closer look.'))+'</h2>'+routeLink('shop',tx('كل المنتجات','View all products'),'v2-inline-link')+'</div><div class="anox-home-grid">'+products.map(product=>productCard(product)).join('')+'</div></section>':liveCatalogStateMessage('empty');
+  const catalogBlock=Catalog.liveStatus==='loading'&&!catalog.length?liveCatalogStateMessage('loading'):Catalog.liveStatus==='unavailable'?(Catalog.liveRestartRequired?liveContextNotice():liveCatalogStateMessage('unavailable')):products.length?'<section class="anox-home-selection" aria-labelledby="anox-selection-title"><div class="anox-home-section-head"><h2 id="anox-selection-title">'+esc(tx('اختيارات تستحق نظرة.','Worth a closer look.'))+'</h2>'+routeLink('shop?section='+liveSectionForRoute(),tx('كل المنتجات','View all products'),'v2-inline-link')+'</div><div class="anox-home-grid">'+products.map(product=>productCard(product)).join('')+'</div></section>':liveCatalogStateMessage('empty');
   $('main').innerHTML='<div class="v2-home anox-home">'+
     '<section class="anox-home-hero anox-home-shell" aria-labelledby="anox-home-title"><div class="anox-home-intro"><p class="anox-home-eyebrow">'+esc(tx('من أمريكا إلى الجزائر','FROM THE US TO ALGERIA'))+'</p><h1 id="anox-home-title"><span>'+esc(tx('اختيارات أبعد.','Good finds.'))+'</span><span>'+esc(tx('تكلفة أوضح.','A clearer cost.'))+'</span></h1><p class="anox-home-description">'+esc(tx('اكتشف منتجات من أمريكا، وتواصل معنا لمراجعة تكلفة شرائها وإيصالها إلى الجزائر.','Discover U.S. products and contact us to review purchasing and fulfillment costs to Algeria.'))+'</p>'+routeLink('shop',tx('استكشف المنتجات','Explore products'),'v2-primary-link')+'</div><figure class="anox-home-visual">'+V2HeroPicture()+'</figure></section>'+
     '<div class="anox-home-shell">'+(categories.length?'<nav class="anox-home-categories" aria-label="'+esc(tx('تسوّق حسب الفئة','Shop by category'))+'"><span>'+esc(tx('تسوّق حسب الفئة','Shop by category'))+'</span><div>'+categories.map(key=>routeLink('shop?category='+encodeURIComponent(key),v2CategoryLabel(key),'anox-home-category')).join('')+'</div></nav>':'')+
-    catalogBlock+
+    discoveryNavigation('home')+liveContextNotice()+catalogBlock+liveLoadMoreMarkup('')+
     '<section class="anox-home-request"><div><h2>Estée Lauder Advanced Night Repair Discovery Set</h2><p>'+esc(tx('متاح لدى Macy’s بسعر 55 دولارًا. قد تحصل AnoX على عمولة من الروابط المؤهلة.','Available at Macy’s for $55. AnoX may earn a commission from qualifying links.'))+'</p></div><a href="https://sovrn.co/11xlid1" target="_blank" rel="sponsored noopener noreferrer" class="v2-inline-link">'+esc(tx('عرض لدى Macy’s','View at Macy’s'))+'</a></section>'+    '<section class="anox-home-request" aria-labelledby="anox-request-title"><div><h2 id="anox-request-title">'+esc(tx('لديك منتج آخر في بالك؟','Something else in mind?'))+'</h2><p>'+esc(tx('راسلنا برابط المنتج والخيارات التي تبحث عنها.','Email us the product link and the options you need.'))+'</p></div>'+routeLink('request',tx('أضف رابط منتج','Add a product link'),'v2-inline-link')+'</section></div></div>';
 }
 
@@ -5460,13 +5616,13 @@ function activateSuggestion(index){
 }
 
 function renderSearch(){
-  const query=text(currentRoute().params.get('q')||'',100).trim();
+  const query=normalizeLiveQuery(currentRoute().params.get('q')||'');
   pageTitle(tx('نتائج البحث','Search results'));
-  if(Catalog.liveStatus==='idle'||Catalog.liveQuery!==query)void ensureLiveCatalog(query);
+  prepareLiveCatalog(query);
   const usingLive=Catalog.usingLive(query),source=usingLive?Catalog.liveSource(query):[];
   const heading='<header class="v2-category-heading"><nav class="v2-breadcrumb" aria-label="'+esc(tx('مسار التنقل','Breadcrumb'))+'">'+routeLink('home',tx('الرئيسية','Home'))+'<span aria-hidden="true">/</span><span>'+esc(tx('البحث','Search'))+'</span></nav><div class="v2-category-title"><div><h1>'+esc(query?tx('نتائج «','Results for “')+query+(state.lang==='ar'?'»':'”'):tx('ابحث عن اختيارك القادم','Find your next discovery'))+'</h1></div></div><form class="v2-search-page-form" id="search-page-form"><label class="sr-only" for="search-page-input">'+esc(tx('منتج، علامة، فئة أو رابط','Product, brand, category or URL'))+'</label><input class="input" id="search-page-input" name="q" type="search" maxlength="2048" value="'+esc(query)+'" placeholder="'+esc(tx('ابحث عن منتج أو الصق رابطًا','Search products or paste a link'))+'"><button class="btn primary" type="submit">'+icon('search')+'<span>'+esc(tx('بحث','Search'))+'</span></button></form></header>';
   if(Catalog.liveStatus==='loading'&&!Catalog.liveRecords.length){$('main').innerHTML='<div class="v2-page v2-catalog-page v2-search-page"><div class="v2-container">'+heading+liveCatalogStateMessage('loading',query)+'</div></div>';return;}
-  if(Catalog.liveStatus==='unavailable'){ $('main').innerHTML='<div class="v2-page v2-catalog-page v2-search-page"><div class="v2-container">'+heading+liveCatalogStateMessage('unavailable',query)+'</div></div>';return; }
+  if(Catalog.liveStatus==='unavailable'){ $('main').innerHTML='<div class="v2-page v2-catalog-page v2-search-page"><div class="v2-container">'+heading+(Catalog.liveRestartRequired?liveContextNotice():liveCatalogStateMessage('unavailable',query))+'</div></div>';return; }
   V2CatalogPage(heading,filteredProducts(source),query,'v2-search-page');
 }
 
@@ -5614,14 +5770,14 @@ async function loadWishlistProducts(ids){
   wishlistLoading=false;if(currentRoute().name==='wishlist')renderRoute({focus:false});
 }
 
-async function fetchCanonicalProduct(id){const raw=await window.AnoXLiveCatalog.getProduct(id),product=normalizeProduct(raw,PROVIDERS.descriptor('nike-live'));if(!Catalog.liveRecords.some(p=>p.id===product.id))Catalog.liveRecords=Object.freeze([...Catalog.liveRecords,product]);Catalog.rebuildRecords();SearchService.rebuild();return product;}
+async function fetchCanonicalProduct(id){const raw=await window.AnoXLiveCatalog.getProduct(id),product=normalizeProduct(raw,PROVIDERS.descriptor('nike-live'));Catalog.rememberDetail(product);SearchService.rebuild();return product;}
 async function ensureLiveProduct(slug){productResolution.set(slug,'loading');try{await fetchCanonicalProduct(slug.slice('nike-live--'.length));productResolution.set(slug,'ready');}catch{productResolution.set(slug,'unavailable');}if(currentRoute().path==='product/'+slug)renderRoute({focus:false});}
 window.addEventListener('anox-auth-change',()=>{if(currentRoute().name==='account'&&!ui.rendering)renderRoute({focus:false});});
 window.addEventListener('anox-consent-change',()=>{if(currentRoute().name==='privacy')renderRoute({focus:false});});
 document.addEventListener('click',async event=>{
  const node=event.target.closest('button,a');if(!node)return;
  if(node.hasAttribute('data-wishlist-retry')){event.preventDefault();wishlistFailures.clear();renderLiveWishlist();}
- if(node.hasAttribute('data-live-retry')){event.preventDefault();Catalog.resetLive();await ensureLiveCatalog(currentRoute().name==='search'?currentRoute().params.get('q')||'':'');}
+ if(node.hasAttribute('data-live-retry')||node.hasAttribute('data-live-restart')){event.preventDefault();if(node.disabled)return;node.disabled=true;const query=currentRoute().name==='search'?currentRoute().params.get('q')||'':'';try{await ensureLiveCatalog(query,node.hasAttribute('data-live-retry')&&Catalog.liveNextCursor!==null&&!Catalog.liveRestartRequired,{restart:node.hasAttribute('data-live-restart')||Catalog.liveNextCursor===null});}finally{if(node.isConnected)node.disabled=false;}}
  if(node.hasAttribute('data-account-retry')){event.preventDefault();void cloudLoadAccount(true);renderProductionAccount();}
  if(node.hasAttribute('data-anox-consent')){event.preventDefault();window.AnoXAnalytics.setConsent(node.dataset.anoxConsent);}
  if(node.hasAttribute('data-auth-resend')||node.hasAttribute('data-auth-recover')){
