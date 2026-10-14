@@ -419,15 +419,17 @@
   // Scan a full source page per metered query, while emitting at most one
   // 24-product mixed page. Cursor offsets retain unused verified products.
   function parseMixedCursor(value){
-    if(value===null)return {c:Array(6).fill(null),o:Array(6).fill(0),until:null};
+    if(value===null)return {c:Array(6).fill(null),o:Array(6).fill(0),until:null,j:0,jMore:false};
     let obj;try{obj=JSON.parse(value);}catch{throw catalogError("catalog_cursor_invalid",400);}
     if(!record(obj)||obj.v!==2||!Array.isArray(obj.c)||obj.c.length!==6||
        !Array.isArray(obj.o)||obj.o.length!==6||
        obj.c.some(v=>v!==null&&(typeof v!=="string"||v.length>1024))||
        obj.o.some(v=>!Number.isSafeInteger(v)||v<0||v>24)||
-       !Number.isSafeInteger(obj.until)||obj.until<=0)throw catalogError("catalog_cursor_invalid",400);
+       !Number.isSafeInteger(obj.until)||obj.until<=0||
+       (obj.j!==undefined&&(!Number.isSafeInteger(obj.j)||obj.j<0||obj.j>5000))||
+       (obj.jMore!==undefined&&typeof obj.jMore!=="boolean"))throw catalogError("catalog_cursor_invalid",400);
     if(Date.now()>=obj.until)throw catalogError("catalog_cursor_expired",410);
-    return {c:obj.c,o:obj.o,until:obj.until};
+    return {c:obj.c,o:obj.o,until:obj.until,j:obj.j??0,jMore:obj.jMore??false};
   }
   function shuffleRoundRobin(groups,limit){
     const order=groups.map((_,i)=>i),used=groups.map(()=>0);
@@ -473,7 +475,22 @@
       });
     }
     if(signal?.aborted){const aborted=new Error("catalog_aborted");aborted.name="AbortError";throw aborted;}
-    if(errors===6)throw catalogError("catalog_unavailable",503);
+    // The existing CJ Nike merchant feed is a free-to-Channel3 source, and
+    // is consulted only for sparse mixed pages or while its cursor is active.
+    // Never count brand text alone: the CJ adapter validates NIKE ownership,
+    // direct nike.com destinations and Nike-hosted images before presentation.
+    let cj=null;
+    const sparse=groups.reduce((count,items)=>count+items.length,0)<normalized.limit;
+    if(sparse&&state.j<5000&&(normalized.cursor===null||state.jMore)){
+      try{
+        cj=await fetchCjNikePreviewPage({limit:24,offset:state.j,signal});
+        const now=Date.now();
+        earliestFetched=earliestFetched===null?now:Math.min(earliestFetched,now);
+        earliestExpiry=Math.min(earliestExpiry,now+120000);
+      }catch{cj=null;}
+    }
+    if(errors===6&&!cj)throw catalogError("catalog_unavailable",503);
+    groups.push(cj?.items||[]);
     const {items,used}=shuffleRoundRobin(groups,normalized.limit);
     for(let i=0;i<6;i++){
       if(cursors[i]===""||!totals[i]&&!groups[i].length&&next[i]==="")continue;
@@ -487,7 +504,13 @@
         }
       }
     }
-    const nextCursor=next.every(v=>v==="")?null:JSON.stringify({v:2,c:next,o:nextOffsets,until:earliestExpiry});
+    const consumed=used[6]||0;
+    const nextJ=state.j+consumed;
+    const cjMore=cj?nextJ<5000&&(consumed<cj.items.length||cj.nextOffset!==null):state.jMore;
+    // A source failure preserves its last cursor for an explicit later retry.
+    const nextCursor=next.every(v=>v==="")&&!cjMore?null:JSON.stringify({
+      v:2,c:next,o:nextOffsets,until:earliestExpiry,j:nextJ,jMore:cjMore
+    });
     return {q:"",section:"featured",limit:normalized.limit,items,total:null,nextCursor,
       fetchedAt:new Date(earliestFetched??Date.now()).toISOString(),
       expiresAt:new Date(Number.isFinite(earliestExpiry)?earliestExpiry:Date.now()+60000).toISOString(),
