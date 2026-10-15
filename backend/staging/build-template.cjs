@@ -30,7 +30,7 @@ function buildStagingTemplate() {
   parameters.TotalDailyLimit.MaxValue = 28;
   parameters.UpstreamPerSecondLimit.Default = 2;
   parameters.UpstreamPerSecondLimit.MaxValue = 2;
-  parameters.StagingCatalogConcurrency = { Type: 'Number', Default: 3, MinValue: 1, MaxValue: 3, Description: 'Dedicated staging catalog reservation; commerce default 2 plus catalog 3 require at least 105 initially available concurrency.' };
+  parameters.StagingCatalogConcurrency = { Type: 'Number', Default: 3, MinValue: 1, MaxValue: 3, Description: 'Dedicated staging catalog reservation; commerce default 4 plus catalog 3 require at least 107 initially available concurrency.' };
   const resources = rebind({ ...catalog.Resources, ...commerce.Resources });
   resources.Channel3Function.Properties.FunctionName = sub('${AWS::StackName}-catalog');
   resources.Channel3Function.Properties.ReservedConcurrentExecutions = ref('StagingCatalogConcurrency');
