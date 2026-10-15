@@ -30,8 +30,18 @@ function filtersFor(raw) {
   if (raw === undefined) return {};
   if (typeof raw !== 'string' || Buffer.byteLength(raw) > 2048) fail(400, 'INVALID_FILTERS');
   let input; try {input = JSON.parse(raw);} catch {fail(400, 'INVALID_FILTERS');}
-  if (!object(input) || Object.keys(input).some(key => !['conditions', 'availability'].includes(key))) fail(400, 'INVALID_FILTERS');
+  if (!object(input) || Object.keys(input).some(key => !['conditions', 'availability', 'website_ids'].includes(key))) fail(400, 'INVALID_FILTERS');
   const output = {};
+  // Exact approved U.S. retailer IDs, never an arbitrary merchant or
+  // marketplace URL. This is the Channel3 search/browse website_ids filter.
+  // Keeping only one source per request avoids cross-store false attribution.
+  if (Object.hasOwn(input, 'website_ids')) {
+    const allowed = ['nike.com', 'adidas.com', 'sephora.com', 'levi.com',
+      'tjmaxx.tjx.com', 'elfcosmetics.com'];
+    if (!Array.isArray(input.website_ids) || input.website_ids.length !== 1 ||
+        !allowed.includes(input.website_ids[0])) fail(400, 'INVALID_FILTERS');
+    output.website_ids = [input.website_ids[0]];
+  }
   for (const key of ['availability', 'conditions']) {
     if (!(key in input)) continue;
     const allowed = key === 'conditions' ? ['new', 'used'] : ['InStock', 'OutOfStock'];

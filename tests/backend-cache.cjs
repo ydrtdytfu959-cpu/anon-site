@@ -221,3 +221,34 @@ test('cursor expiry during cache reads or lease acquisition cannot spend another
     assert.equal(response.statusCode,410);assert.equal(body(response).error,'CURSOR_EXPIRED');assert.equal(f.calls.length,spent);assert.equal(f.store.leases.size,0);
   });
 });
+
+test('website_ids restricts the upstream search to one exact official US store and keeps native cache identities independent',async()=>{
+ const f=fixture(),q=event({q:'shoes',filters:JSON.stringify({website_ids:['adidas.com']})});
+ const first=await f.handler(q);
+ assert.equal(first.statusCode,200);
+ assert.deepEqual(f.calls[0].filters,{website_ids:['adidas.com']});
+ await f.handler(q);
+ assert.equal(f.calls.length,1,'same official retailer search reuses cached result');
+ const second=await f.handler(event({q:'shoes',filters:JSON.stringify({website_ids:['nike.com']})}));
+ assert.equal(second.statusCode,200);
+ assert.deepEqual(f.calls[1].filters,{website_ids:['nike.com']});
+ assert.equal(f.calls.length,2,'different retailer must not reuse another store cache');
+ const third=await f.handler(event({q:'shoes',filters:JSON.stringify({website_ids:['adidas.com'],conditions:['new']})}));
+ assert.equal(third.statusCode,200);
+ assert.deepEqual(f.calls[2].filters,{website_ids:['adidas.com'],conditions:['new']});
+});
+
+test('rejects marketplace website_ids, extra domains, spoofed stores, and unknown filter fields before provider work',async()=>{
+ const f=fixture();
+ const bad=[['poshmark.com'],['vinted.com'],['adidas.com.evil.example'],
+ ['www.adidas.com'],['https://adidas.com'],[],['adidas.com','nike.com'],
+ [null],['adidas.com','adidas.com']];
+ for(const website_ids of bad){
+   const r=await f.handler(event({q:'shoes',filters:JSON.stringify({website_ids})}));
+   assert.equal(r.statusCode,400,JSON.stringify(website_ids));
+   assert.equal(body(r).error,'INVALID_FILTERS');
+ }
+ const r=await f.handler(event({q:'shoes',filters:JSON.stringify({website_ids:['nike.com'],extra:'test'})}));
+ assert.equal(r.statusCode,400);
+ assert.equal(f.calls.length,0,'reject before spending credits');
+});
