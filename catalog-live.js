@@ -290,12 +290,12 @@
     "TJ Maxx":["tjmaxx.tjx.com","www.tjmaxx.tjx.com","tjmaxx.com","www.tjmaxx.com"]
   });
   const FEATURED_SOURCES=Object.freeze([
-    ["Nike","Nike"],["Adidas","adidas"],["Levi's","Levi's"],
+    ["Levi's","Levi's women"],["Adidas","adidas"],["Levi's","Levi's"],
     ["e.l.f. Cosmetics","e.l.f. cosmetics"],["Sephora","Sephora"],["TJ Maxx","TJ Maxx"]
   ]);
   const SECTION_QUERIES=Object.freeze({
-    men:"Levi's men",women:"Nike women",shoes:"adidas",clothing:"Levi's",
-    beauty:"e.l.f. cosmetics",accessories:"Nike accessories",sports:"Nike sports",brands:"Sephora"
+    men:"Levi's men",women:"Levi's women",shoes:"adidas",clothing:"Levi's",
+    beauty:"e.l.f. cosmetics",accessories:"Levi's accessories",sports:"adidas sports",brands:"Sephora"
   });
   const OFFICIAL_DOMAINS=new Set(Object.values(OFFICIAL_STORES).flat());
   function officialOffers(raw) {
@@ -336,7 +336,7 @@
     if(!sellers.length)return null;
     const retailer=sellers[0];
     const label=Object.entries(OFFICIAL_STORES).find(([,domains])=>domains.includes(retailer))?.[0];
-    if(!label)return null;
+    if(!label||label==="Nike")return null; // Nike presentation-only catalog is paused.
     // Ignore volatile fields even from an older backend during rollout.
     const name=localized(title,title);
     const media=(Array.isArray(raw.images)?raw.images:[]).slice(0,1).flatMap(image=>{const url=trustedImageUrl(firstValue(image?.cleaned_url,image?.url));if(!url)return [];return [{url,alt:localized(stringValue(image?.alt_text)||title,title),width:420,height:390}];});
@@ -521,22 +521,9 @@
       });
     }
     if(signal?.aborted){const aborted=new Error("catalog_aborted");aborted.name="AbortError";throw aborted;}
-    // The existing CJ Nike merchant feed is a free-to-Channel3 source, and
-    // is consulted only for sparse mixed pages or while its cursor is active.
-    // Never count brand text alone: the CJ adapter validates NIKE ownership,
-    // direct nike.com destinations and Nike-hosted images before presentation.
-    let cj=null;
-    const sparse=groups.reduce((count,items)=>count+items.length,0)<normalized.limit;
-    if(sparse&&state.j<5000&&(normalized.cursor===null||state.jMore)){
-      try{
-        cj=await fetchCjNikePreviewPage({limit:24,offset:state.j,signal});
-        const now=Date.now();
-        earliestFetched=earliestFetched===null?now:Math.min(earliestFetched,now);
-        earliestExpiry=Math.min(earliestExpiry,now+120000);
-      }catch{cj=null;}
-    }
-    if(errors===6&&!cj)throw catalogError("catalog_unavailable",503);
-    groups.push(cj?.items||[]);
+    // Nike display-only CJ fallback is intentionally disabled; keep other stores intact.
+    if(errors===6)throw catalogError("catalog_unavailable",503);
+    groups.push([]);
     const {items,used}=shuffleRoundRobin(groups,normalized.limit);
     for(let i=0;i<6;i++){
       if(cursors[i]===""||!totals[i]&&!groups[i].length&&next[i]==="")continue;
@@ -550,11 +537,7 @@
         }
       }
     }
-    const consumed=used[6]||0;
-    const nextJ=cj?(consumed<cj.items.length?
-      (consumed?cj.items[consumed-1].sourceIndex+1:Math.min(state.j+24,5000)):
-      (cj.nextOffset??Math.min(state.j+24,5000))):state.j;
-    const cjMore=cj?nextJ<5000&&(consumed<cj.items.length||cj.nextOffset!==null):state.jMore;
+    const nextJ=0,cjMore=false;
     // A source failure preserves its last cursor for an explicit later retry.
     const nextCursor=next.every(v=>v==="")&&!cjMore?null:JSON.stringify({
       v:2,c:next,o:nextOffsets,until:earliestExpiry,j:nextJ,jMore:cjMore
@@ -592,18 +575,11 @@
   async function fetchChannel3Page(options = {}) {
     const normalized = channel3Options(options),signal=options.signal;
     if(!normalized.q&&normalized.section==="featured")return fetchMixedPage(normalized,signal);
-    // CJ-owned continuation never accidentally reaches Channel3.
-    if(normalized.cursor?.startsWith("cj:"))return fetchCjNikeShelf(normalized,signal);
+    // Do not revive withdrawn CJ Nike pages, including old bookmarked cursors.
+    if(normalized.cursor?.startsWith("cj:"))throw catalogError("catalog_cursor_invalid",400);
     try {
-      const result=parseChannel3Page(await readJson(buildChannel3Url(normalized),signal,channel3Provider.timeoutMs),normalized);
-      if(result.items.length||normalized.cursor!==null||!cjNikeFallbackTerm(normalized))return result;
-      try{return await fetchCjNikeShelf(normalized,signal);}catch{return result;}
+      return parseChannel3Page(await readJson(buildChannel3Url(normalized),signal,channel3Provider.timeoutMs),normalized);
     } catch (error) {
-      // A failed upstream search cannot empty an official Nike shelf if CJ works.
-      // But never switch the identity of a Channel3 continuation mid-pagination.
-      if(normalized.cursor===null&&cjNikeFallbackTerm(normalized)){
-        try{return await fetchCjNikeShelf(normalized,signal);}catch{}
-      }
       if(normalized.cursor!==null&&error.message==="catalog_http_400")throw catalogError("catalog_cursor_invalid",400);
       if(normalized.cursor!==null&&error.message==="catalog_http_410")throw catalogError("catalog_cursor_expired",410);
       throw error;
@@ -710,7 +686,10 @@
   }
   async function getChannel3Product(productId, {options = {}, signal} = {}) {
     const selected = detailSelection(options);
-    return parseChannel3Detail(await readJson(buildChannel3DetailUrl(productId, selected), signal, channel3Provider.timeoutMs), productId, {options:selected});
+    const detail=parseChannel3Detail(await readJson(buildChannel3DetailUrl(productId, selected), signal, channel3Provider.timeoutMs), productId, {options:selected});
+    if(detail.offers.some(offer=>["nike.com","www.nike.com"].includes(offer.merchantDomain)) ||
+       detail.brands.some(brand=>/^(nike|jordan)$/i.test(brand.name)))throw catalogError("catalog_not_approved",403);
+    return detail;
   }
 
   return Object.freeze({ provider, nikeProvider: provider, channel3Provider, API_BASE, CHANNEL3_API_BASE, IMAGE_HOSTS, buildCatalogUrl, buildChannel3Url, getProduct, normalizeNikeProduct, normalizeCjNikePreview, parseCjNikePreviewPage, fetchCjNikePreviewPage, getCjNikePreviewProduct, normalizeChannel3Product, parseCatalogPage, parseChannel3Page, fetchPage, fetchChannel3Page, buildChannel3DetailUrl, parseChannel3Detail, getChannel3Product });

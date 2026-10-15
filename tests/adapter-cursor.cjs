@@ -9,9 +9,9 @@ function adapter(fetch = async () => { throw Error('Unexpected network request')
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../catalog-live.js'), 'utf8'), context);
   return context.module.exports;
 }
-const product = (id = 'p1', patch = {}) => ({ id, title: 'Running shoe', brands: [{ id: 'b1', name: 'Nike' }],
+const product = (id = 'p1', patch = {}) => ({ id, title: 'Running shoe', brands: [{ id: 'b1', name: 'Adidas' }],
   images: [{ cleaned_url: 'https://cdn.trychannel3.com/clean.jpg', url: 'https://cdn.trychannel3.com/main.jpg' }],
-  offers: [{ url: 'https://buy.trychannel3.com/p1', domain: 'nike.com', availability: 'InStock', condition: 'new', price: { price: 45.99, currency: 'USD' } }], ...patch });
+  offers: [{ url: 'https://buy.trychannel3.com/p1', domain: 'adidas.com', availability: 'InStock', condition: 'new', price: { price: 45.99, currency: 'USD' } }], ...patch });
 function envelope(products = [product()], next = null, patch = {}) {
   const now = Date.now();
   return { provider: 'channel3', data: { products, next_page_token: next }, fetchedAt: new Date(now - 60000).toISOString(), expiresAt: new Date(now + 240000).toISOString(), ...patch };
@@ -26,15 +26,15 @@ test('Astra presentation catalog accepts only the four approved brands or explic
  product('reseller',{brands:[{name:'Nike'}],offers:[{url:'https://buy.trychannel3.com/reseller',domain:'kickscrew.com'}]}),
  product('fake-official',{brands:[{name:'Nike'}],offers:[{url:'https://wrong.example/test',domain:'nike.com'}]})];
  const r=api.parseChannel3Page(envelope([...matching,seller,...rejected],'next'));
- assert.deepEqual(r.items.map(x=>x.id),[...matching,seller].map(x=>x.id));
- assert.equal(r.invalidCount,rejected.length);
+ assert.deepEqual(r.items.map(x=>x.id),[...matching.slice(1),seller].map(x=>x.id));
+ assert.equal(r.invalidCount,rejected.length+1); // Nike is deliberately excluded.
  assert.equal(r.nextCursor,'next');
  assert.equal(api.normalizeChannel3Product(product('unknown',{brands:[],offers:[]})),null);
 });
 test('Astra mixes six official stores per featured page with bounded independent cursors',async()=>{
- const terms=['Nike','adidas',"Levi's",'e.l.f. cosmetics','Sephora','TJ Maxx'];
- const brands=['Nike','adidas',"Levi's",'e.l.f. Cosmetics','Sephora Collection','Other'];
- const domains=['nike.com','adidas.com','levi.com','elfcosmetics.com','sephora.com','tjmaxx.tjx.com'];
+ const terms=["Levi's women",'adidas',"Levi's",'e.l.f. cosmetics','Sephora','TJ Maxx'];
+ const brands=["Levi's",'adidas',"Levi's",'e.l.f. Cosmetics','Sephora Collection','Other'];
+ const domains=['levi.com','adidas.com','levi.com','elfcosmetics.com','sephora.com','tjmaxx.tjx.com'];
  const calls=[];
  const api=adapter(async url=>{
    const u=new URL(url),term=u.searchParams.get('q'),i=terms.indexOf(term),cursor=u.searchParams.get('page_token');
@@ -45,7 +45,7 @@ test('Astra mixes six official stores per featured page with bounded independent
    })),cursor?null:'next-'+i)),{headers:{'content-type':'application/json'}});
  });
  const first=await api.fetchChannel3Page({section:'featured',limit:24});
- assert.equal(first.items.length,24);assert.equal(new Set(first.items.map(p=>p.brand)).size,6);
+ assert.equal(first.items.length,24);assert.equal(new Set(first.items.map(p=>p.brand)).size,5);
  assert.equal(calls.length,6);assert.deepEqual(calls.map(c=>c.term),terms);
  const second=await api.fetchChannel3Page({section:'featured',cursor:first.nextCursor});
  assert.equal(second.items.length,24);assert.equal(second.nextCursor,null);
@@ -55,9 +55,9 @@ test('Astra mixes six official stores per featured page with bounded independent
 });
 
 test('mixed official discovery scans 24 upstream records and preserves every unused verified item',async()=>{
- const terms=['Nike','adidas',"Levi's",'e.l.f. cosmetics','Sephora','TJ Maxx'];
- const domains=['nike.com','adidas.com','levi.com','elfcosmetics.com','sephora.com','tjmaxx.tjx.com'];
- const brands=['Nike','Adidas',"Levi's",'e.l.f. Cosmetics','Sephora Collection','Other'];
+ const terms=["Levi's women",'adidas',"Levi's",'e.l.f. cosmetics','Sephora','TJ Maxx'];
+ const domains=['levi.com','adidas.com','levi.com','elfcosmetics.com','sephora.com','tjmaxx.tjx.com'];
+ const brands=["Levi's",'Adidas',"Levi's",'e.l.f. Cosmetics','Sephora Collection','Other'];
  const calls=[],api=adapter(async url=>{
    const u=new URL(url),i=terms.indexOf(u.searchParams.get('q'));
    assert.ok(i>=0);
@@ -73,7 +73,7 @@ test('mixed official discovery scans 24 upstream records and preserves every unu
  for(let batch=0;batch<6;batch++){
    const page=await api.fetchChannel3Page({section:'featured',limit:24,cursor});
    assert.equal(page.items.length,24);
-   assert.equal(new Set(page.items.map(p=>p.brand)).size,6);
+   assert.equal(new Set(page.items.map(p=>p.brand)).size,5);
    seen.push(...page.items.map(p=>p.id));
    if(batch<5)assert.ok(page.nextCursor);
    else assert.equal(page.nextCursor,null);
@@ -86,9 +86,9 @@ test('mixed official discovery scans 24 upstream records and preserves every unu
 });
 
 test('mixed discovery keeps only independently verified merchant offers across the full source page',async()=>{
- const terms=['Nike','adidas',"Levi's",'e.l.f. cosmetics','Sephora','TJ Maxx'];
- const hosts=['nike.com','adidas.com','levi.com','elfcosmetics.com','sephora.com','tjmaxx.tjx.com'];
- const brands=['Nike','Adidas',"Levi's",'e.l.f. Cosmetics','Sephora Collection','Other'];
+ const terms=["Levi's women",'adidas',"Levi's",'e.l.f. cosmetics','Sephora','TJ Maxx'];
+ const hosts=['levi.com','adidas.com','levi.com','elfcosmetics.com','sephora.com','tjmaxx.tjx.com'];
+ const brands=["Levi's",'Adidas',"Levi's",'e.l.f. Cosmetics','Sephora Collection','Other'];
  const api=adapter(async url=>{
    const i=terms.indexOf(new URL(url).searchParams.get('q'));
    assert.ok(i>=0);
@@ -99,7 +99,7 @@ test('mixed discovery keeps only independently verified merchant offers across t
  });
  const response=await api.fetchChannel3Page({section:'featured',limit:24});
  assert.equal(response.items.length,6);
- assert.equal(new Set(response.items.map(x=>x.brand)).size,6);
+ assert.equal(new Set(response.items.map(x=>x.brand)).size,5);
  assert.equal(response.nextCursor,null);
  assert.ok(response.items.every(x=>x.priceCents===null&&x.presentationOnly));
 });
@@ -113,27 +113,16 @@ test('mixed cursor rejects arbitrary offsets, obsolete cursors and expired cache
  await assert.rejects(api.fetchChannel3Page({section:'featured',cursor:JSON.stringify({v:1,c:Array(6).fill(null)})}),/catalog_cursor_invalid/);
 });
 
-test('CJ Nike fills a catalog page when Channel3 has no eligible listings without weakening origin checks', async()=>{
+test('suspended Nike catalog never calls legacy CJ even when Channel3 is exhausted', async()=>{
   const calls=[],api=adapter(async url=>{
-    const u=new URL(url);
-    calls.push(u.pathname);
-    if(u.pathname==='/catalog/search')return new Response('{"error":"UPSTREAM_BUDGET_EXCEEDED"}',{status:429,headers:{'content-type':'application/json','retry-after':'5'}});
-    assert.equal(u.pathname,'/catalog/products');
-    const offset=Number(u.searchParams.get('offset'));
-    assert.equal(u.searchParams.get('limit'),'24');
-    const products=Array.from({length:24},(_,i)=>({productId:'cj-'+(offset+i),advertiserName:'NIKE',brand:'Nike',
-      title:'Official Nike shoe '+(offset+i),productUrl:'https://www.nike.com/t/official-'+(offset+i),
-      imageUrl:'https://static.nike.com/a.jpg',description:'Nike shoe'}));
-    return new Response(JSON.stringify({source:'CJ',advertiser:'NIKE',totalCount:200,products}),{headers:{'content-type':'application/json'}});
+    calls.push(new URL(url).pathname);
+    return new Response('{"error":"UPSTREAM_BUDGET_EXCEEDED"}',{status:429,headers:{'content-type':'application/json','retry-after':'5'}});
   });
-  const first=await api.fetchChannel3Page({section:'featured',limit:24});
-  assert.equal(first.items.length,24);
-  assert.ok(first.items.every(p=>p.brand==='Nike'&&p.id.startsWith('cj-nike-')&&p.presentationOnly));
-  assert.ok(first.items.every(p=>p.source.merchantUrl===null&&p.priceCents===null&&p.stock===null));
-  assert.equal(calls.filter(p=>p==='/catalog/products').length,1);
-  const second=await api.fetchChannel3Page({section:'featured',limit:24,cursor:first.nextCursor});
-  assert.equal(second.items.length,24);
-  assert.equal(new Set([...first.items,...second.items].map(p=>p.id)).size,48);
+  await assert.rejects(api.fetchChannel3Page({section:'featured',limit:24}),/catalog_unavailable/);
+  assert.equal(calls.filter(x=>x==='/catalog/search').length,6);
+  assert.equal(calls.filter(x=>x==='/catalog/products').length,0);
+  await assert.rejects(api.fetchChannel3Page({q:'Nike',limit:24}),/catalog_http_429/);
+  assert.equal(calls.filter(x=>x==='/catalog/products').length,0);
 });
 
 test('CJ Nike rejects marketplace sellers even when a product bears Nike branding',()=>{
@@ -147,9 +136,9 @@ test('CJ Nike rejects marketplace sellers even when a product bears Nike brandin
 });
 
 test('Astra cached presentation cards retain official seller identity without offer links',()=>{
- const a=adapter(),p=product('cached',{offers:undefined,sellerDomains:['nike.com']});
+ const a=adapter(),p=product('cached',{offers:undefined,sellerDomains:['adidas.com']});
  const page=a.parseChannel3Page(envelope([p]));
- assert.equal(page.items.length,1);assert.equal(page.items[0].brand,'Nike');
+ assert.equal(page.items.length,1);assert.equal(page.items[0].brand,'Adidas');
  assert.equal(page.items[0].priceCents,null);assert.equal(page.items[0].source.merchantUrl,null);
  assert.equal(a.parseChannel3Page(envelope([product('reseller',{offers:undefined,sellerDomains:['kickscrew.com']})])).items.length,0);
 });
@@ -219,7 +208,7 @@ test('cursor pages keep server freshness, no invented total, one image and nulla
 });
 test('search adapter retains presentation-only records and ignores legacy volatile fields',()=>{
   const api=adapter();
-  for(const raw of [product(),product('no-price',{offers:[{url:'https://buy.trychannel3.com/a',domain:'nike.com'}]})]){
+  for(const raw of [product(),product('no-price',{offers:[{url:'https://buy.trychannel3.com/a',domain:'adidas.com'}]})]){
     const page=api.parseChannel3Page(envelope([raw]));assert.equal(page.items.length,1);
     const card=page.items[0];assert.equal(card.presentationOnly,true);assert.equal(card.priceCents,null);assert.equal(card.compareAtPriceCents,null);
     assert.equal(card.stock,null);assert.equal(card.availability,'unknown');assert.equal(card.variants.length,0);assert.equal(card.variantDetailsKnown,false);
@@ -266,32 +255,12 @@ test('cursor errors are safe, typed and never automatically restart the search',
   }
 });
 
-test('Nike-relevant shelves and Nike search fall back to verified CJ without Channel3 credits',async()=>{
- const calls=[],api=adapter(async url=>{
-   const u=new URL(url),q=u.searchParams.get('q'),offset=Number(u.searchParams.get('offset')||0);
-   calls.push({path:u.pathname,q,offset});
-   if(u.pathname==='/catalog/search')return new Response('{"error":"UPSTREAM_BUDGET_EXCEEDED"}',{status:429,headers:{'content-type':'application/json','retry-after':'1'}});
-   assert.equal(u.pathname,'/catalog/products');
-   const products=Array.from({length:24},(_,i)=>({
-     productId:'valid-'+(offset+i),title:'Nike official '+(offset+i),brand:'Nike',advertiserName:'NIKE',
-     productUrl:'https://www.nike.com/t/valid-'+(offset+i),imageUrl:'https://static.nike.com/good.jpg'
-   }));
-   return new Response(JSON.stringify({source:'CJ',advertiser:'NIKE',products,totalCount:300}),{headers:{'content-type':'application/json'}});
- });
- const page=await api.fetchChannel3Page({section:'shoes',limit:24});
- assert.equal(page.items.length,24);
- assert.equal(page.nextCursor,'cj:24');
- assert.ok(page.items.every(p=>p.id.startsWith('cj-nike-')&&p.brand==='Nike'&&p.presentationOnly&&p.priceCents===null));
- assert.deepEqual(calls.map(x=>x.path),['/catalog/search','/catalog/products']);
- assert.equal(calls[1].q,'shoes');
- const next=await api.fetchChannel3Page({section:'shoes',limit:24,cursor:page.nextCursor});
- assert.equal(next.items.length,24);
- assert.equal(calls.at(-1).path,'/catalog/products');
- assert.equal(calls.at(-1).offset,24);
- assert.equal(calls.length,3,'a CJ-owned cursor must not touch Channel3');
- const matching=await api.fetchChannel3Page({q:'Nike shoes',limit:24});
- assert.equal(matching.items.length,24);
- assert.equal(calls.at(-1).q,'Nike shoes');
+test('Nike shelves and searches do not fall back to retired display-only CJ catalog',async()=>{
+ const calls=[],api=adapter(async url=>{calls.push(new URL(url).pathname);return new Response('{"error":"UPSTREAM_BUDGET_EXCEEDED"}',{status:429,headers:{'content-type':'application/json','retry-after':'1'}})});
+ await assert.rejects(api.fetchChannel3Page({section:'shoes',limit:24}),/catalog_http_429/);
+ assert.deepEqual(calls,['/catalog/search']);
+ await assert.rejects(api.fetchChannel3Page({section:'shoes',limit:24,cursor:'cj:24'}),/catalog_cursor_invalid/);
+ assert.deepEqual(calls,['/catalog/search']);
 });
 test('Non-Nike stores cannot be silently replaced with CJ Nike products',async()=>{
  const calls=[],api=adapter(async url=>{
@@ -306,15 +275,15 @@ test('Non-Nike stores cannot be silently replaced with CJ Nike products',async()
 });
 
 test('mixed official source pages are reused only until their verified expiry',async()=>{
- const terms=['Nike','adidas',"Levi's",'e.l.f. cosmetics','Sephora','TJ Maxx'];
- const hosts=['nike.com','adidas.com','levi.com','elfcosmetics.com','sephora.com','tjmaxx.tjx.com'];
+ const terms=["Levi's women",'adidas',"Levi's",'e.l.f. cosmetics','Sephora','TJ Maxx'];
+ const hosts=['levi.com','adidas.com','levi.com','elfcosmetics.com','sephora.com','tjmaxx.tjx.com'];
  const calls=[];
  const api=adapter(async url=>{
    const u=new URL(url),i=terms.indexOf(u.searchParams.get('q'));
    if(i<0)throw Error('unexpected supplier request');
    calls.push(i);
    return new Response(JSON.stringify(envelope(Array.from({length:24},(_,j)=>product('reuse-'+i+'-'+j,{
-     brands:[{name:terms[i]}],offers:[{url:'https://buy.trychannel3.com/legit',domain:hosts[i]}]
+     brands:[{name:i===0?"Levi's":terms[i]}],offers:[{url:'https://buy.trychannel3.com/legit',domain:hosts[i]}]
    })),null)),{headers:{'content-type':'application/json'}});
  });
  const first=await api.fetchChannel3Page({section:'featured',limit:24});
@@ -327,8 +296,8 @@ test('mixed official source pages are reused only until their verified expiry',a
 });
 
 test('featured source dispatch paces six upstream requests below the five-per-second backend limit',async()=>{
- const terms=['Nike','adidas',"Levi's",'e.l.f. cosmetics','Sephora','TJ Maxx'];
- const domains=['nike.com','adidas.com','levi.com','elfcosmetics.com','sephora.com','tjmaxx.tjx.com'];
+ const terms=["Levi's women",'adidas',"Levi's",'e.l.f. cosmetics','Sephora','TJ Maxx'];
+ const domains=['levi.com','adidas.com','levi.com','elfcosmetics.com','sephora.com','tjmaxx.tjx.com'];
  const windows=[];
  const api=adapter(async url=>{
    const u=new URL(url),i=terms.indexOf(u.searchParams.get('q'));
@@ -344,5 +313,5 @@ test('featured source dispatch paces six upstream requests below the five-per-se
  const perSecond=new Map();
  for(const second of windows)perSecond.set(second,(perSecond.get(second)||0)+1);
  assert.ok([...perSecond.values()].every(n=>n<=4),'client must not burst all six searches into one UTC second');
- assert.equal(new Set(page.items.map(p=>p.brand)).size,6);
+ assert.equal(new Set(page.items.map(p=>p.brand)).size,5);
 });

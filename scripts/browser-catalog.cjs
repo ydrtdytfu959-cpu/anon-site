@@ -10,15 +10,15 @@ const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const checks = [];
 const image = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=', 'base64');
 const sources=Object.freeze({
- Nike:['Nike','nike.com','nike'],adidas:['adidas','adidas.com','adidas'],
+ "Levi's women":["Levi's",'levi.com','leviswomen'],adidas:['adidas','adidas.com','adidas'],
  "Levi's":["Levi's",'levi.com','levis'],"e.l.f. cosmetics":['e.l.f. Cosmetics','elfcosmetics.com','elf'],
  Sephora:['Sephora Collection','sephora.com','sephora'],"TJ Maxx":['Other','tjmaxx.tjx.com','tjmaxx'],
- "Levi's men":["Levi's",'levi.com','levismen'],"Nike women":['Nike','nike.com','nikewomen'],
+ "Levi's men":["Levi's",'levi.com','levismen'],
  'Nike accessories':['Nike','nike.com','nikeaccessories'],'Nike sports':['Nike','nike.com','nikesports']
 });
-const featuredQueries=['Nike','adidas',"Levi's",'e.l.f. cosmetics','Sephora','TJ Maxx'];
+const featuredQueries=["Levi's women",'adidas',"Levi's",'e.l.f. cosmetics','Sephora','TJ Maxx'];
 const product = (context, n, query) => {
-  const [brand,domain,tag]=sources[query]||['Nike','nike.com','generic'];
+  const [brand,domain,tag]=sources[query]||['adidas','adidas.com','generic'];
   return {id:`${context}-${tag}-${n}`,title:`Fixture ${context} shoes ${n}`,brands:[{id:'fixture',name:brand}],
    category:{slug:'shoes',title:'Shoes'},images:[{url:'https://cdn.trychannel3.com/fixture.png'}],
    offers:[{url:'https://buy.trychannel3.com/fixture',domain,availability:'InStock',condition:'new',price:{price:45,currency:'USD'}}]};
@@ -44,7 +44,7 @@ async function run(engine) {
       const headers = {'access-control-allow-origin':'https://anox.app','content-type':'application/json'};
       if (url.pathname === '/catalog/search') {
         const q = url.searchParams.get('q'), section = url.searchParams.get('section'), cursor = url.searchParams.get('page_token');
-        const sectionOfQuery={"Levi's men":'men',"Nike women":'women',"Nike accessories":'accessories',"Nike sports":'sports'};
+        const sectionOfQuery={"Levi's men":'men',"Levi's women":'women',"Levi's accessories":'accessories',"adidas sports":'sports'};
         const key = featuredQueries.includes(q) ? 'featured' : sectionOfQuery[q] || q || section;
         calls.push({q,section,cursor});
         if (key === 'slow') await slowResponse;
@@ -105,7 +105,7 @@ async function run(engine) {
     await page.locator('[data-discovery-section="men"]').first().click();await inContext('men');
     assert.deepEqual(calls.at(-1),{q:"Levi's men",section:null,cursor:null});
     await page.locator('[data-discovery-section="women"]').first().click();await inContext('women');
-    assert.deepEqual(calls.at(-1),{q:'Nike women',section:null,cursor:null});
+    assert.deepEqual(calls.at(-1),{q:"Levi's women",section:null,cursor:null});
     const before=calls.length;
     await nav('shop?section=featured');await count(72);assert.equal(calls.length,before);
     add('sections have independent results and retain their own pagination');
