@@ -99,3 +99,31 @@ test('runtime rejects malformed environment limits before accessing AWS or HTTP'
     vm.runInNewContext(source,context);const result=await context.module.exports.handler({});assert.equal(result.statusCode,503);assert.equal(JSON.parse(result.body).error,'UPSTREAM_BUDGET_UNAVAILABLE');assert.equal(calls,0);assert.equal(logs.length,1);assert.equal(logs[0].event,'budget_error');assert.equal(logs[0].budget_error,1);assert.ok(!JSON.stringify(logs).includes('fixture'));
   }
 });
+
+test('transient Dynamo transaction collisions retry with one idempotency token and never duplicate a reservation',async()=>{
+  class Command{constructor(input){this.input=input;}}
+  const calls=[];let failures=2;
+  const store=api.createDynamoStore({table:'T',commands:{TransactWriteItemsCommand:Command},client:{send:async command=>{
+    calls.push(command.input);
+    if(failures-->0)throw Object.assign(Error('PRIVATE conflict'),{name:'TransactionCanceledException',
+      CancellationReasons:[{Code:'None'},{Code:'TransactionConflict'},{Code:'None'},{Code:'None'}]});
+    return {};
+  }}});
+  await budget({store})('search');
+  assert.equal(calls.length,3);
+  assert.equal(new Set(calls.map(call=>call.ClientRequestToken)).size,1);
+  assert.equal(calls[0].TransactItems.length,4);
+  assert.deepEqual(calls[0],calls[1]);
+});
+
+test('persistent transaction contention stops after four attempts without revealing storage details',async()=>{
+  class Command{constructor(input){this.input=input;}}
+  let calls=0;const tokens=[];
+  const store=api.createDynamoStore({table:'T',commands:{TransactWriteItemsCommand:Command},client:{send:async command=>{
+    calls++;tokens.push(command.input.ClientRequestToken);
+    throw Object.assign(Error('PRIVATE transaction details'),{name:'TransactionConflictException'});
+  }}});
+  await assert.rejects(budget({store})('search'),error=>error.code==='UPSTREAM_BUDGET_UNAVAILABLE'&&!error.message.includes('PRIVATE'));
+  assert.equal(calls,4);
+  assert.equal(new Set(tokens).size,1);
+});
