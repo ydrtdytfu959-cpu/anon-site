@@ -461,13 +461,22 @@ function createDynamoStore({client, commands, table}) {
       const counter = ({key:pk, limit, expiresAt}) => ({Update:{TableName:table, Key:key(pk), UpdateExpression:'SET expiresAt = :expires ADD #used :one',
         ConditionExpression:':limit > :zero AND (attribute_not_exists(#used) OR (attribute_type(#used, :number) AND #used >= :zero AND #used < :limit))', ExpressionAttributeNames:{'#used':'used'},
         ExpressionAttributeValues:{':expires':{N:String(expiresAt)}, ':one':{N:'1'}, ':zero':{N:'0'}, ':number':{S:'N'}, ':limit':{N:String(limit)}}}});
-      try {await send(new TransactWriteItemsCommand({ClientRequestToken:randomUUID(), TransactItems:counters.map(counter)}));}
-      catch (error) {
-        if (error.name === 'TransactionCanceledException') {
-          const rejected = error.CancellationReasons?.findIndex(row => row?.Code === 'ConditionalCheckFailed');
-          if (rejected >= 0 && rejected < counters.length) fail(429, counters[rejected].rate ? 'UPSTREAM_RATE_LIMITED' : 'UPSTREAM_BUDGET_EXCEEDED');
+      // A stable token makes a retry of an ambiguous commit idempotent: it cannot
+      // double-count an upstream credit. Only explicit DynamoDB transaction
+      // contention is retried; exhausted allowances are rejected immediately.
+      const command = new TransactWriteItemsCommand({ClientRequestToken:randomUUID(), TransactItems:counters.map(counter)});
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {await send(command); return;}
+        catch (error) {
+          if (error.name === 'TransactionCanceledException') {
+            const rejected = error.CancellationReasons?.findIndex(row => row?.Code === 'ConditionalCheckFailed');
+            if (rejected >= 0 && rejected < counters.length) fail(429, counters[rejected].rate ? 'UPSTREAM_RATE_LIMITED' : 'UPSTREAM_BUDGET_EXCEEDED');
+          }
+          const contested = error.name === 'TransactionConflictException' || error.name === 'TransactionInProgressException' ||
+            (error.name === 'TransactionCanceledException' && error.CancellationReasons?.some(row => row?.Code === 'TransactionConflict'));
+          if (!contested || attempt === 3) fail(503, 'UPSTREAM_BUDGET_UNAVAILABLE');
+          await new Promise(resolve => setTimeout(resolve, 40 * (2 ** attempt) + Math.floor(Math.random() * 41)));
         }
-        fail(503, 'UPSTREAM_BUDGET_UNAVAILABLE');
       }
     },
     async release(pk, owner) {
