@@ -59,6 +59,22 @@ test('search cards cache presentation only, without prices, offers, stock or var
   assert.equal(f.calls.length,1);
   assert.ok(!JSON.stringify([...f.store.rows.values()]).includes('buy.trychannel3.com'));
 });
+test('official seller beyond the first eight resale offers is preserved without caching offer URLs',async()=>{
+ const resellers=Array.from({length:8},(_,i)=>({domain:'vinted.com',url:'https://buy.trychannel3.com/resale-'+i}));
+ const official={domain:'adidas.com',url:'https://buy.trychannel3.com/official-item'};
+ const item={...product('adidas-official'),brands:[{name:'adidas'}],offers:[...resellers,official]};
+ const fixtureRun=fixture(()=>({products:[item],next_page_token:null}));
+ const result=body(await fixtureRun.handler(event({q:'adidas',limit:'24'})));
+ assert.equal(result.data.products.length,1);
+ assert.deepEqual(result.data.products[0].sellerDomains,['adidas.com']);
+ assert.equal(Object.hasOwn(result.data.products[0],'offers'),false);
+ assert.ok(!JSON.stringify([...fixtureRun.store.rows.values()]).includes('buy.trychannel3.com'));
+ const unsafe={...item,id:'adidas-unsafe',offers:[...resellers,{...official,url:'https://other.example/redirect'}]};
+ const unsafeRun=fixture(()=>({products:[unsafe],next_page_token:null}));
+ const rejected=body(await unsafeRun.handler(event({q:'adidas',limit:'24'})));
+ assert.deepEqual(rejected.data.products[0].sellerDomains,[]);
+});
+
 test('backend stores only verified official seller identity in cached cards',async()=>{
  const source={...product('official'),brands:[{name:'Nike'}],offers:[
   {url:'https://buy.trychannel3.com/a',domain:'nike.com'},
