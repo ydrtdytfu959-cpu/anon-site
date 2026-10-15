@@ -41,7 +41,7 @@ function buildTemplate(source = bundleSource()) {
     CognitoIssuer: { Type: 'String', AllowedPattern: '^https://cognito-idp\\.us-east-2\\.amazonaws\\.com/us-east-2_[A-Za-z0-9]+$', Description: 'Verified existing Cognito issuer URL; deliberately no guessed default.' },
     CognitoClientId: { Type: 'String', Default: '63738r9gpr126qpgp1a5cubchi', AllowedPattern: '^[a-z0-9]{1,128}$', Description: 'Existing frontend Cognito app client; must match the JWT authorizer audience.' },
     CatalogFunctionArn: { Type: 'String', Default: 'arn:aws:lambda:us-east-2:427064007352:function:AnoX-Channel3-Catalog', AllowedPattern: '^arn:aws:lambda:us-east-2:427064007352:function:AnoX-Channel3-Catalog(?::[A-Za-z0-9_-]+)?$', Description: 'Existing catalog Lambda with the reviewed IAM-only commerce.product handler deployed first.' },
-    ReservedConcurrency: { Type: 'Number', Default: 2, MinValue: 1, MaxValue: 5, Description: 'Bounds downstream pressure; account concurrency quota must be checked.' },
+    ReservedConcurrency: { Type: 'Number', Default: 4, MinValue: 1, MaxValue: 5, Description: 'Bounds downstream pressure; account concurrency quota must be checked.' },
     ExistingAlarmTopicArn: { Type: 'String', Default: '', AllowedPattern: '^(|arn:aws:sns:us-east-2:427064007352:[A-Za-z0-9_-]{1,256})$', Description: 'Optional existing authorized SNS alarm topic. Empty creates alarms without notifications.' }
   }, Conditions: { HasAlarmTopic: { 'Fn::Not': [{ 'Fn::Equals': [ref('ExistingAlarmTopicArn'), ''] }] } }, Resources: resources, Outputs: { CommerceFunctionArn: { Value: get('CommerceFunction', 'Arn') }, CommerceTableName: { Value: ref('CommerceTable') }, CommerceLogGroup: { Value: ref('CommerceLogs') } } };
 }
