@@ -431,6 +431,31 @@
     if(Date.now()>=obj.until)throw catalogError("catalog_cursor_expired",410);
     return {c:obj.c,o:obj.o,until:obj.until,j:obj.j??0,jMore:obj.jMore??false};
   }
+  // Share validated presentation-only Channel3 search pages across featured
+  // pagination in this tab. A source page can contain up to 24 verified cards,
+  // while a mixed display consumes only a few. Re-fetching the unused page on
+  // every Load More wastes cache requests and eventually monthly search credits.
+  // Never cache detail, price, stock, offers or a page past its server expiry.
+  const mixedPageCache = new Map();
+  async function featuredSourcePage(query,cursor,filters,signal){
+    if(signal?.aborted){const error=new Error("catalog_aborted");error.name="AbortError";throw error;}
+    const key=JSON.stringify([query,cursor,filters]),now=Date.now(),cached=mixedPageCache.get(key);
+    if(cached&&cached.expiresAt>now){
+      mixedPageCache.delete(key);mixedPageCache.set(key,cached);
+      return cached.page;
+    }
+    mixedPageCache.delete(key);
+    const url=buildChannel3Url({q:query,limit:24,cursor,filters});
+    const page=parseChannel3Page(await readJson(url,signal,channel3Provider.timeoutMs),{q:query,limit:24});
+    if(signal?.aborted){const error=new Error("catalog_aborted");error.name="AbortError";throw error;}
+    const expiresAt=Date.parse(page.expiresAt);
+    if(Number.isFinite(expiresAt)&&expiresAt>Date.now()){
+      for(const [cacheKey,entry] of mixedPageCache)if(entry.expiresAt<=Date.now())mixedPageCache.delete(cacheKey);
+      mixedPageCache.set(key,{page,expiresAt});
+      while(mixedPageCache.size>24)mixedPageCache.delete(mixedPageCache.keys().next().value);
+    }
+    return page;
+  }
   function shuffleRoundRobin(groups,limit){
     const order=groups.map((_,i)=>i),used=groups.map(()=>0);
     for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
@@ -448,14 +473,13 @@
     const groups=Array(6).fill(null).map(()=>[]),totals=Array(6).fill(0);
     const sourceNext=cursors.slice(),next=cursors.slice(),nextOffsets=offsets.slice();
     let errors=0,earliestFetched=null,earliestExpiry=state.until??Infinity;
-    // Still exactly six bounded upstream searches at most: only the search
-    // page size changes from 4 to 24. No extra provider call or paid opt-in.
+    // First display reads at most six sources; subsequent mixed pages reuse
+    // validated unexpired source pages without any additional provider calls.
     for(let start=0;start<6;start+=3){
       const results=await Promise.allSettled(FEATURED_SOURCES.slice(start,start+3).map(async([,query],offset)=>{
         const i=start+offset;
         if(cursors[i]==="")return null;
-        const url=buildChannel3Url({q:query,limit:24,cursor:cursors[i],filters:normalized.filters});
-        const page=parseChannel3Page(await readJson(url,signal,channel3Provider.timeoutMs),{q:query,limit:24});
+        const page=await featuredSourcePage(query,cursors[i],normalized.filters,signal);
         if(offsets[i]>page.items.length)throw catalogError("catalog_cursor_invalid",400);
         return page;
       }));

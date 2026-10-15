@@ -81,7 +81,7 @@ test('mixed official discovery scans 24 upstream records and preserves every unu
  }
  assert.equal(seen.length,144);
  assert.equal(new Set(seen).size,144,'accepted products were not skipped or duplicated');
- assert.equal(calls.length,36,'one bounded six-source read per mixed page, not unbounded fanout');
+ assert.equal(calls.length,6,'reuse the same six unexpired 24-record source pages across six mixed pages');
  assert.ok(calls.every(call=>call.cursor===null),'unconsumed source pages keep original cursor');
 });
 
@@ -303,4 +303,25 @@ test('Non-Nike stores cannot be silently replaced with CJ Nike products',async()
  await assert.rejects(api.fetchChannel3Page({section:'beauty',limit:24}),/catalog_rate_limited|catalog_http_429/);
  assert.deepEqual(calls,['/catalog/search']);
  await assert.rejects(api.fetchChannel3Page({section:'shoes',limit:24,cursor:'cj:0'}),/catalog_cursor_invalid/);
+});
+
+test('mixed official source pages are reused only until their verified expiry',async()=>{
+ const terms=['Nike','adidas',"Levi's",'e.l.f. cosmetics','Sephora','TJ Maxx'];
+ const hosts=['nike.com','adidas.com','levi.com','elfcosmetics.com','sephora.com','tjmaxx.tjx.com'];
+ const calls=[];
+ const api=adapter(async url=>{
+   const u=new URL(url),i=terms.indexOf(u.searchParams.get('q'));
+   if(i<0)throw Error('unexpected supplier request');
+   calls.push(i);
+   return new Response(JSON.stringify(envelope(Array.from({length:24},(_,j)=>product('reuse-'+i+'-'+j,{
+     brands:[{name:terms[i]}],offers:[{url:'https://buy.trychannel3.com/legit',domain:hosts[i]}]
+   })),null)),{headers:{'content-type':'application/json'}});
+ });
+ const first=await api.fetchChannel3Page({section:'featured',limit:24});
+ const second=await api.fetchChannel3Page({section:'featured',limit:24,cursor:first.nextCursor});
+ assert.equal(first.items.length,24);assert.equal(second.items.length,24);
+ assert.equal(calls.length,6,'unexpired pages must not be fetched again');
+ const rejected=first.items.concat(second.items);
+ assert.equal(new Set(rejected.map(x=>x.id)).size,48);
+ assert.ok(rejected.every(x=>x.presentationOnly&&x.priceCents===null&&x.stock===null));
 });
