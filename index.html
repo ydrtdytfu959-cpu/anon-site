@@ -9,7 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3">
   <meta name="robots" content="index,follow">
   <meta name="description" content="AnoX — اكتشف المنتجات، وقارن التفاصيل وتكلفة وصولها التقديرية إلى الجزائر.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-1u0EBb+HeorJcjEZv+cMG7OJ1KkCDeSCYvI/s16TmEg=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — U.S. products for Algeria">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-sps+6teZhVUl+EY6taFa/NSiepJiF4B2vwhn6Rw38G4=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — U.S. products for Algeria">
   <meta property="og:description" content="AnoX LLC — discover U.S. products and discuss purchasing and fulfillment to Algeria.">
   <meta property="og:url" content="https://anox.app/">
   <title>AnoX — اختيارات أبعد. تكلفة أوضح.</title>
@@ -2919,6 +2919,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
           if(cursorMode){
             const next=result.nextCursor??null;if(next!==null&&(typeof next!=='string'||!next.length||next.length>8192||/[\x00-\x1f\x7f]/.test(next)||next===options.cursor))throw Error('catalog_cursor_invalid');
             if(whole(result.invalidCount,1,100))errors.push('invalid_record');
+            if(whole(result.partialErrors,1,6))errors.push('catalog_sources_unavailable');
             return {providerId:id,status:errors.length?'partial':'ready',items,nextCursor:next,total:null,fetchedAt:normalizedDate(result.fetchedAt),expiresAt:normalizedDate(result.expiresAt),errors};
           }
           const next=result.nextOffset===null||result.nextOffset===undefined?null:requireInteger(result.nextOffset,offset+1,100000,'next offset');
@@ -4112,7 +4113,11 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     }
     function liveContextNotice(){
       if(Catalog.liveRestartRequired)return '<div class="v2-live-catalog-state unavailable" role="alert"><p>'+esc(tx('انتهت صلاحية جلسة التصفح. ابدأ من جديد لتحديث المنتجات والأسعار.','This browsing session expired. Restart to refresh the products and prices.'))+'</p>'+button(tx('بدء التصفح من جديد','Restart browsing'),'data-live-restart','btn secondary')+'</div>';
-      if(Catalog.liveError&&Catalog.liveRecords.length)return '<div class="v2-live-catalog-state unavailable" role="alert"><p>'+esc(tx('تعذر تحميل المزيد. المنتجات المحمّلة ما زالت معروضة.','More products could not be loaded. Previously loaded products are still shown.'))+'</p>'+(Catalog.liveNextCursor!==null?button(tx('إعادة المحاولة','Try again'),'data-live-retry','btn secondary'):'')+'</div>';
+      if(Catalog.liveError&&Catalog.liveRecords.length){
+        const sourcePartial=Catalog.liveError.split(',').includes('catalog_sources_unavailable');
+        const message=sourcePartial?tx('بعض المتاجر الرسمية غير متاحة حاليًا. نعرض المنتجات التي تأكدنا من مصدرها فقط.','Some official stores are temporarily unavailable. Only verified listings are shown.'):tx('تعذر تحميل المزيد. المنتجات المحمّلة ما زالت معروضة.','More products could not be loaded. Previously loaded products are still shown.');
+        return '<div class="v2-live-catalog-state unavailable" role="status" data-catalog-partial="'+(sourcePartial?'sources':'load')+'"><p>'+esc(message)+'</p>'+(Catalog.liveNextCursor!==null?button(tx('إعادة المحاولة','Try again'),'data-live-retry','btn secondary'):'')+'</div>';
+      }
       return '';
     }
     function liveLoadMoreMarkup(query=''){

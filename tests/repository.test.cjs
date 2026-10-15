@@ -234,3 +234,15 @@ test('live catalog rendering includes all accepted pages and can continue after 
   assert.ok(markup.includes('item49'));
   assert.ok(render([]).includes('data-live-load-more'));
 });
+
+test('partial featured provider source failure remains visible while verified cards are retained',async()=>{
+ const {repo}=setup(async()=>({...page(['verified-item'],'next-page'),partialErrors:4}));
+ const loaded=await repo.loadLivePage({section:'featured'});
+ assert.equal(loaded.status,'partial');
+ assert.deepEqual(loaded.errors,['catalog_sources_unavailable']);
+ assert.equal(repo.liveRecords.length,1);
+ assert.equal(repo.liveRecords[0].id,'channel3-live__verified-item');
+ assert.equal(repo.liveNextCursor,'next-page');
+ assert.equal(repo.liveError,'catalog_sources_unavailable');
+ assert.match(fs.readFileSync(path.join(__dirname,'../index.html'),'utf8'),/Some official stores are temporarily unavailable/);
+});
