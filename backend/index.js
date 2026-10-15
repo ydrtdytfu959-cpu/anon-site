@@ -228,7 +228,7 @@ function sanitizeProduct(input, trustedCache = false) {
     'tjmaxx.tjx.com','www.tjmaxx.tjx.com']);
   const verified=trustedCache&&Array.isArray(input.sellerDomains)
     ? input.sellerDomains.slice(0,6).filter(v=>typeof v==='string'&&hosts.has(v))
-    : (Array.isArray(input.offers)?input.offers:[]).slice(0,8)
+    : (Array.isArray(input.offers)?input.offers:[]).slice(0,64)
       .filter(o=>object(o)&&hosts.has(String(o.domain||'').toLowerCase())&&
         safeUrl(o.url,'buy.trychannel3.com'))
       .map(o=>String(o.domain).toLowerCase());

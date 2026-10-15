@@ -9,7 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3">
   <meta name="robots" content="index,follow">
   <meta name="description" content="AnoX — اكتشف المنتجات، وقارن التفاصيل وتكلفة وصولها التقديرية إلى الجزائر.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-sps+6teZhVUl+EY6taFa/NSiepJiF4B2vwhn6Rw38G4=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — U.S. products for Algeria">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-gVagSav4MvBNCoQLEI6ESIGPqB7VPQ084R+PCMLxJwg=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — U.S. products for Algeria">
   <meta property="og:description" content="AnoX LLC — discover U.S. products and discuss purchasing and fulfillment to Algeria.">
   <meta property="og:url" content="https://anox.app/">
   <title>AnoX — اختيارات أبعد. تكلفة أوضح.</title>
@@ -1861,6 +1861,27 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
   // while a mixed display consumes only a few. Re-fetching the unused page on
   // every Load More wastes cache requests and eventually monthly search credits.
   // Never cache detail, price, stock, offers or a page past its server expiry.
+  // Pace the six featured searches within the per-second backend budget.
+  // Reserve a slot for other browser actions: our per-tab limit is four
+  // source calls/UTC-second, versus the backend's shared limit of five.
+  // This is not a global-account quota guarantee across different users.
+  let featuredWindowSecond=-1,featuredWindowCount=0,featuredTicket=Promise.resolve();
+  async function paceFeaturedSearch(signal){
+    const turn=featuredTicket.then(async()=>{
+      if(signal?.aborted)throw catalogError("catalog_aborted");
+      let second=Math.floor(Date.now()/1000);
+      if(second!==featuredWindowSecond){featuredWindowSecond=second;featuredWindowCount=0;}
+      while(featuredWindowCount>=4){
+        await new Promise(resolve=>setTimeout(resolve,Math.max(1,1000-Date.now()%1000+30)));
+        if(signal?.aborted)throw catalogError("catalog_aborted");
+        second=Math.floor(Date.now()/1000);
+        if(second!==featuredWindowSecond){featuredWindowSecond=second;featuredWindowCount=0;}
+      }
+      featuredWindowCount++;
+    });
+    featuredTicket=turn.catch(()=>{});
+    return turn;
+  }
   const mixedPageCache = new Map();
   async function featuredSourcePage(query,cursor,filters,signal){
     if(signal?.aborted){const error=new Error("catalog_aborted");error.name="AbortError";throw error;}
@@ -1870,6 +1891,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       return cached.page;
     }
     mixedPageCache.delete(key);
+    await paceFeaturedSearch(signal);
     const url=buildChannel3Url({q:query,limit:24,cursor,filters});
     const page=parseChannel3Page(await readJson(url,signal,channel3Provider.timeoutMs),{q:query,limit:24});
     if(signal?.aborted){const error=new Error("catalog_aborted");error.name="AbortError";throw error;}
