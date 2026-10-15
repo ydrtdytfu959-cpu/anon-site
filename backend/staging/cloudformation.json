@@ -77,7 +77,7 @@
     },
     "ReservedConcurrency": {
       "Type": "Number",
-      "Default": 2,
+      "Default": 4,
       "MinValue": 1,
       "MaxValue": 5,
       "Description": "Bounds downstream pressure; account concurrency quota must be checked."
@@ -87,7 +87,7 @@
       "Default": 3,
       "MinValue": 1,
       "MaxValue": 3,
-      "Description": "Dedicated staging catalog reservation; commerce default 2 plus catalog 3 require at least 105 initially available concurrency."
+      "Description": "Dedicated staging catalog reservation; commerce default 4 plus catalog 3 require at least 107 initially available concurrency."
     }
   },
   "Conditions": {
