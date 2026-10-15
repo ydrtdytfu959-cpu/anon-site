@@ -325,3 +325,24 @@ test('mixed official source pages are reused only until their verified expiry',a
  assert.equal(new Set(rejected.map(x=>x.id)).size,48);
  assert.ok(rejected.every(x=>x.presentationOnly&&x.priceCents===null&&x.stock===null));
 });
+
+test('featured source dispatch paces six upstream requests below the five-per-second backend limit',async()=>{
+ const terms=['Nike','adidas',"Levi's",'e.l.f. cosmetics','Sephora','TJ Maxx'];
+ const domains=['nike.com','adidas.com','levi.com','elfcosmetics.com','sephora.com','tjmaxx.tjx.com'];
+ const windows=[];
+ const api=adapter(async url=>{
+   const u=new URL(url),i=terms.indexOf(u.searchParams.get('q'));
+   if(i<0)throw Error('Unexpected supplier query');
+   windows.push(Math.floor(Date.now()/1000));
+   return new Response(JSON.stringify(envelope([product('paced-'+i,{
+     brands:[{name:terms[i]}],offers:[{domain:domains[i],url:'https://buy.trychannel3.com/product'}]
+   })],null)),{headers:{'content-type':'application/json'}});
+ });
+ const page=await api.fetchChannel3Page({section:'featured',limit:24});
+ assert.equal(page.items.length,6);
+ assert.equal(windows.length,6);
+ const perSecond=new Map();
+ for(const second of windows)perSecond.set(second,(perSecond.get(second)||0)+1);
+ assert.ok([...perSecond.values()].every(n=>n<=4),'client must not burst all six searches into one UTC second');
+ assert.equal(new Set(page.items.map(p=>p.brand)).size,6);
+});
