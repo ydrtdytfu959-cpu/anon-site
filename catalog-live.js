@@ -290,8 +290,8 @@
     "TJ Maxx":["tjmaxx.tjx.com","www.tjmaxx.tjx.com","tjmaxx.com","www.tjmaxx.com"]
   });
   const FEATURED_SOURCES=Object.freeze([
-    ["Nike","Nike"],["Adidas","adidas"],["Levi's","Levi's"],
-    ["e.l.f. Cosmetics","e.l.f. cosmetics"],["Sephora","Sephora"],["TJ Maxx","TJ Maxx"]
+    ["Nike","Nike","nike.com"],["Adidas","adidas","adidas.com"],["Levi's","Levi's","levi.com"],
+    ["e.l.f. Cosmetics","e.l.f. cosmetics","elfcosmetics.com"],["Sephora","Sephora","sephora.com"],["TJ Maxx","TJ Maxx","tjmaxx.tjx.com"]
   ]);
   const SECTION_QUERIES=Object.freeze({
     men:"Levi's men",women:"Nike women",shoes:"adidas",clothing:"Levi's",
@@ -376,10 +376,11 @@
     if (q && section || section && !CHANNEL3_SECTIONS.includes(section)) throw catalogError("catalog_options");
     if (!q) section = section || "featured";
     if (!filters || typeof filters !== "object" || Array.isArray(filters)) throw catalogError("catalog_options");
-    const allowed = { availability: ["InStock", "OutOfStock"], conditions: ["new", "used"] }, clean = {};
+    const allowed = { availability: ["InStock", "OutOfStock"], conditions: ["new", "used"],
+      website_ids: ["nike.com", "adidas.com", "levi.com", "elfcosmetics.com", "sephora.com", "tjmaxx.tjx.com"] }, clean = {};
     for (const key of Object.keys(filters).sort()) {
       const values = filters[key];
-      if (!Object.hasOwn(allowed, key) || !Array.isArray(values) || !values.length || values.length > 2 ||
+      if (!Object.hasOwn(allowed, key) || !Array.isArray(values) || !values.length || values.length > (key==="website_ids"?1:2) ||
           values.some(value => !allowed[key].includes(value))) throw catalogError("catalog_options");
       clean[key] = [...new Set(values)].sort();
     }
@@ -498,10 +499,10 @@
     // First display reads at most six sources; subsequent mixed pages reuse
     // validated unexpired source pages without any additional provider calls.
     for(let start=0;start<6;start+=3){
-      const results=await Promise.allSettled(FEATURED_SOURCES.slice(start,start+3).map(async([,query],offset)=>{
+      const results=await Promise.allSettled(FEATURED_SOURCES.slice(start,start+3).map(async([,query,officialWebsite],offset)=>{
         const i=start+offset;
         if(cursors[i]==="")return null;
-        const page=await featuredSourcePage(query,cursors[i],normalized.filters,signal);
+        const page=await featuredSourcePage(query,cursors[i],{...normalized.filters,website_ids:[officialWebsite]},signal);
         if(offsets[i]>page.items.length)throw catalogError("catalog_cursor_invalid",400);
         return page;
       }));

@@ -31,6 +31,30 @@ test('Astra presentation catalog accepts only the four approved brands or explic
  assert.equal(r.nextCursor,'next');
  assert.equal(api.normalizeChannel3Product(product('unknown',{brands:[],offers:[]})),null);
 });
+test('each featured query targets exactly its verified US retailer website',async()=>{
+ const expected={
+   Nike:'nike.com',adidas:'adidas.com',"Levi's":'levi.com',
+   'e.l.f. cosmetics':'elfcosmetics.com',Sephora:'sephora.com','TJ Maxx':'tjmaxx.tjx.com'
+ };
+ const calls=[];
+ const api=adapter(async url=>{
+   const query=new URL(url);
+   if(query.pathname!=='/catalog/search')throw Error('Unexpected network destination');
+   const term=query.searchParams.get('q');
+   const filters=JSON.parse(query.searchParams.get('filters')||'{}');
+   assert.deepEqual(filters.website_ids,[expected[term]],'query must stay bound to one official website');
+   calls.push(term);
+   return new Response(JSON.stringify(envelope([])),{headers:{'content-type':'application/json'}});
+ });
+ const result=await api.fetchChannel3Page({section:'featured',limit:24});
+ assert.deepEqual(calls,Object.keys(expected));
+ assert.equal(result.items.length,0);
+ for(const filter of [{website_ids:['poshmark.com']},{website_ids:['nike.com','adidas.com']},
+   {website_ids:['https://nike.com']}]){
+   assert.throws(()=>api.buildChannel3Url({q:'shoes',filters:filter}),/catalog_options/);
+ }
+});
+
 test('Astra mixes six official stores per featured page with bounded independent cursors',async()=>{
  const terms=['Nike','adidas',"Levi's",'e.l.f. cosmetics','Sephora','TJ Maxx'];
  const brands=['Nike','adidas',"Levi's",'e.l.f. Cosmetics','Sephora Collection','Other'];

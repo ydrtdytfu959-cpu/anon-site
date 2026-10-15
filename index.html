@@ -9,7 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3">
   <meta name="robots" content="index,follow">
   <meta name="description" content="AnoX — اكتشف المنتجات، وقارن التفاصيل وتكلفة وصولها التقديرية إلى الجزائر.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-gVagSav4MvBNCoQLEI6ESIGPqB7VPQ084R+PCMLxJwg=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — U.S. products for Algeria">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-r2tWLHPGnY+5pxLHoj/gInigIlQEKTR8VW/BrbfIpt4=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — U.S. products for Algeria">
   <meta property="og:description" content="AnoX LLC — discover U.S. products and discuss purchasing and fulfillment to Algeria.">
   <meta property="og:url" content="https://anox.app/">
   <title>AnoX — اختيارات أبعد. تكلفة أوضح.</title>
@@ -1715,8 +1715,8 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     "TJ Maxx":["tjmaxx.tjx.com","www.tjmaxx.tjx.com","tjmaxx.com","www.tjmaxx.com"]
   });
   const FEATURED_SOURCES=Object.freeze([
-    ["Nike","Nike"],["Adidas","adidas"],["Levi's","Levi's"],
-    ["e.l.f. Cosmetics","e.l.f. cosmetics"],["Sephora","Sephora"],["TJ Maxx","TJ Maxx"]
+    ["Nike","Nike","nike.com"],["Adidas","adidas","adidas.com"],["Levi's","Levi's","levi.com"],
+    ["e.l.f. Cosmetics","e.l.f. cosmetics","elfcosmetics.com"],["Sephora","Sephora","sephora.com"],["TJ Maxx","TJ Maxx","tjmaxx.tjx.com"]
   ]);
   const SECTION_QUERIES=Object.freeze({
     men:"Levi's men",women:"Nike women",shoes:"adidas",clothing:"Levi's",
@@ -1801,10 +1801,11 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     if (q && section || section && !CHANNEL3_SECTIONS.includes(section)) throw catalogError("catalog_options");
     if (!q) section = section || "featured";
     if (!filters || typeof filters !== "object" || Array.isArray(filters)) throw catalogError("catalog_options");
-    const allowed = { availability: ["InStock", "OutOfStock"], conditions: ["new", "used"] }, clean = {};
+    const allowed = { availability: ["InStock", "OutOfStock"], conditions: ["new", "used"],
+      website_ids: ["nike.com", "adidas.com", "levi.com", "elfcosmetics.com", "sephora.com", "tjmaxx.tjx.com"] }, clean = {};
     for (const key of Object.keys(filters).sort()) {
       const values = filters[key];
-      if (!Object.hasOwn(allowed, key) || !Array.isArray(values) || !values.length || values.length > 2 ||
+      if (!Object.hasOwn(allowed, key) || !Array.isArray(values) || !values.length || values.length > (key==="website_ids"?1:2) ||
           values.some(value => !allowed[key].includes(value))) throw catalogError("catalog_options");
       clean[key] = [...new Set(values)].sort();
     }
@@ -1923,10 +1924,10 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     // First display reads at most six sources; subsequent mixed pages reuse
     // validated unexpired source pages without any additional provider calls.
     for(let start=0;start<6;start+=3){
-      const results=await Promise.allSettled(FEATURED_SOURCES.slice(start,start+3).map(async([,query],offset)=>{
+      const results=await Promise.allSettled(FEATURED_SOURCES.slice(start,start+3).map(async([,query,officialWebsite],offset)=>{
         const i=start+offset;
         if(cursors[i]==="")return null;
-        const page=await featuredSourcePage(query,cursors[i],normalized.filters,signal);
+        const page=await featuredSourcePage(query,cursors[i],{...normalized.filters,website_ids:[officialWebsite]},signal);
         if(offsets[i]>page.items.length)throw catalogError("catalog_cursor_invalid",400);
         return page;
       }));
