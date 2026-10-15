@@ -5,6 +5,17 @@ const { LIMITS, ID, hash, quoteInput, attemptInput, idempotencyKey, object } = r
 const { checkout } = require('./providers.js');
 const { buildQuote } = require('./quote.js');
 const { publicOrder } = require('./orders.js');
+const SAFE_FAILURE_CLASSES = Object.freeze({
+  TimeoutError: 'timeout', AbortError: 'timeout', RequestTimeout: 'timeout',
+  AccessDeniedException: 'access_denied', ResourceNotFoundException: 'resource_missing',
+  ProvisionedThroughputExceededException: 'throttled', ThrottlingException: 'throttled',
+  TransactionConflictException: 'transaction_conflict', TransactionInProgressException: 'transaction_conflict'
+});
+function diagnosticClass(error) {
+  // Log only a constant category. Never emit SDK errors, customer identifiers,
+  // request bodies, upstream credentials or stack traces.
+  return Object.hasOwn(SAFE_FAILURE_CLASSES, error?.name) ? SAFE_FAILURE_CLASSES[error.name] : 'unclassified';
+}
 function createHandler({ store, catalog, config = {}, now = Date.now, randomId = crypto.randomUUID, hydrationTimeoutMs = 9000, logger = console }) {
   const settings = { allowedOrigin: 'https://anox.app', ...config };
   function owner(event) {
@@ -74,7 +85,7 @@ function createHandler({ store, catalog, config = {}, now = Date.now, randomId =
     } catch (error) {
       const known = error instanceof CommerceError;
       const statusCode = known ? error.statusCode : 503, code = known ? error.code : 'service_unavailable';
-      logger.error?.(JSON.stringify({ service: 'commerce', outcome: code, statusCode }));
+      logger.error?.(JSON.stringify({ service: 'commerce', outcome: code, statusCode, ...(statusCode === 503 ? { diagnostic: known ? 'handled_failure' : diagnosticClass(error) } : {}) }));
       return respond(statusCode, { schemaVersion: 1, error: { code, message: known ? error.message : 'Commerce is temporarily unavailable. Please retry.' } }, statusCode === 503 || code === 'operation_in_progress' ? { 'Retry-After': '2' } : {});
     }
   };

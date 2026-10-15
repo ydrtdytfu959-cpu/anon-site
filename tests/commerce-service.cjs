@@ -227,3 +227,16 @@ test('permitted upstream clock skew does not grant more than thirty seconds from
   const response = await handler(event('POST', '/commerce/quotes', requestBody()));
   assert.equal(response.statusCode, 201); assert.equal(Date.parse(json(response).quote.expiresAt), FIXED_NOW + 30000);
 });
+
+test('unexpected Commerce 503 logs a fixed diagnostic class, never error internals',async()=>{
+  for(const [name,want] of [['TimeoutError','timeout'],['AccessDeniedException','access_denied'],['UntrustedDetailSecret','unclassified']]){
+    const entries=[];
+    const {handler}=setup({store:{begin:async()=>{throw Object.assign(Error('private-secret-and-customer-id'),{name,code:'private-secret'});}},logger:{error:line=>entries.push(JSON.parse(line))}});
+    const response=await handler(event('POST','/commerce/quotes',requestBody()));
+    assert.equal(response.statusCode,503);
+    assert.equal(entries.length,1);
+    assert.equal(entries[0].diagnostic,want);
+    assert.equal(entries[0].outcome,'service_unavailable');
+    assert.doesNotMatch(JSON.stringify(entries)+response.body,/private-secret|customer-id|UntrustedDetailSecret/);
+  }
+});
