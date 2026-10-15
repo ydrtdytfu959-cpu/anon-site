@@ -32,7 +32,7 @@
     },
     "ReservedConcurrency": {
       "Type": "Number",
-      "Default": 2,
+      "Default": 4,
       "MinValue": 1,
       "MaxValue": 5,
       "Description": "Bounds downstream pressure; account concurrency quota must be checked."
