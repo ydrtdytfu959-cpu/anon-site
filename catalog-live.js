@@ -436,6 +436,27 @@
   // while a mixed display consumes only a few. Re-fetching the unused page on
   // every Load More wastes cache requests and eventually monthly search credits.
   // Never cache detail, price, stock, offers or a page past its server expiry.
+  // Pace the six featured searches within the per-second backend budget.
+  // Reserve a slot for other browser actions: our per-tab limit is four
+  // source calls/UTC-second, versus the backend's shared limit of five.
+  // This is not a global-account quota guarantee across different users.
+  let featuredWindowSecond=-1,featuredWindowCount=0,featuredTicket=Promise.resolve();
+  async function paceFeaturedSearch(signal){
+    const turn=featuredTicket.then(async()=>{
+      if(signal?.aborted)throw catalogError("catalog_aborted");
+      let second=Math.floor(Date.now()/1000);
+      if(second!==featuredWindowSecond){featuredWindowSecond=second;featuredWindowCount=0;}
+      while(featuredWindowCount>=4){
+        await new Promise(resolve=>setTimeout(resolve,Math.max(1,1000-Date.now()%1000+30)));
+        if(signal?.aborted)throw catalogError("catalog_aborted");
+        second=Math.floor(Date.now()/1000);
+        if(second!==featuredWindowSecond){featuredWindowSecond=second;featuredWindowCount=0;}
+      }
+      featuredWindowCount++;
+    });
+    featuredTicket=turn.catch(()=>{});
+    return turn;
+  }
   const mixedPageCache = new Map();
   async function featuredSourcePage(query,cursor,filters,signal){
     if(signal?.aborted){const error=new Error("catalog_aborted");error.name="AbortError";throw error;}
@@ -445,6 +466,7 @@
       return cached.page;
     }
     mixedPageCache.delete(key);
+    await paceFeaturedSearch(signal);
     const url=buildChannel3Url({q:query,limit:24,cursor,filters});
     const page=parseChannel3Page(await readJson(url,signal,channel3Provider.timeoutMs),{q:query,limit:24});
     if(signal?.aborted){const error=new Error("catalog_aborted");error.name="AbortError";throw error;}
