@@ -1,6 +1,11 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const api=require('../catalog-live.js'),{product,envelope}=require('./fixtures/channel3-detail.cjs');
+test('detail gallery recovers the safe cleaned image when original is unavailable',()=>{
+ const p=product({images:[{url:'https://untrusted.example/image.jpg',cleaned_url:'https://cdn.trychannel3.com/cleaned.jpg',is_main_image:true}]});
+ const result=api.parseChannel3Detail(envelope({},p),'shoe_1');
+ assert.equal(result.images.length,1);assert.equal(result.images[0].url,'https://cdn.trychannel3.com/cleaned.jpg');
+});
 test('Astra detail rejects unrelated brands or sellers even on direct product URLs',()=>{
  const bad=product({brands:[{id:'b',name:'Other'}],offers:[{domain:'unapproved.example',url:'https://buy.trychannel3.com/any',price:{currency:'USD',price:10}}]});
  assert.throws(()=>api.parseChannel3Detail(envelope({},bad),'shoe_1'), e=>e.code==='catalog_not_approved');

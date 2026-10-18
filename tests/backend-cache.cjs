@@ -26,7 +26,7 @@ function memoryStore() {
 const product = id => ({id,title:'Shoe '+id,description:'Catalog description',
   brands:[{id:'brand1',name:'Brand'}],images:[{url:'https://cdn.trychannel3.com/'+id+'.jpg',alt_text:'Shoe'}, {url:'https://cdn.trychannel3.com/second.jpg'}],
   category:{slug:'shoes',title:'Shoes',path:[{slug:'fashion',title:'Fashion'}]},
-  offers:[{url:'https://buy.trychannel3.com/'+id,domain:'example.com',price:{price:49.95,currency:'USD',compare_at_price:59.95},availability:'InStock',condition:'new'}],
+  offers:[{url:'https://buy.trychannel3.com/'+id,domain:'nike.com',price:{price:49.95,currency:'USD',compare_at_price:59.95},availability:'InStock',condition:'new'}],
   variants:{options:[{name:'Size',values:[{label:'9',exists:true,available:'InStock',product_id:id}]}],selected:[{name:'Color',label:'Black'}]},
   private_key:'UPSTREAM_PRIVATE',trace:{headers:{authorization:'UPSTREAM_PRIVATE'}}});
 const event = params => ({requestContext:{http:{method:'GET'}},rawPath:'/catalog/search',rawQueryString:new URLSearchParams(params).toString(),queryStringParameters:params});
@@ -72,7 +72,8 @@ test('official seller beyond the first eight resale offers is preserved without 
  const unsafe={...item,id:'adidas-unsafe',offers:[...resellers,{...official,url:'https://other.example/redirect'}]};
  const unsafeRun=fixture(()=>({products:[unsafe],next_page_token:null}));
  const rejected=body(await unsafeRun.handler(event({q:'adidas',limit:'24'})));
- assert.deepEqual(rejected.data.products[0].sellerDomains,[]);
+ assert.deepEqual(rejected.data.products,[]);
+ assert.equal(rejected.data.diagnostics.rejectionReasons.unverified_merchant,1);
 });
 
 test('backend stores only verified official seller identity in cached cards',async()=>{
@@ -99,7 +100,7 @@ test('pre-policy page and cursor identities cannot return cached offers or resta
   const denied=await f.handler(event({q:'shoes',page_token:'old-next'}));assert.equal(denied.statusCode,400);assert.equal(body(denied).error,'CURSOR_INVALID');assert.equal(f.calls.length,0);
   const first=await f.handler(event({q:'shoes'}));assert.equal(first.statusCode,200);assert.equal(body(first).data.products[0].id,'p1');assert.equal(f.calls.length,1);assert.ok(!first.body.includes('buy.trychannel3.com'));
 });
-test('search expiration fetches a current price and never silently serves stale data',async()=>{
+test('search expiration refreshes the current presentation when upstream is available',async()=>{
   const f=fixture((input,n)=>({products:[{...product('p1'),title:'Version '+n}],next_page_token:null}));
   await f.handler(event({q:'shoe'}));f.advance(300_000);
   const response=await f.handler(event({q:'shoe'}));assert.equal(body(response).data.products[0].title,'Version 2');assert.equal(f.calls.length,2);
@@ -165,15 +166,17 @@ test('invalid input cannot spend credits or collapse into a different valid quer
   assert.equal((await f.handler({...event({q:'shoe'}),rawQueryString:'q=shoe&q=coat'})).statusCode,400);
   assert.equal(f.calls.length,0);
 });
-test('malformed or repeated upstream cursors and product arrays never enter cache',async()=>{
+test('malformed upstream cursors and product arrays never enter cache; repeated cursors terminate',async()=>{
   for(const upstream of [()=>({products:'bad',next_page_token:null}),()=>({products:[product('p1')],next_page_token:12}),()=>({products:[product('p1')],next_page_token:'x\n'})]){
     const f=fixture(upstream);assert.equal((await f.handler(event({q:'shoe'}))).statusCode,502);assert.equal(f.store.rows.size,0);
   }
-  const f=fixture(()=>({products:[product('p1')],next_page_token:'same'}));await f.handler(event({q:'shoe'}));assert.equal((await f.handler(event({q:'shoe',page_token:'same'}))).statusCode,502);
+  const f=fixture(()=>({products:[product('p1')],next_page_token:'same'}));await f.handler(event({q:'shoe'}));
+  const repeated=await f.handler(event({q:'shoe',page_token:'same'}));assert.equal(repeated.statusCode,200);
+  assert.equal(body(repeated).data.next_page_token,null);assert.equal(body(repeated).data.diagnostics.pagination.stopReason,'cursor_cycle');
 });
 test('page bounds and image host rules prevent oversized or foreign media from storage',async()=>{
   const f=fixture(()=>({products:Array.from({length:24},(_,i)=>({...product('p'+i),images:[{url:'https://evil.example/a'},{url:'https://cdn.trychannel3.com/ok.jpg'}]})),next_page_token:null}));
-  const response=await f.handler(event({q:'shoe'}));assert.equal(response.statusCode,200);assert.equal(body(response).data.products.length,24);assert.equal(body(response).data.products[0].images.length,0);
+  const response=await f.handler(event({q:'shoe'}));assert.equal(response.statusCode,200);assert.equal(body(response).data.products.length,24);assert.equal(body(response).data.products[0].images[0].url,'https://cdn.trychannel3.com/ok.jpg');
   const tooMany=fixture(()=>({products:Array.from({length:25},(_,i)=>product('p'+i)),next_page_token:null}));assert.equal((await tooMany.handler(event({q:'shoe'}))).statusCode,502);
 });
 module.exports={memoryStore,product,event,body,fixture};

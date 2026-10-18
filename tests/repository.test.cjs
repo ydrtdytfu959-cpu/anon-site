@@ -26,6 +26,17 @@ function setup(list) {
 }
 function deferred() { let resolve; const promise = new Promise(r=>resolve=r); return {promise,resolve}; }
 
+test('registry preserves specific source failures and presentation recovery warnings',async()=>{
+ const {registry}=setup(async()=>({...page(['cached']),degraded:true,sourceDiagnostics:[{retailer:'Nike',status:'unavailable',error:'catalog_budget_exhausted'}]}));
+ const result=await registry.page('channel3-live',{q:'boots',limit:24});
+ assert.equal(result.status,'partial');assert.ok(result.errors.includes('catalog_presentation_only'));
+ assert.ok(result.errors.includes('catalog_budget_exhausted'));
+ for(const code of ['catalog_budget_exhausted','catalog_rate_limited','catalog_budget_unavailable','catalog_provider_unavailable']){
+  const broken=setup(async()=>{throw Object.assign(Error(code),{code});});
+  assert.equal((await broken.registry.page('channel3-live',{q:'boots',limit:24})).errors[0],code);
+ }
+});
+
 test('core admits only strictly presentation-only Channel3 cards without invented price or variants',()=>{
   const raw={...item('card'),presentationOnly:true,priceCents:null,compareAtPriceCents:null,stock:null,variants:[],variantDetailsKnown:false,availability:'unknown',source:{fetchedAt:new Date().toISOString(),merchantUrl:null,verifiedAt:null,availabilityVerifiedAt:null,availability:'unknown'}};
   const normalized=normalizeProduct(raw,{id:'channel3-live',mode:'live'});

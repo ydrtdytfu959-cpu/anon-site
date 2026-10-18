@@ -7,12 +7,12 @@ const { MemoryStore, FIXED_NOW, requestBody, freshProduct, event, config } = req
 async function scenario(delayMs, distinct, lineCount) {
   let calls = 0, active = 0, peak = 0;
   const store = new MemoryStore(), body = requestBody(), original = body.lines[0];
-  body.lines = Array.from({ length: lineCount }, (_, index) => ({ ...structuredClone(original), productId: 'profile' + (index % distinct), merchantDomain: index >= distinct ? 'second.example' : 'merchant.example' }));
+  body.lines = Array.from({ length: lineCount }, (_, index) => ({ ...structuredClone(original), productId: 'profile' + (index % distinct), merchantDomain: index >= distinct ? 'adidas.com' : 'nike.com' }));
   const handler = createHandler({ store, config, now: () => FIXED_NOW, logger: { error() {} }, catalog: { freshProduct: async (input, { signal }) => {
     calls++; peak = Math.max(peak, ++active);
     try {
       await wait(delayMs, undefined, { signal });
-      const snapshot = freshProduct(input); snapshot.data.product.offers.push({ ...structuredClone(snapshot.data.product.offers[0]), domain: 'second.example' }); return snapshot;
+      const snapshot = freshProduct(input); snapshot.data.product.offers.push({ ...structuredClone(snapshot.data.product.offers[0]), domain: 'adidas.com' }); return snapshot;
     } finally { active--; }
   } } });
   const start = performance.now(), result = await handler(event('POST', '/commerce/quotes', body));

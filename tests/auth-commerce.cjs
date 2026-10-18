@@ -5,6 +5,17 @@ const {createClient,config}=require('../auth.js');
 const body={cartRevision:'revision-one',lines:[{provider:'channel3',productId:'prod',merchantDomain:'merchant.example',condition:'new',quantity:1,options:{Size:'M'}}],destination:{country:'DZ'},currency:'USD'};
 function client(fetch){const saved=JSON.stringify({idToken:'id-token',accessToken:'access-token',refreshToken:'refresh-token',expiresAt:Date.now()+3600000});return createClient({storage:{getItem:()=>saved,setItem(){},removeItem(){}},fetch});}
 
+test('service request uses authenticated idempotent transport with no financial fields',async()=>{
+ const requests=[],auth=client(async(url,options)=>{requests.push({url,options});return Response.json({schemaVersion:1});});
+ const input={quoteId:'quote-one',cartRevision:'revision-one',cartHash:'a'.repeat(64)},options={method:'POST',body:JSON.stringify(input),idempotencyKey:'service-key-12345678'};
+ await auth.api('/commerce/service-requests',options);
+ assert.equal(requests.length,1);assert.equal(requests[0].options.headers.Authorization,'Bearer id-token');
+ assert.equal(requests[0].options.headers['Idempotency-Key'],options.idempotencyKey);
+ for(const patch of [{amount:500},{paid:true},{cartHash:'bad'}])await assert.rejects(auth.api('/commerce/service-requests',{...options,body:JSON.stringify({...input,...patch})}),{code:'INVALID_BODY'});
+ await assert.rejects(auth.api('/commerce/service-requests',{...options,idempotencyKey:undefined}));
+ assert.equal(requests.length,1);
+});
+
 test('authenticated quote transport sends only scoped bearer, validated body and idempotency key',async()=>{
   const requests=[],auth=client(async(url,options)=>{requests.push({url,options});return Response.json({quoteId:'q-1'});});
   assert.deepEqual(await auth.api('/commerce/quotes',{method:'POST',body:JSON.stringify(body),idempotencyKey:'quote-key-12345678'}),{quoteId:'q-1'});

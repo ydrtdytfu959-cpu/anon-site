@@ -1,0 +1,257 @@
+{
+  "checkedAt": "2026-10-16T13:22:02.632Z",
+  "environment": "production",
+  "maximumRequests": {
+    "search": 6,
+    "detail": 6
+  },
+  "requests": {
+    "search": 6,
+    "detail": 6
+  },
+  "rows": [
+    {
+      "retailer": "Nike",
+      "websiteId": "nike.com",
+      "searchStatus": 200,
+      "returnedRecords": 16,
+      "accepted": 16,
+      "rejected": 0,
+      "rejectionReasons": {
+        "invalid_product": 0,
+        "unverified_merchant": 0,
+        "retailer_mismatch": 0,
+        "duplicate_product": 0
+      },
+      "upstreamDiagnostics": null,
+      "hasContinuation": true,
+      "fetchedAt": "2026-10-16T13:22:06.873Z",
+      "expiresAt": "2026-10-16T13:27:06.873Z",
+      "missingImages": 0,
+      "categories": [
+        "Shoes",
+        "Accessories"
+      ],
+      "sampleProductIds": [
+        "tx3gjOc",
+        "m0mGRhu",
+        "8rtcfI0"
+      ],
+      "detail": {
+        "images": 1,
+        "descriptionPresent": true,
+        "offers": 1,
+        "optionGroups": 2,
+        "freshness": {
+          "status": "fresh",
+          "fetchedAt": "2026-10-16T13:22:07.950Z",
+          "expiresAt": "2026-10-16T13:22:37.950Z"
+        },
+        "httpStatus": 200,
+        "status": "fresh"
+      }
+    },
+    {
+      "retailer": "Adidas",
+      "websiteId": "adidas.com",
+      "searchStatus": 200,
+      "returnedRecords": 5,
+      "accepted": 4,
+      "rejected": 1,
+      "rejectionReasons": {
+        "invalid_product": 0,
+        "unverified_merchant": 1,
+        "retailer_mismatch": 0,
+        "duplicate_product": 0
+      },
+      "upstreamDiagnostics": null,
+      "hasContinuation": true,
+      "fetchedAt": "2026-10-16T13:22:10.000Z",
+      "expiresAt": "2026-10-16T13:27:10.000Z",
+      "missingImages": 0,
+      "categories": [
+        "Shoes"
+      ],
+      "sampleProductIds": [
+        "UFyv32t",
+        "CijdEnL",
+        "5HPl7nX"
+      ],
+      "detail": {
+        "images": 7,
+        "descriptionPresent": true,
+        "offers": 1,
+        "optionGroups": 1,
+        "freshness": {
+          "status": "fresh",
+          "fetchedAt": "2026-10-16T13:22:10.718Z",
+          "expiresAt": "2026-10-16T13:22:40.718Z"
+        },
+        "httpStatus": 200,
+        "status": "fresh"
+      }
+    },
+    {
+      "retailer": "Sephora",
+      "websiteId": "sephora.com",
+      "searchStatus": 200,
+      "returnedRecords": 18,
+      "accepted": 18,
+      "rejected": 0,
+      "rejectionReasons": {
+        "invalid_product": 0,
+        "unverified_merchant": 0,
+        "retailer_mismatch": 0,
+        "duplicate_product": 0
+      },
+      "upstreamDiagnostics": null,
+      "hasContinuation": true,
+      "fetchedAt": "2026-10-16T13:22:12.076Z",
+      "expiresAt": "2026-10-16T13:27:12.076Z",
+      "missingImages": 0,
+      "categories": [
+        "Beauty",
+        "Accessories"
+      ],
+      "sampleProductIds": [
+        "LAatp8u",
+        "Pd4Z9rP",
+        "kBu1uN4"
+      ],
+      "detail": {
+        "images": 7,
+        "descriptionPresent": true,
+        "offers": 1,
+        "optionGroups": 0,
+        "freshness": {
+          "status": "fresh",
+          "fetchedAt": "2026-10-16T13:22:12.789Z",
+          "expiresAt": "2026-10-16T13:22:42.789Z"
+        },
+        "httpStatus": 200,
+        "status": "fresh"
+      }
+    },
+    {
+      "retailer": "Levi's",
+      "websiteId": "levi.com",
+      "searchStatus": 200,
+      "returnedRecords": 20,
+      "accepted": 20,
+      "rejected": 0,
+      "rejectionReasons": {
+        "invalid_product": 0,
+        "unverified_merchant": 0,
+        "retailer_mismatch": 0,
+        "duplicate_product": 0
+      },
+      "upstreamDiagnostics": null,
+      "hasContinuation": true,
+      "fetchedAt": "2026-10-16T13:22:14.353Z",
+      "expiresAt": "2026-10-16T13:27:14.353Z",
+      "missingImages": 0,
+      "categories": [
+        "Accessories"
+      ],
+      "sampleProductIds": [
+        "GdvkwaA",
+        "4hFJ1sd",
+        "aJYp8bu"
+      ],
+      "detail": {
+        "images": 5,
+        "descriptionPresent": true,
+        "offers": 1,
+        "optionGroups": 1,
+        "freshness": {
+          "status": "fresh",
+          "fetchedAt": "2026-10-16T13:22:15.013Z",
+          "expiresAt": "2026-10-16T13:22:45.013Z"
+        },
+        "httpStatus": 200,
+        "status": "fresh"
+      }
+    },
+    {
+      "retailer": "TJ Maxx",
+      "websiteId": "tjmaxx.tjx.com",
+      "searchStatus": 200,
+      "returnedRecords": 24,
+      "accepted": 24,
+      "rejected": 0,
+      "rejectionReasons": {
+        "invalid_product": 0,
+        "unverified_merchant": 0,
+        "retailer_mismatch": 0,
+        "duplicate_product": 0
+      },
+      "upstreamDiagnostics": null,
+      "hasContinuation": true,
+      "fetchedAt": "2026-10-16T13:22:16.116Z",
+      "expiresAt": "2026-10-16T13:27:16.116Z",
+      "missingImages": 0,
+      "categories": [
+        "Accessories",
+        "Shoes"
+      ],
+      "sampleProductIds": [
+        "OyfSock",
+        "vnVOk8d",
+        "7uLD182"
+      ],
+      "detail": {
+        "images": 1,
+        "descriptionPresent": true,
+        "offers": 1,
+        "optionGroups": 0,
+        "freshness": {
+          "status": "fresh",
+          "fetchedAt": "2026-10-16T13:22:16.734Z",
+          "expiresAt": "2026-10-16T13:22:46.734Z"
+        },
+        "httpStatus": 200,
+        "status": "fresh"
+      }
+    },
+    {
+      "retailer": "e.l.f. Cosmetics",
+      "websiteId": "elfcosmetics.com",
+      "searchStatus": 200,
+      "returnedRecords": 5,
+      "accepted": 4,
+      "rejected": 1,
+      "rejectionReasons": {
+        "invalid_product": 0,
+        "unverified_merchant": 1,
+        "retailer_mismatch": 0,
+        "duplicate_product": 0
+      },
+      "upstreamDiagnostics": null,
+      "hasContinuation": true,
+      "fetchedAt": "2026-10-16T13:22:18.213Z",
+      "expiresAt": "2026-10-16T13:27:18.213Z",
+      "missingImages": 0,
+      "categories": [
+        "Beauty"
+      ],
+      "sampleProductIds": [
+        "C2s6anE",
+        "Bubs0PY",
+        "XfAzzi8"
+      ],
+      "detail": {
+        "images": 8,
+        "descriptionPresent": true,
+        "offers": 1,
+        "optionGroups": 0,
+        "freshness": {
+          "status": "fresh",
+          "fetchedAt": "2026-10-16T13:22:18.763Z",
+          "expiresAt": "2026-10-16T13:22:48.763Z"
+        },
+        "httpStatus": 200,
+        "status": "fresh"
+      }
+    }
+  ]
+}

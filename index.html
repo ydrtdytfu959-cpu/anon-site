@@ -9,7 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3">
   <meta name="robots" content="index,follow">
   <meta name="description" content="AnoX — اكتشف المنتجات، وقارن التفاصيل وتكلفة وصولها التقديرية إلى الجزائر.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-gVagSav4MvBNCoQLEI6ESIGPqB7VPQ084R+PCMLxJwg=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — U.S. products for Algeria">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-ebo0uMMtsXOEpqnSnM6FN/gVz+4wqPTj1ZIhiJjhqzU=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — U.S. products for Algeria">
   <meta property="og:description" content="AnoX LLC — discover U.S. products and discuss purchasing and fulfillment to Algeria.">
   <meta property="og:url" content="https://anox.app/">
   <title>AnoX — اختيارات أبعد. تكلفة أوضح.</title>
@@ -1315,6 +1315,8 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
 .commerce-cost h2{font-size:1.4rem;margin-bottom:15px}
 .commerce-cost h3{font-size:1.05rem;margin-block:20px 10px}
 .commerce-cost dt small{display:block;color:var(--muted)}
+.commerce-cost [data-commerce-price-change]{display:block}
+.commerce-cost [data-commerce-price-change] bdi{white-space:nowrap}
 .commerce-totals{border-top:1px solid var(--line);margin-top:15px;padding-top:15px}
 @media(max-width:760px){.commerce-cart-layout{grid-template-columns:1fr}.commerce-cart-line{gap:12px}.commerce-cart-line>img{width:72px;flex-basis:72px}.commerce-cart-line .actions{gap:6px}.commerce-gallery-stage{height:90vw;min-height:220px}.commerce-cart-line .btn{padding-inline:12px}}
 </style>
@@ -1437,7 +1439,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
   const channel3Provider = Object.freeze({id:"channel3-live", merchant:"Channel3", mode:"live", transport:"api", pagination:"cursor", timeoutMs:18000, sourceType:"catalog-api", authorization:Object.freeze({status:"provider-terms",evidence:"Channel3 customer output"}), approvedLive:false, imageHosts:Object.freeze(["cdn.trychannel3.com"]), merchantHosts:Object.freeze(["buy.trychannel3.com"]), staleAfterMs:86400000});
   const CHANNEL3_SECTIONS = Object.freeze(["featured","men","women","shoes","clothing","beauty","accessories","sports","brands"]);
   const MAX_BYTES=2*1024*1024;
-  let retryAt=0, cjRetryAt=0;
+  const retryAfterByUrl=new Map();
   const DEFAULT_LIMIT = 24;
 
   const stringValue = value => typeof value === "string" ? value.trim() : "";
@@ -1615,13 +1617,21 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
   }
   async function readJson(url,signal,timeoutMs=8000,cjSource=false) {
     if(signal?.aborted)throw Error("catalog_aborted");
-    if(Date.now()<(cjSource?cjRetryAt:retryAt))throw Error("catalog_rate_limited");
+    const cooldown=retryAfterByUrl.get(url);
+    if(cooldown&&Date.now()<cooldown.until)throw catalogError(cooldown.code,429);
     const controller=new AbortController(),abort=()=>controller.abort(),timer=setTimeout(abort,timeoutMs);
     signal?.addEventListener("abort",abort,{once:true});
     try{
       const response=await fetch(url,{credentials:"omit",cache:"no-store",referrerPolicy:"no-referrer",redirect:"error",signal:controller.signal});
-      if(response.status===429){const header=response.headers.get("retry-after"),seconds=Number(header);const until=Date.now()+Math.min(300000,Math.max(1000,Number.isFinite(seconds)?seconds*1000:(Date.parse(header)-Date.now())||30000));if(cjSource)cjRetryAt=until;else retryAt=until;throw Error("catalog_rate_limited");}
-      if(!response.ok)throw Error(`catalog_http_${response.status}`);
+      if(!response.ok){
+        let errorBody='',bytes=0;const reader=response.body?.getReader(),decoder=new TextDecoder();
+        if(reader)for(;;){const {value,done}=await reader.read();if(done)break;bytes+=value.byteLength;if(bytes>4096){await reader.cancel();errorBody='';break;}errorBody+=decoder.decode(value,{stream:true});}
+        let upstream;try{upstream=JSON.parse(errorBody).error;}catch{}
+        const codes={UPSTREAM_BUDGET_EXCEEDED:'catalog_budget_exhausted',UPSTREAM_RATE_LIMITED:'catalog_rate_limited',UPSTREAM_BUDGET_UNAVAILABLE:'catalog_budget_unavailable',UPSTREAM_UNAVAILABLE:'catalog_provider_unavailable',UPSTREAM_INVALID:'catalog_provider_unavailable',CURSOR_EXPIRED:'catalog_cursor_expired',CURSOR_INVALID:'catalog_cursor_invalid'};
+        const code=Object.hasOwn(codes,upstream)?codes[upstream]:response.status===429?'catalog_rate_limited':`catalog_http_${response.status}`;
+        if(response.status===429){const header=response.headers.get('retry-after'),seconds=header===null?NaN:Number(header);const until=Date.now()+Math.min(300000,Math.max(1000,Number.isFinite(seconds)?seconds*1000:(Date.parse(header)-Date.now())||30000));retryAfterByUrl.set(url,{until,code});while(retryAfterByUrl.size>100)retryAfterByUrl.delete(retryAfterByUrl.keys().next().value);}
+        throw catalogError(code,response.status);
+      }
       if(!/application\/(?:[a-z0-9.-]+\+)?json/i.test(response.headers.get("content-type")||"")||Number(response.headers.get("content-length"))>MAX_BYTES)throw Error("catalog_payload_limit");
       const reader=response.body?.getReader();if(!reader)throw Error("catalog_payload");
       let size=0,body="";const decoder=new TextDecoder();
@@ -1664,14 +1674,26 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
         sourceType:"affiliate-feed"}};
   }
   function parseCjNikePreviewPage(payload,{limit=24,offset=0}={}) {
-    if(!payload||payload.source!=="CJ"||payload.advertiser!=="NIKE"||
+    if(!Number.isSafeInteger(limit)||limit<1||limit>24||!Number.isSafeInteger(offset)||offset<0||offset>5000||
+       !payload||payload.source!=="CJ"||payload.advertiser!=="NIKE"||
        !Array.isArray(payload.products)||payload.products.length>limit||
        !Number.isSafeInteger(payload.totalCount)||payload.totalCount<0)throw catalogError("catalog_payload");
+    const explicit=Object.hasOwn(payload,'rawCount')||Object.hasOwn(payload,'nextOffset');
+    const rawCount=explicit?payload.rawCount:payload.products.length;
+    if(!Number.isSafeInteger(rawCount)||rawCount<payload.products.length||rawCount>limit)throw catalogError("catalog_payload");
+    const nextOffset=rawCount&&offset+rawCount<payload.totalCount&&offset+rawCount<=5000?offset+rawCount:null;
+    if(explicit){
+      if(payload.nextOffset!==nextOffset)throw catalogError("catalog_payload");
+      let previous=offset-1;
+      for(const product of payload.products){
+        const index=product?.sourceIndex;
+        if(!Number.isSafeInteger(index)||index<=previous||index<offset||index>=offset+rawCount)throw catalogError("catalog_payload");
+        previous=index;
+      }
+    }
     const fetchedAt=new Date().toISOString();
-    const items=payload.products.map((raw,i)=>normalizeCjNikePreview(raw,offset+i,fetchedAt)).filter(Boolean);
-    const nextOffset=payload.products.length&&offset+payload.products.length<payload.totalCount?
-      offset+payload.products.length:null;
-    return {items,total:payload.totalCount,nextOffset,invalidCount:payload.products.length-items.length,fetchedAt};
+    const items=payload.products.map((raw,i)=>normalizeCjNikePreview(raw,explicit?raw.sourceIndex:offset+i,fetchedAt)).filter(Boolean);
+    return {items,total:payload.totalCount,nextOffset,rawCount,invalidCount:rawCount-items.length,fetchedAt};
   }
   async function fetchCjNikePreviewPage({limit=24,offset=0,signal}={}) {
     if(!Number.isSafeInteger(limit)||limit<1||limit>24||!Number.isSafeInteger(offset)||offset<0||offset>5000)
@@ -1689,20 +1711,24 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
 
   function channel3Category(raw) {
     const path=Array.isArray(raw?.category?.path)?raw.category.path.map(entry=>stringValue(entry?.title)).filter(Boolean):[];
-    const value=[stringValue(raw?.category?.title),...path].join(" ").toLowerCase();
-    if(/shoe|sneaker|boot|footwear/.test(value))return "Shoes";
-    if(/beauty|cosmetic|skin|fragrance|makeup/.test(value))return "Beauty";
-    if(/accessor|bag|watch|jewel|eyewear/.test(value))return "Accessories";
-    if(/sport|fitness|training|outdoor/.test(value))return "Sports";
+    // The ancestor "Apparel & Accessories" also contains jeans and dresses.
+    // Prefer the most specific category before considering broad ancestors.
+    for(const part of [stringValue(raw?.category?.title),...path.reverse()]){
+      const value=part.toLowerCase();
+      if(/shoe|sneaker|boot|footwear/.test(value))return "Shoes";
+      if(/beauty|cosmetic|skin|fragrance|makeup/.test(value))return "Beauty";
+      if(/clothing|jeans|pants|dress|shirt|jacket|sweater|skirt|shorts|underwear|apparel/.test(value))return "Fashion";
+      if(/accessor|bag|watch|jewel|eyewear/.test(value))return "Accessories";
+      if(/sport|fitness|training|outdoor/.test(value))return "Sports";
+    }
     return "Fashion";
   }
   function channel3Brand(raw){
     const brands=Array.isArray(raw?.brands)?raw.brands:[];
     return stringValue(brands.find(entry=>stringValue(entry?.name))?.name)||"Brand";
   }
-  // A product is in the public catalog only when its source declares one of
-  // four approved brands, or a fresh offer identifies an approved retailer.
-  // Titles and search terms are NEVER evidence of brand or retailer identity.
+  // Official seller identity determines coverage, including a retailer's
+  // genuine sub-brands. Brand names and search terms are not merchant proof.
   const APPROVED_BRANDS=Object.freeze({nike:"Nike",adidas:"Adidas",levis:"Levi's",elf:"e.l.f. Cosmetics",elfcosmetics:"e.l.f. Cosmetics"});
   // Strict direct retailer attribution, not any marketplace carrying a branded item.
   // Buy links are Channel3-managed HTTPS redirects, never an invented store URL.
@@ -1718,9 +1744,14 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     ["Nike","Nike"],["Adidas","adidas"],["Levi's","Levi's"],
     ["e.l.f. Cosmetics","e.l.f. cosmetics"],["Sephora","Sephora"],["TJ Maxx","TJ Maxx"]
   ]);
+  const WEBSITE_IDS=Object.freeze(['nike.com','adidas.com','levi.com','elfcosmetics.com','sephora.com','tjmaxx.tjx.com']);
   const SECTION_QUERIES=Object.freeze({
     men:"Levi's men",women:"Nike women",shoes:"adidas",clothing:"Levi's",
     beauty:"e.l.f. cosmetics",accessories:"Nike accessories",sports:"Nike sports",brands:"Sephora"
+  });
+  const SECTION_WEBSITES=Object.freeze({
+    men:'levi.com',women:'nike.com',shoes:'adidas.com',clothing:'levi.com',
+    beauty:'elfcosmetics.com',accessories:'nike.com',sports:'nike.com',brands:'sephora.com'
   });
   const OFFICIAL_DOMAINS=new Set(Object.values(OFFICIAL_STORES).flat());
   function officialOffers(raw) {
@@ -1742,13 +1773,10 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     OFFICIAL_STORES["TJ Maxx"].includes(stringValue(o.domain).toLowerCase())
   );}
   function approvedSellerDomains(raw) {
-    const brand=approvedBrand(raw);
     const fromOffers=officialOffers(raw).map(o=>stringValue(o.domain).toLowerCase());
     const fromCache=(Array.isArray(raw?.sellerDomains)?raw.sellerDomains:[])
-      .slice(0,6).map(v=>stringValue(v).toLowerCase()).filter(d=>OFFICIAL_DOMAINS.has(d));
-    const retail=[...OFFICIAL_STORES.Sephora,...OFFICIAL_STORES["TJ Maxx"]];
-    return [...new Set([...fromOffers,...fromCache])].filter(d=>
-      (brand&&OFFICIAL_STORES[brand].includes(d))||retail.includes(d));
+      .slice(0,14).map(v=>stringValue(v).toLowerCase()).filter(d=>OFFICIAL_DOMAINS.has(d));
+    return [...new Set([...fromOffers,...fromCache])];
   }
   function approvedOfficialOffers(raw){
     const allowed=new Set(approvedSellerDomains(raw));
@@ -1764,7 +1792,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     if(!label)return null;
     // Ignore volatile fields even from an older backend during rollout.
     const name=localized(title,title);
-    const media=(Array.isArray(raw.images)?raw.images:[]).slice(0,1).flatMap(image=>{const url=trustedImageUrl(firstValue(image?.cleaned_url,image?.url));if(!url)return [];return [{url,alt:localized(stringValue(image?.alt_text)||title,title),width:420,height:390}];});
+    const media=(Array.isArray(raw.images)?raw.images:[]).slice(0,12).flatMap(image=>{const url=trustedImageUrl(image?.cleaned_url)||trustedImageUrl(image?.url);if(!url)return [];return [{url,alt:localized(stringValue(image?.alt_text)||title,title),width:420,height:390}];}).slice(0,1);
     const category=channel3Category(raw),kind=safeKey(firstValue(raw?.category?.slug,raw?.category?.title,category),"product").toLowerCase();
     return {id,slug:id,name,brand:label,category,kind:/^[a-z][a-z-]{0,29}$/.test(kind)?kind:"product",currency:"USD",priceCents:null,presentationOnly:true,
       compareAtPriceCents:null,weightGrams:0,variantDetailsKnown:false,stock:null,variants:[],media,
@@ -1801,12 +1829,19 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     if (q && section || section && !CHANNEL3_SECTIONS.includes(section)) throw catalogError("catalog_options");
     if (!q) section = section || "featured";
     if (!filters || typeof filters !== "object" || Array.isArray(filters)) throw catalogError("catalog_options");
-    const allowed = { availability: ["InStock", "OutOfStock"], conditions: ["new", "used"] }, clean = {};
+    const allowed = { availability: ["InStock", "OutOfStock"], conditions: ["new", "used"], website_ids:WEBSITE_IDS }, clean = {};
     for (const key of Object.keys(filters).sort()) {
       const values = filters[key];
-      if (!Object.hasOwn(allowed, key) || !Array.isArray(values) || !values.length || values.length > 2 ||
+      if (!Object.hasOwn(allowed, key) || !Array.isArray(values) || !values.length || values.length > (key==='website_ids'?1:2) ||
           values.some(value => !allowed[key].includes(value))) throw catalogError("catalog_options");
       clean[key] = [...new Set(values)].sort();
+    }
+    // Generated shelves and exact retailer searches use the same merchant
+    // scope when requesting and validating a page. Generic queries stay broad.
+    if(!clean.website_ids){
+      const source=FEATURED_SOURCES.findIndex(([,term])=>term.toLowerCase()===q.toLowerCase());
+      const website=source>=0?WEBSITE_IDS[source]:SECTION_WEBSITES[section];
+      if(website)clean.website_ids=[website];
     }
     return { q, section, limit, cursor: channel3Cursor(cursor), filters: clean };
   }
@@ -1824,21 +1859,40 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
   }
 
   function parseChannel3Page(payload, options = {}) {
-    const { q, section, limit } = channel3Options(options);
+    const { q, section, limit, filters } = channel3Options(options);
     const data = payload?.data;
     if (!payload || typeof payload !== "object" || Array.isArray(payload) || payload.provider !== "channel3" ||
         !data || typeof data !== "object" || Array.isArray(data) || !Array.isArray(data.products) ||
         !Object.hasOwn(data, "next_page_token")) throw catalogError("catalog_payload");
     const raw = data.products;
     if (raw.length > limit) throw catalogError("catalog_record_limit");
-    const nextCursor = channel3Cursor(data.next_page_token);
+    const degraded=payload.status==='presentation_only'&&payload.error==='CATALOG_REFRESH_UNAVAILABLE';
+    const nextCursor = degraded?null:channel3Cursor(data.next_page_token);
     const fetchedAt = normalizedDate(payload.fetchedAt), expiresAt = normalizedDate(payload.expiresAt), now = Date.now();
     if (!fetchedAt || !expiresAt || Date.parse(fetchedAt) > now + 60000 ||
         Date.parse(expiresAt) <= Date.parse(fetchedAt) ||
-        Date.parse(expiresAt) - Date.parse(fetchedAt) > (q ? 300000 : 600000)) throw catalogError("catalog_payload");
+        Date.parse(expiresAt) - Date.parse(fetchedAt) > (degraded?3600000:q ? 300000 : 600000)) throw catalogError("catalog_payload");
     if (Date.parse(expiresAt) <= now) throw catalogError("catalog_expired");
-    const items = raw.map((item, index) => normalizeChannel3Product(item, index, fetchedAt)).filter(Boolean);
-    return { q, section, limit, items, total: null, nextCursor, fetchedAt, expiresAt, invalidCount: raw.length - items.length };
+    const items=[],seen=new Set(),rejectionReasons={invalid_product:0,unverified_merchant:0,retailer_mismatch:0,duplicate_product:0};
+    const expected=filters.website_ids?.[0],store=expected&&Object.values(OFFICIAL_STORES).find(domains=>domains.includes(expected));
+    for(const [index,item] of raw.entries()){
+      const sellers=approvedSellerDomains(item);
+      if(!sellers.length){rejectionReasons.unverified_merchant++;continue;}
+      if(store&&!sellers.some(domain=>store.includes(domain))){rejectionReasons.retailer_mismatch++;continue;}
+      const normalized=normalizeChannel3Product(store?{...item,sellerDomains:sellers.filter(domain=>store.includes(domain)),offers:officialOffers(item).filter(offer=>store.includes(stringValue(offer.domain).toLowerCase()))}:item,index,fetchedAt);
+      if(!normalized){rejectionReasons.invalid_product++;continue;}
+      if(seen.has(normalized.id)){rejectionReasons.duplicate_product++;continue;}
+      seen.add(normalized.id);items.push(normalized);
+    }
+    const diagnostics={received:raw.length,accepted:items.length,rejected:raw.length-items.length,rejectionReasons,retailers:Object.fromEntries(Object.keys(OFFICIAL_STORES).map(store=>[store,items.filter(p=>p.brand===store).length]))};
+    // Add only reconciled, bounded server rejection counts; never accept prices
+    // or links through diagnostic metadata. Older deployments omit this field.
+    const upstream=data.diagnostics;
+    if(record(upstream)&&Number.isSafeInteger(upstream.received)&&upstream.received>=raw.length&&upstream.received<=limit&&upstream.accepted===raw.length&&upstream.rejected===upstream.received-raw.length&&record(upstream.rejectionReasons)){
+      const reasons=Object.values(upstream.rejectionReasons);
+      if(reasons.every(n=>Number.isSafeInteger(n)&&n>=0&&n<=limit)&&reasons.reduce((a,b)=>a+b,0)===upstream.rejected){diagnostics.received=upstream.received;diagnostics.rejected+=upstream.rejected;for(const [key,value] of Object.entries(upstream.rejectionReasons))if(['invalid_product','unverified_merchant','retailer_mismatch','duplicate_product','traversal_limit'].includes(key))diagnostics.rejectionReasons[key]=(diagnostics.rejectionReasons[key]||0)+value;}
+    }
+    return { q, section, limit, items, total: null, nextCursor, fetchedAt, expiresAt, invalidCount:diagnostics.rejected, diagnostics, degraded };
   }
 
   // Scan a full source page per metered query, while emitting at most one
@@ -1893,7 +1947,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     mixedPageCache.delete(key);
     await paceFeaturedSearch(signal);
     const url=buildChannel3Url({q:query,limit:24,cursor,filters});
-    const page=parseChannel3Page(await readJson(url,signal,channel3Provider.timeoutMs),{q:query,limit:24});
+    const page=parseChannel3Page(await readJson(url,signal,channel3Provider.timeoutMs),{q:query,limit:24,filters});
     if(signal?.aborted){const error=new Error("catalog_aborted");error.name="AbortError";throw error;}
     const expiresAt=Date.parse(page.expiresAt);
     if(Number.isFinite(expiresAt)&&expiresAt>Date.now()){
@@ -1906,11 +1960,17 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
   function shuffleRoundRobin(groups,limit){
     const order=groups.map((_,i)=>i),used=groups.map(()=>0);
     for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
-    const items=[];
+    const items=[],seen=new Set();
     for(let pos=0;pos<24&&items.length<limit;pos++){
       for(const i of order){
         if(items.length>=limit)break;
-        if(groups[i][pos]){items.push(groups[i][pos]);used[i]++;}
+        const product=groups[i][pos];
+        if(product){
+          // Consume duplicate source rows as well as displayed rows so the
+          // continuation remains a prefix offset and preserves unused cards.
+          used[i]++;
+          if(!seen.has(product.id)){seen.add(product.id);items.push(product);}
+        }
       }
     }
     return {items,used};
@@ -1919,14 +1979,15 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     const state=parseMixedCursor(normalized.cursor),cursors=state.c,offsets=state.o;
     const groups=Array(6).fill(null).map(()=>[]),totals=Array(6).fill(0);
     const sourceNext=cursors.slice(),next=cursors.slice(),nextOffsets=offsets.slice();
-    let errors=0,earliestFetched=null,earliestExpiry=state.until??Infinity;
+    let errors=0,invalidCount=0,degraded=false,earliestFetched=null,earliestExpiry=state.until??Infinity;
+    const sourceDiagnostics=FEATURED_SOURCES.map(([retailer])=>({retailer,status:'exhausted',received:0,accepted:0,rejected:0}));
     // First display reads at most six sources; subsequent mixed pages reuse
     // validated unexpired source pages without any additional provider calls.
     for(let start=0;start<6;start+=3){
       const results=await Promise.allSettled(FEATURED_SOURCES.slice(start,start+3).map(async([,query],offset)=>{
         const i=start+offset;
         if(cursors[i]==="")return null;
-        const page=await featuredSourcePage(query,cursors[i],normalized.filters,signal);
+        const page=await featuredSourcePage(query,cursors[i],{...normalized.filters,website_ids:[WEBSITE_IDS[i]]},signal);
         if(offsets[i]>page.items.length)throw catalogError("catalog_cursor_invalid",400);
         return page;
       }));
@@ -1935,9 +1996,11 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       if(cursorError)throw cursorError.reason;
       results.forEach((res,k)=>{
         const i=start+k;
-        if(res.status==="rejected"){errors++;return;}
+        if(res.status==="rejected"){errors++;sourceDiagnostics[i]={...sourceDiagnostics[i],status:'unavailable',error:res.reason?.code||'catalog_provider_unavailable'};return;}
         if(!res.value){next[i]="";nextOffsets[i]=0;return;}
         const page=res.value;
+        invalidCount+=page.invalidCount;degraded=degraded||page.degraded;
+        sourceDiagnostics[i]={retailer:FEATURED_SOURCES[i][0],status:page.degraded?'presentation_only':page.items.length?'ready':page.invalidCount?'rejected':'empty',...page.diagnostics};
         totals[i]=page.items.length;groups[i]=page.items.slice(offsets[i]);
         sourceNext[i]=page.nextCursor??"";
         const fetched=Date.parse(page.fetchedAt),expiry=Date.parse(page.expiresAt);
@@ -1960,7 +2023,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
         earliestExpiry=Math.min(earliestExpiry,now+120000);
       }catch{cj=null;}
     }
-    if(errors===6&&!cj)throw catalogError("catalog_unavailable",503);
+    if(errors>0&&earliestFetched===null&&!cj){const codes=sourceDiagnostics.filter(s=>s.status==='unavailable').map(s=>s.error);throw catalogError(codes.every(code=>code===codes[0])?codes[0]:'catalog_provider_unavailable',503);}
     groups.push(cj?.items||[]);
     const {items,used}=shuffleRoundRobin(groups,normalized.limit);
     for(let i=0;i<6;i++){
@@ -1977,8 +2040,8 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     }
     const consumed=used[6]||0;
     const nextJ=cj?(consumed<cj.items.length?
-      (consumed?cj.items[consumed-1].sourceIndex+1:Math.min(state.j+24,5000)):
-      (cj.nextOffset??Math.min(state.j+24,5000))):state.j;
+      (consumed?cj.items[consumed-1].sourceIndex+1:state.j):
+      (cj.nextOffset??Math.min(state.j+cj.rawCount,5000))):state.j;
     const cjMore=cj?nextJ<5000&&(consumed<cj.items.length||cj.nextOffset!==null):state.jMore;
     // A source failure preserves its last cursor for an explicit later retry.
     const nextCursor=next.every(v=>v==="")&&!cjMore?null:JSON.stringify({
@@ -1987,7 +2050,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     return {q:"",section:"featured",limit:normalized.limit,items,total:null,nextCursor,
       fetchedAt:new Date(earliestFetched??Date.now()).toISOString(),
       expiresAt:new Date(Number.isFinite(earliestExpiry)?earliestExpiry:Date.now()+60000).toISOString(),
-      invalidCount:0,partialErrors:errors};
+      invalidCount,partialErrors:errors,degraded,sourceDiagnostics};
   }
   // A separate Nike-only authorized CJ feed can serve Nike searches and
   // Nike-relevant shelves without consuming scarce Channel3 search credits.
@@ -2008,7 +2071,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     }
     const url=buildCatalogUrl({q:term,limit:normalized.limit,offset});
     const page=parseCjNikePreviewPage(await readJson(url,signal,12000,true),{limit:normalized.limit,offset});
-    if(!page.items.length)throw catalogError("catalog_unavailable",503);
+    if(!page.items.length&&page.nextOffset===null)throw catalogError("catalog_unavailable",503);
     return {q:normalized.q,section:normalized.section,limit:normalized.limit,items:page.items,
       total:null,nextCursor:page.nextOffset!==null&&page.nextOffset<=5000?"cj:"+page.nextOffset:null,
       fetchedAt:page.fetchedAt,expiresAt:new Date(Date.now()+120000).toISOString(),
@@ -2128,7 +2191,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     const category = record(raw.category) ? {slug:detailString(raw.category.slug, 100), title:detailString(raw.category.title, 100), path:detailList(raw.category.path, 16).filter(record).map(part => ({slug:detailString(part.slug, 100), title:detailString(part.title, 100)}))} : null;
     return {schema:"anox.product-detail/1", provider:"channel3", id:productId, slug:productId, title, description:detailString(raw.description, 60000),
       brands:detailList(raw.brands, 16).filter(record).map(brand => ({id:detailString(brand.id, 200, true), name:detailString(brand.name, 100, true)})),
-      images:detailList(raw.images, 64).filter(record).flatMap(image => {const url = detailUrl(image.url, "cdn.trychannel3.com"); return url ? [{url, altText:detailString(image.alt_text, 500) || title, isMainImage:image.is_main_image === true, shotType:detailString(image.shot_type, 40)}] : [];}),
+      images:detailList(raw.images, 64).filter(record).flatMap(image => {const url = detailUrl(image.cleaned_url, "cdn.trychannel3.com") || detailUrl(image.url, "cdn.trychannel3.com"); return url ? [{url, altText:detailString(image.alt_text, 500) || title, isMainImage:image.is_main_image === true, shotType:detailString(image.shot_type, 40)}] : [];}),
       category, gender:["male", "female"].includes(raw.gender) ? raw.gender : null, age:["newborn", "infant", "toddler", "kids", "adult"].includes(raw.age) ? raw.age : null,
       materials:detailList(raw.materials, 64).map(value => detailString(value, 2000, true)), keyFeatures:detailList(raw.key_features, 64).map(value => detailString(value, 2000, true)), structuredAttributes,
       offers, variants:{options:variantOptions, selected}, stock:null, purchasable:false, freshness:{status:payload.status, fetchedAt, expiresAt}, selectionMismatch, error:payload.error};
@@ -2199,7 +2262,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
         if(new Set(selections.map(selection=>JSON.stringify(selection))).size>5)throw fail('INVALID_BODY');
         const identities=data.lines.map((line,i)=>JSON.stringify([line.provider,...selections[i],line.merchantDomain,line.condition]));
         if(new Set(identities).size!==identities.length)throw fail('INVALID_BODY');
-      }else if(path==='/commerce/checkout-attempts'){
+      }else if(path==='/commerce/checkout-attempts'||path==='/commerce/service-requests'){
         if(!only(data,['quoteId','cartRevision','cartHash'])||!identifier(data.quoteId)||(!identifier(data.cartRevision)||data.cartRevision.length>80)||typeof data.cartHash!=='string'||!/^[a-f0-9]{64}$/.test(data.cartHash))throw fail('INVALID_BODY');
       }else if(!only(data,[]))throw fail('INVALID_BODY');
       return JSON.stringify(data);
@@ -2207,7 +2270,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     async function api(path,options={},retry=true){
       const method=options.method||'GET',commerce=typeof path==='string'&&path.startsWith('/commerce/');
       const read=method==='GET'&&(/^(?:\/commerce\/orders\/[A-Za-z0-9_-]{1,80}|\/commerce\/orders(?:\?cursor=[A-Za-z0-9_-]{1,80})?)$/.test(path));
-      const post=method==='POST'&&(path==='/commerce/quotes'||path==='/commerce/checkout-attempts'||/^\/commerce\/orders\/[A-Za-z0-9_-]{1,80}\/(?:cancel|refund)$/.test(path));
+      const post=method==='POST'&&(path==='/commerce/quotes'||path==='/commerce/checkout-attempts'||path==='/commerce/service-requests'||/^\/commerce\/orders\/[A-Za-z0-9_-]{1,80}\/(?:cancel|refund)$/.test(path));
       if(commerce?!(read||post):!['/me','/orders'].includes(path)||!(method==='GET'||path==='/me'&&method==='PUT'))throw fail('INVALID_PATH');
       const headers={};let body;
       if(post){if(typeof options.idempotencyKey!=='string'||!/^[-A-Za-z0-9_]{16,128}$/.test(options.idempotencyKey))throw fail('INVALID_IDEMPOTENCY_KEY');body=commerceBody(path,options.body);headers['Content-Type']='application/json';headers['Idempotency-Key']=options.idempotencyKey;}
@@ -2493,7 +2556,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     }));
   }
   function selection(value) {
-    if (!object(value) || value.provider !== 'channel3' || !/^[A-Za-z0-9_-]{1,80}$/.test(value.productId) || !integer(value.quantity,1,20)) throw fail('invalid_selection');
+    if (!object(value) || value.provider !== 'channel3' || typeof value.productId !== 'string' || !/^[A-Za-z0-9_-]{1,80}$/.test(value.productId) || !integer(value.quantity,1,20)) throw fail('invalid_selection');
     const data = object(value.display) ? value.display : {}, rawDomain=value.merchantDomain ?? data.merchantDomain;
     if(typeof rawDomain!=='string'||rawDomain.length>253)throw fail('invalid_selection');
     const merchantDomain=rawDomain.toLowerCase();
@@ -2570,7 +2633,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
   function componentShape(c){return object(c)&&identifier(c.code,100)&&bounded(c.label,200)&&c.currency==='USD'&&['verified','estimated','unknown','conditional'].includes(c.status)&&(c.status==='unknown'?c.amountMinor===null:integer(c.amountMinor,0,1e12))&&(bounded(c.source,300)||c.status==='unknown'&&c.source===null)&&(c.note===undefined||typeof c.note==='string'&&c.note.length<=1000);}
   function quoteShape(envelope,revision,now,expectedLines){
     const q=envelope?.quote,costs=q?.costs,invalid=()=>{throw fail('invalid_quote');};
-    if(!object(envelope)||envelope.schemaVersion!==1||!object(q)||!identifier(q.quoteId)||!identifier(q.cartHash)||q.cartRevision!==revision||!identifier(q.cartRevision,80)||q.currency!=='USD'||!iso(q.createdAt)||!iso(q.expiresAt)||Date.parse(q.createdAt)>now+5000||Date.parse(q.expiresAt)<=now||Date.parse(q.expiresAt)<=Date.parse(q.createdAt)||Date.parse(q.expiresAt)-Date.parse(q.createdAt)>30000)invalid();
+    if(!object(envelope)||envelope.schemaVersion!==1||!object(q)||!identifier(q.quoteId)||!/^([a-f0-9]{64})$/.test(q.cartHash||'')||q.destination?.country!=='DZ'||q.cartRevision!==revision||!identifier(q.cartRevision,80)||q.currency!=='USD'||!iso(q.createdAt)||!iso(q.expiresAt)||Date.parse(q.createdAt)>now+5000||Date.parse(q.expiresAt)<=now||Date.parse(q.expiresAt)<=Date.parse(q.createdAt)||Date.parse(q.expiresAt)-Date.parse(q.createdAt)>30000)invalid();
     if(!object(costs)||!Array.isArray(costs.components)||!costs.components.length||costs.components.length>30||!costs.components.every(componentShape)||new Set(costs.components.map(c=>c.code)).size!==costs.components.length||!Array.isArray(costs.potentialChargesOnArrival)||costs.potentialChargesOnArrival.length>20||!costs.potentialChargesOnArrival.every(componentShape))invalid();
     const fee=costs.components.filter(c=>c.code==='anox_service_fee');
     if(fee.length!==1||fee[0].amountMinor!==500||fee[0].status!=='conditional'||costs.estimatedTotalMinor!==null||costs.verifiedPayableTotalMinor!==null||!object(q.checkout)||q.checkout.enabled!==false||!blockersShape(q.checkout.blockers))invalid();
@@ -2579,7 +2642,7 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     if(!Array.isArray(q.lines)||!q.lines.length||q.lines.length>10||expectedLines&&q.lines.length!==expectedLines.length)invalid();
     q.lines.forEach((line,i)=>{
       let normalized;try{normalized=selection(line);}catch{invalid();}
-      if(line.currency!=='USD'||!bounded(line.title,500)||!integer(line.unitPriceMinor,0,1e12)||!integer(line.lineTotalMinor,0,1e12)||line.lineTotalMinor!==line.unitPriceMinor*line.quantity||!['InStock','OutOfStock','unknown'].includes(line.availability)||!iso(line.validatedAt)||Date.parse(line.validatedAt)>now+10000||Date.parse(q.expiresAt)>Date.parse(line.validatedAt)+30000||!object(line.selection)||line.selection.valid!==true||!object(line.offer)||line.offer.domain!==line.merchantDomain||!https(line.offer.url,['buy.trychannel3.com'])||!(line.offer.maxCommissionRate===null||typeof line.offer.maxCommissionRate==='number'&&Number.isFinite(line.offer.maxCommissionRate)&&line.offer.maxCommissionRate>=0&&line.offer.maxCommissionRate<=1))invalid();
+      if(line.currency!=='USD'||!bounded(line.title,500)||!integer(line.unitPriceMinor,0,1e12)||!integer(line.lineTotalMinor,0,1e12)||line.lineTotalMinor!==line.unitPriceMinor*line.quantity||!['InStock','OutOfStock','unknown'].includes(line.availability)||!iso(line.validatedAt)||Date.parse(line.validatedAt)>now+10000||Date.parse(q.expiresAt)>Date.parse(line.validatedAt)+30000||!object(line.selection)||line.selection.valid!==true||!object(line.offer)||line.offer.domain!==line.merchantDomain||!(line.offer.url===null||https(line.offer.url,['buy.trychannel3.com']))||!(line.offer.maxCommissionRate===null||typeof line.offer.maxCommissionRate==='number'&&Number.isFinite(line.offer.maxCommissionRate)&&line.offer.maxCommissionRate>=0&&line.offer.maxCommissionRate<=1))invalid();
       if(expectedLines&&(lineKey(normalized)!==lineKey(expectedLines[i])||line.quantity!==expectedLines[i].quantity))invalid();
     });
     const products=costs.components.find(c=>c.code==='products');
@@ -2588,8 +2651,10 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     return freeze(copy(q));
   }
   function capabilitiesShape(value){
-    if(!object(value)||value.schemaVersion!==1||value.quote?.enabled!==true||value.quote.limits?.maxLines!==10||value.quote.limits.maxDistinctProducts!==5||value.quote.limits.maxQuantityPerLine!==20||value.serviceFee?.amountMinor!==500||value.serviceFee.currency!=='USD'||value.serviceFee.appliesOn!=='successful_order'||value.checkout?.enabled!==false||!blockersShape(value.checkout.blockers)||value.orders?.read!==true||value.orders.cancel!==false||value.orders.refund!==false)throw fail('invalid_capabilities');
-    return freeze(copy(value));
+    if(!object(value)||value.schemaVersion!==1||value.quote?.enabled!==true||value.quote.limits?.maxLines!==10||value.quote.limits.maxDistinctProducts!==5||value.quote.limits.maxQuantityPerLine!==20||value.serviceFee?.amountMinor!==500||value.serviceFee.currency!=='USD'||!['successful_order','owner_decision_pending'].includes(value.serviceFee.appliesOn)||value.serviceFee.collectionEnabled===true||value.checkout?.enabled!==false||!blockersShape(value.checkout.blockers)||value.orders?.read!==true||value.orders.cancel!==false||value.orders.refund!==false)throw fail('invalid_capabilities');
+    const serviceRequests=value.serviceRequests;
+    if(serviceRequests!==undefined&&(!object(serviceRequests)||typeof serviceRequests.create!=='boolean'||serviceRequests.read!==true||serviceRequests.paymentRequired!==false||value.serviceFee.appliesOn!=='owner_decision_pending'||value.serviceFee.collectionEnabled!==false))throw fail('invalid_capabilities');
+    return freeze({...copy(value),serviceFee:{currency:'USD',amountMinor:500,appliesOn:'owner_decision_pending',collectionEnabled:false},serviceRequests:serviceRequests?copy(serviceRequests):{create:false,read:false,paymentRequired:false}});
   }
   function quoteLimits(cart){
     const blockers=[];
@@ -2597,8 +2662,27 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     if(new Set(cart.lines.map(line=>JSON.stringify([line.productId,optionsOf(line.options)]))).size>5)blockers.push({code:'quote_too_many_products',message:'A quote supports up to 5 distinct product and option combinations. Reduce the selection before requesting costs.'});
     return blockers;
   }
+  function serviceRequestShape(envelope,expected){
+    const r=envelope?.serviceRequest,invalid=()=>{throw fail('invalid_service_request');};
+    if(envelope?.schemaVersion!==1||!object(r)||r.kind!=='service_request'||!identifier(r.orderId,80)||r.status!=='received'||!iso(r.createdAt)||!iso(r.updatedAt)||!identifier(r.quoteId,80)||!identifier(r.cartRevision,80)||typeof r.cartHash!=='string'||!/^[a-f0-9]{64}$/.test(r.cartHash)||r.currency!=='USD'||r.totalMinor!==null||r.destination?.country!=='DZ'||r.payment?.status!=='not_requested'||r.fulfillment?.status!=='not_requested'||!Array.isArray(r.fulfillment.tracking)||r.fulfillment.tracking.length!==0||r.merchantOrderReference!==null||r.capabilities?.cancel!==false||r.capabilities?.refund!==false)invalid();
+    if(r.serviceFee?.amountMinor!==500||r.serviceFee.currency!=='USD'||r.serviceFee.appliesOn!=='owner_decision_pending'||r.serviceFee.collectionEnabled!==false)invalid();
+    if(expected&&['quoteId','cartRevision','cartHash'].some(key=>r[key]!==expected[key]))invalid();
+    const costs=r.costs;
+    if(!object(costs)||costs.estimatedTotalMinor!==null||costs.verifiedPayableTotalMinor!==null||!Array.isArray(costs.components)||!costs.components.length||costs.components.length>30||!costs.components.every(componentShape)||new Set(costs.components.map(c=>c.code)).size!==costs.components.length||!Array.isArray(costs.potentialChargesOnArrival)||costs.potentialChargesOnArrival.length>20||!costs.potentialChargesOnArrival.every(componentShape))invalid();
+    const fee=costs.components.find(c=>c.code==='anox_service_fee');
+    if(!fee||fee.amountMinor!==500||fee.status!=='conditional'||!Array.isArray(r.lines)||r.lines.length<1||r.lines.length>10)invalid();
+    const lines=r.lines.map(line=>{
+      let normalized;try{normalized=selection(line);}catch{invalid();}
+      if(line.currency!=='USD'||!bounded(line.title,500)||!integer(line.unitPriceMinor,0,1e12)||!integer(line.lineTotalMinor,0,1e12)||line.lineTotalMinor!==line.unitPriceMinor*line.quantity||line.availability!=='unknown'||line.priceStatus!=='historical_estimate'||!iso(line.capturedAt)||line.capturedAt!==line.validatedAt||!iso(line.validatedAt)||Date.parse(line.validatedAt)>Date.parse(r.createdAt)+10000||!object(line.offer)||line.offer.domain!==line.merchantDomain||line.offer.url!==null||line.selection?.valid!==true||line.offer.maxCommissionRate!==null)invalid();
+      return {provider:normalized.provider,productId:normalized.productId,merchantDomain:normalized.merchantDomain,condition:normalized.condition,options:normalized.options,quantity:normalized.quantity,title:line.title,unitPriceMinor:line.unitPriceMinor,lineTotalMinor:line.lineTotalMinor,currency:'USD',priceStatus:'historical_estimate',capturedAt:line.capturedAt,availability:'unknown',validatedAt:line.validatedAt,offer:{domain:line.offer.domain,url:line.offer.url,maxCommissionRate:line.offer.maxCommissionRate},selection:{valid:true}};
+    });
+    const products=costs.components.find(c=>c.code==='products');
+    if(!products||products.status!=='estimated'||BigInt(products.amountMinor??-1)!==lines.reduce((sum,line)=>sum+BigInt(line.lineTotalMinor),0n))invalid();
+    return freeze({orderId:r.orderId,kind:'service_request',status:'received',createdAt:r.createdAt,updatedAt:r.updatedAt,quoteId:r.quoteId,cartRevision:r.cartRevision,cartHash:r.cartHash,currency:'USD',totalMinor:null,amountMinor:null,destination:{country:'DZ'},lines,costs:copy(costs),serviceFee:copy(r.serviceFee),payment:{status:'not_requested'},fulfillment:{status:'not_requested',tracking:[]},merchantOrderReference:null,capabilities:{cancel:false,refund:false}});
+  }
   function orderShape(envelope){
     const o=envelope?.order;
+    if(o?.kind==='service_request')return serviceRequestShape({schemaVersion:envelope.schemaVersion,serviceRequest:o});
     if(envelope?.schemaVersion!==1||!object(o)||!identifier(o.orderId)||!iso(o.createdAt)||o.currency!=='USD'||!integer(o.totalMinor,0,1e12)||!['pending','confirmed','fulfilling','shipped','delivered','canceled','failed'].includes(o.status)||!object(o.payment)||!['pending','processing','succeeded','failed','canceled','partially_refunded','refunded'].includes(o.payment.status)||o.capabilities?.cancel!==false||o.capabilities?.refund!==false)throw fail('invalid_order');
     const fulfillment=object(o.fulfillment)?o.fulfillment:null;
     if(fulfillment&&fulfillment.status!==undefined&&!['pending','unfulfilled','processing','partially_fulfilled','fulfilling','fulfilled','shipped','in_transit','out_for_delivery','delivered','exception','returned','canceled','unknown'].includes(fulfillment.status))throw fail('invalid_order');
@@ -2609,10 +2693,10 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
     return freeze({orders:envelope.orders.map(order=>orderShape({schemaVersion:1,order})),nextCursor:envelope.nextCursor});
   }
   function createClient({auth,fetch:transport=globalThis.fetch,crypto:random=globalThis.crypto,now=Date.now}={}) {
-    const state={quote:null,quoteStatus:'idle',error:'',capabilities:null};
+    const state={quote:null,quoteStatus:'idle',error:'',capabilities:null,serviceRequest:null,serviceRequestStatus:'idle',serviceRequestError:'',serviceRequestRetryable:false};
     const account=()=>typeof auth.sessionVersion==='function'?auth.sessionVersion():0;
-    let epoch=0,pending=null,requestBody='',requestId='',capabilityPending=null,owner=account();
-    function invalidate(){epoch++;state.quote=null;state.quoteStatus='idle';state.error='';pending=null;requestBody='';requestId='';owner=account();}
+    let epoch=0,pending=null,requestBody='',requestId='',capabilityPending=null,owner=account(),servicePending=null,serviceBody='',serviceId='';
+    function invalidate(){epoch++;state.serviceRequest=null;state.serviceRequestStatus='idle';state.serviceRequestError='';state.serviceRequestRetryable=false;servicePending=null;serviceBody='';serviceId='';state.quote=null;state.quoteStatus='idle';state.error='';pending=null;requestBody='';requestId='';owner=account();}
     function currentQuote(cart){if(owner!==account()){invalidate();return null;}const q=state.quote;return q&&q.cartRevision===cart.revision&&Date.parse(q.expiresAt)>now()&&(!auth.state||auth.state.session)?q:null;}
     function requestQuote(cart){
       if(owner!==account())invalidate();
@@ -2624,11 +2708,51 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       if(body!==requestBody){invalidate();requestBody=body;}
       if(state.quote||!requestId){if(typeof random?.randomUUID!=='function')return Promise.reject(fail('secure_random_unavailable'));requestId=random.randomUUID();}
       const ticket=epoch,accountVersion=account();state.quote=null;state.quoteStatus='loading';state.error='';
-      const task=Promise.resolve().then(()=>auth.api('/commerce/quotes',{method:'POST',body,idempotencyKey:requestId})).then(value=>{
+      const key=requestId;
+      const task=Promise.resolve().then(()=>{if(ticket!==epoch)return null;if(accountVersion!==account()||cart.revision!==revision){invalidate();return null;}return auth.api('/commerce/quotes',{method:'POST',body,idempotencyKey:key});}).then(value=>{
         if(ticket!==epoch)return null;if(accountVersion!==account()||cart.revision!==revision){invalidate();return null;}
         const result=quoteShape(value,revision,now(),lines);state.quote=result;state.quoteStatus='ready';return result;
       }).catch(error=>{if(ticket===epoch&&accountVersion===account()){state.quoteStatus='error';state.error=error.code||'quote_unavailable';if(['quote_expired','quote_invalid','invalid_quote'].includes(error.code))requestId='';}throw error;});
       pending=task;const settled=()=>{if(pending===task)pending=null;};task.then(settled,settled);return task;
+    }
+    function requestService(cart){
+      if(owner!==account())invalidate();
+      if(state.capabilities?.serviceRequests?.create!==true)return Promise.reject(fail('service_requests_unavailable'));
+      if(state.serviceRequest&&state.serviceRequest.cartRevision===cart.revision)return Promise.resolve(state.serviceRequest);
+      const quote=currentQuote(cart);
+      // An uncertain POST retry must retain its key even if the quote expires in
+      // transit. The server replays completed requests before rechecking expiry.
+      let input;
+      if(serviceBody&&JSON.parse(serviceBody).cartRevision===cart.revision)input=JSON.parse(serviceBody);
+      else if(quote)input={quoteId:quote.quoteId,cartRevision:quote.cartRevision,cartHash:quote.cartHash};
+      else return Promise.reject(fail('quote_expired'));
+      const body=JSON.stringify(input);
+      if(servicePending&&body===serviceBody)return servicePending;
+      if(body!==serviceBody){serviceBody=body;serviceId='';}
+      if(!serviceId){if(typeof random?.randomUUID!=='function')return Promise.reject(fail('secure_random_unavailable'));serviceId=random.randomUUID();}
+      const ticket=epoch,accountVersion=account(),revision=cart.revision;
+      state.serviceRequestStatus='loading';state.serviceRequestError='';state.serviceRequestRetryable=false;
+      const key=serviceId;
+      const task=Promise.resolve().then(()=>{if(ticket!==epoch)return null;if(accountVersion!==account()||cart.revision!==revision){invalidate();return null;}return auth.api('/commerce/service-requests',{method:'POST',body,idempotencyKey:key});}).then(value=>{
+        if(ticket!==epoch)return null;
+        if(accountVersion!==account()||cart.revision!==revision){invalidate();return null;}
+        const result=serviceRequestShape(value,input);state.serviceRequest=result;state.serviceRequestStatus='ready';state.serviceRequestRetryable=false;return result;
+      }).catch(error=>{
+        if(ticket===epoch&&accountVersion===account()){
+          state.serviceRequestStatus='error';state.serviceRequestError=error.code||'service_request_unavailable';
+          // These exact server responses occur before any service record commit.
+          // A network failure, 5xx, in-flight operation or conflict is ambiguous
+          // and must keep its original body/key for an idempotent retry.
+          const rejectedStatus={quote_expired:409,quote_not_found:404,cart_changed:409};
+          if(Object.hasOwn(rejectedStatus,error.code)&&error.status===rejectedStatus[error.code]&&serviceBody===body&&serviceId===key){
+            serviceBody='';serviceId='';
+            if(state.quote?.quoteId===input.quoteId){state.quote=null;state.quoteStatus='idle';requestId='';}
+          }
+          state.serviceRequestRetryable=Boolean(serviceBody&&serviceId);
+        }
+        throw error;
+      });
+      servicePending=task;const settled=()=>{if(servicePending===task)servicePending=null;};task.then(settled,settled);return task;
     }
     async function capabilities(){
       if(state.capabilities)return state.capabilities;if(capabilityPending)return capabilityPending;
@@ -2640,9 +2764,9 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       }finally{clearTimeout(timer);controller.abort();}})();
       try{return await capabilityPending;}finally{capabilityPending=null;}
     }
-    return Object.freeze({state,invalidate,currentQuote,requestQuote,capabilities,canCheckout:()=>false});
+    return Object.freeze({state,invalidate,currentQuote,requestQuote,requestService,capabilities,canCheckout:()=>false});
   }
-  return Object.freeze({createCart,lineKey,selection,optionsOf,createClient,quoteShape,capabilitiesShape,quoteLimits,orderShape,ordersShape});
+  return Object.freeze({createCart,lineKey,selection,optionsOf,createClient,quoteShape,capabilitiesShape,quoteLimits,serviceRequestShape,orderShape,ordersShape});
 });
 /* ANOX_COMMERCE_CLIENT_END */
 
@@ -2940,14 +3064,16 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
           const items=[],errors=[];for(const raw of result.items){try{items.push(normalizeProduct(raw,provider));}catch{errors.push('invalid_record');}}
           if(cursorMode){
             const next=result.nextCursor??null;if(next!==null&&(typeof next!=='string'||!next.length||next.length>8192||/[\x00-\x1f\x7f]/.test(next)||next===options.cursor))throw Error('catalog_cursor_invalid');
-            if(whole(result.invalidCount,1,100))errors.push('invalid_record');
+            if(whole(result.invalidCount,1,1000))errors.push('invalid_record');
             if(whole(result.partialErrors,1,6))errors.push('catalog_sources_unavailable');
+            if(result.degraded===true)errors.push('catalog_presentation_only');
+            for(const entry of (Array.isArray(result.sourceDiagnostics)?result.sourceDiagnostics:[]).slice(0,6))if(['catalog_budget_exhausted','catalog_rate_limited','catalog_budget_unavailable','catalog_provider_unavailable'].includes(entry.error)&&!errors.includes(entry.error))errors.push(entry.error);
             return {providerId:id,status:errors.length?'partial':'ready',items,nextCursor:next,total:null,fetchedAt:normalizedDate(result.fetchedAt),expiresAt:normalizedDate(result.expiresAt),errors};
           }
           const next=result.nextOffset===null||result.nextOffset===undefined?null:requireInteger(result.nextOffset,offset+1,100000,'next offset');
           if(next!==null&&!result.items.length)throw Error('Non-progressing page');
           return {providerId:id,status:errors.length?'partial':'ready',items,nextOffset:next,total:whole(result.total,0,10000000)?result.total:null,errors};
-        }catch(error){const code=error.code||error.message;return failure([/^(?:page|provider|catalog)_(?:payload|media|pixels|records|nodes)_limit$|^provider_payload_depth$|^invalid_provider_payload$|^catalog_(?:cursor_invalid|cursor_expired|expired|aborted)$/.test(code)?code:'provider_unavailable']);}
+        }catch(error){const code=error.code||error.message;return failure([/^(?:page|provider|catalog)_(?:payload|media|pixels|records|nodes)_limit$|^provider_payload_depth$|^invalid_provider_payload$|^catalog_(?:cursor_invalid|cursor_expired|expired|aborted|budget_exhausted|rate_limited|budget_unavailable|provider_unavailable)$/.test(code)?code:'provider_unavailable']);}
         finally{clearTimeout(timer);external?.removeEventListener('abort',onAbort);abort.abort();}
       }
     }
@@ -4123,6 +4249,12 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
 
     function liveCatalogStateMessage(kind,query=''){
   const messages={loading:tx('جارٍ تحميل المنتجات…','Loading products…'),unavailable:tx('تعذر تحميل المنتجات حاليًا.','Products could not be loaded right now.'),empty:tx('لا توجد نتائج متاحة لهذا الاختيار.','No listings are available for this selection.')};
+  const errors=Catalog.liveError.split(',');
+  if(kind!=='loading'&&errors.includes('catalog_budget_exhausted'))messages[kind]=tx('بلغ المصدر حد البحث المسموح حاليًا. المنتجات غير مفقودة من المتاجر؛ حاول لاحقًا.','The source search allowance has been reached. This does not mean retailers have no products; try later.');
+  else if(kind!=='loading'&&errors.includes('catalog_rate_limited'))messages[kind]=tx('المصدر مشغول مؤقتًا. انتظر قليلًا ثم أعد المحاولة.','The source is temporarily rate limited. Wait briefly before retrying.');
+  else if(kind!=='loading'&&errors.includes('catalog_budget_unavailable'))messages[kind]=tx('التحقق من سماح البحث غير متاح. أُوقف البحث مؤقتًا لحماية حد الاستخدام.','Search allowance verification is unavailable. New searches are temporarily paused.');
+  else if(kind==='empty'&&errors.includes('invalid_record'))messages.empty=tx('أعاد المصدر سجلات تعذر التحقق من هويتها أو متجرها. لم نعرضها.','The source returned records whose product or merchant identity could not be verified. They were not displayed.');
+  else if(kind==='empty'&&errors.includes('catalog_sources_unavailable'))messages.empty=messages.unavailable;
   return '<div class="v2-live-catalog-state '+kind+'" role="'+(kind==='unavailable'?'alert':'status')+'"><strong>'+esc(messages[kind])+'</strong>'+(kind==='unavailable'?button(tx('إعادة المحاولة','Try again'),'data-live-retry','btn secondary'):'')+'</div>';
 }
     const DISCOVERY_SECTIONS=[['featured','مختارات','Featured'],['men','رجال','Men'],['women','نساء','Women'],['shoes','أحذية','Shoes'],['clothing','ملابس','Clothing'],['beauty','جمال','Beauty'],['accessories','إكسسوارات','Accessories'],['sports','رياضة','Sports'],['brands','علامات','Brands']];
@@ -4131,12 +4263,13 @@ html[data-theme="dark"] .anox-home-grid .v2-product-wishlist:hover{background:#f
       return {Shoes:'shoes',Fashion:'clothing',Beauty:'beauty',Accessories:'accessories',Sports:'sports'}[route.params.get('category')]||(route.name==='brands'?'brands':'featured');
     }
     function discoveryNavigation(route='shop'){
-      const selected=liveSectionForRoute();return '<nav class="v2-category-links" aria-label="'+esc(tx('تصفح الاختيارات','Browse selections'))+'">'+DISCOVERY_SECTIONS.map(([id,ar,en])=>'<a href="#'+route+'?section='+id+'" data-nav data-discovery-section="'+id+'"'+(id===selected?' aria-current="page"':'')+'>'+esc(tx(ar,en))+'</a>').join('')+'</nav>';
+      const selected=liveSectionForRoute();return '<nav class="v2-category-links" aria-label="'+esc(tx('تصفح الاختيارات','Browse selections'))+'">'+DISCOVERY_SECTIONS.map(([id,ar,en])=>'<a href="#'+route+'?section='+id+'" data-nav data-discovery-section="'+id+'"'+(id===selected?' aria-current="page"':'')+'>'+esc(tx(ar,en))+'</a>').join('')+'</nav><nav class="v2-category-links" aria-label="'+esc(tx('المتاجر الرسمية','Official retailers'))+'">'+['Nike','adidas','Sephora',"Levi\'s",'TJ Maxx','e.l.f. cosmetics'].map(name=>routeLink('search?q='+encodeURIComponent(name),name,'v2-inline-link')).join('')+'</nav>';
     }
     function liveContextNotice(){
       if(Catalog.liveRestartRequired)return '<div class="v2-live-catalog-state unavailable" role="alert"><p>'+esc(tx('انتهت صلاحية جلسة التصفح. ابدأ من جديد لتحديث المنتجات والأسعار.','This browsing session expired. Restart to refresh the products and prices.'))+'</p>'+button(tx('بدء التصفح من جديد','Restart browsing'),'data-live-restart','btn secondary')+'</div>';
       if(Catalog.liveError&&Catalog.liveRecords.length){
         const sourcePartial=Catalog.liveError.split(',').includes('catalog_sources_unavailable');
+        if(Catalog.liveError.split(',').includes('catalog_presentation_only'))return '<div class="v2-live-catalog-state unavailable" role="status" data-catalog-partial="cached"><p>'+esc(tx('تعذر تحديث بعض المصادر. نعرض معلومات عرض محفوظة مؤقتًا؛ تحقق من السعر والتوفر عند فتح المنتج.','Some sources could not refresh. Temporarily cached listings are shown for browsing; check current price and availability on the product page.'))+'</p>'+button(tx('تحديث الاختيارات','Refresh listings'),'data-live-restart','btn secondary')+'</div>';
         const message=sourcePartial?tx('بعض المتاجر الرسمية غير متاحة حاليًا. نعرض المنتجات التي تأكدنا من مصدرها فقط.','Some official stores are temporarily unavailable. Only verified listings are shown.'):tx('تعذر تحميل المزيد. المنتجات المحمّلة ما زالت معروضة.','More products could not be loaded. Previously loaded products are still shown.');
         return '<div class="v2-live-catalog-state unavailable" role="status" data-catalog-partial="'+(sourcePartial?'sources':'load')+'"><p>'+esc(message)+'</p>'+(Catalog.liveNextCursor!==null?button(tx('إعادة المحاولة','Try again'),'data-live-retry','btn secondary'):'')+'</div>';
       }
@@ -6549,9 +6682,9 @@ function commerceErrorMessage(code){
   return tx('تعذّر التحقق من البيانات الحالية. لم يحدث شراء أو دفع. حاول مجددًا.','Current information could not be verified. No purchase or payment occurred. Try again.');
 }
 function commerceCostMarkup(quote){
-  const costs=quote.costs,status={verified:tx('موثّق','Verified'),estimated:tx('تقديري','Estimated'),unknown:tx('غير معروف','Unknown'),conditional:tx('عند النجاح فقط','On success only')};
+  const costs=quote.costs,status={verified:tx('موثّق','Verified'),estimated:tx('تقديري','Estimated'),unknown:tx('غير معروف','Unknown'),conditional:tx('بانتظار القرار','Pending decision')};
   const lines=quote.lines.map((line,i)=>{const saved=selectionCart.state.lines[i]?.display.priceCents,changed=saved!==null&&saved!==undefined&&saved!==line.unitPriceMinor;return '<article data-commerce-quote-line><h3>'+esc(line.title)+'</h3><p class="fine">'+esc(line.merchantDomain+' · '+Object.entries(line.options).map(([name,value])=>name+': '+value).join(' · '))+'</p><dl class="spec-list"><div><dt>'+esc(tx('سعر الوحدة الحالي','Fresh unit price'))+'</dt><dd><bdi>'+formatUSD(line.unitPriceMinor)+'</bdi></dd></div><div><dt>'+esc(tx('الكمية','Quantity'))+'</dt><dd>'+line.quantity+'</dd></div><div><dt>'+esc(tx('مجموع المنتجات لهذا الاختيار','Line subtotal'))+'</dt><dd><bdi>'+formatUSD(line.lineTotalMinor)+'</bdi></dd></div></dl><p>'+esc(detailAvailability(line.availability==='InStock'?'in_stock':line.availability==='OutOfStock'?'out_of_stock':'unknown'))+'</p>'+(changed?'<p class="notice warning" role="alert" data-commerce-price-change>'+esc(tx('تغيّر السعر. السعر المحفوظ للوحدة: ','Price changed. Saved unit price: '))+'<bdi>'+formatUSD(saved)+'</bdi>'+esc(tx('؛ سعر الوحدة الحالي: ','; Fresh unit price: '))+'<bdi>'+formatUSD(line.unitPriceMinor)+'</bdi>. '+esc(tx('راجع السعر الجديد؛ لم يحدث شراء أو تفويض للدفع.','Review the new price; no purchase or payment authorization occurred.'))+'</p>':'')+'</article>';}).join('');
-  return '<section class="surface commerce-cost" aria-labelledby="commerce-cost-title"><h2 id="commerce-cost-title">'+esc(tx('تفاصيل التكلفة من الخادم','Server cost breakdown'))+'</h2>'+lines+'<dl class="spec-list">'+costs.components.map(c=>'<div><dt>'+esc(c.label||c.code)+' <small>'+esc(status[c.status])+'</small></dt><dd><bdi>'+(c.amountMinor===null?esc(tx('غير معروف','Unknown')):formatUSD(c.amountMinor))+'</bdi></dd></div>').join('')+'</dl><dl class="spec-list commerce-totals"><div><dt>'+esc(tx('الإجمالي التقديري','Estimated Total'))+'</dt><dd>'+(costs.estimatedTotalMinor===null?esc(tx('غير متاح — تكاليف غير معروفة','Unavailable — costs are unknown')):formatUSD(costs.estimatedTotalMinor))+'</dd></div><div><dt>'+esc(tx('المبلغ المستحق الموثّق','Verified Payable Total'))+'</dt><dd>'+(costs.verifiedPayableTotalMinor===null?esc(tx('غير متاح','Unavailable')):formatUSD(costs.verifiedPayableTotalMinor))+'</dd></div></dl><h3>'+esc(tx('رسوم محتملة عند الوصول','Potential Charges on Arrival'))+'</h3><p>'+esc((costs.potentialChargesOnArrival||[]).map(v=>typeof v==='string'?v:v.label||v.code).join(', ')||tx('لم يؤكد المصدر أي تغطية شاملة لهذه الرسوم.','No complete coverage of arrival charges has been confirmed.'))+'</p><p class="fine">'+esc(tx('رسوم AnoX هي 5 دولارات فقط لكل طلب ناجح. لا تُحصّل أي رسوم الآن.','The AnoX fee is exactly $5 per successful order. No fee is collected now.'))+'</p><p class="fine">'+esc(tx('صالح حتى: ','Valid until: ')+dateLabel(quote.expiresAt,true))+'</p></section>';
+  return '<section class="surface commerce-cost" aria-labelledby="commerce-cost-title"><h2 id="commerce-cost-title">'+esc(tx('تفاصيل التكلفة من الخادم','Server cost breakdown'))+'</h2>'+lines+'<dl class="spec-list">'+costs.components.map(c=>'<div><dt>'+esc(c.label||c.code)+' <small>'+esc(status[c.status])+'</small></dt><dd><bdi>'+(c.amountMinor===null?esc(tx('غير معروف','Unknown')):formatUSD(c.amountMinor))+'</bdi></dd></div>').join('')+'</dl><dl class="spec-list commerce-totals"><div><dt>'+esc(tx('الإجمالي التقديري','Estimated Total'))+'</dt><dd>'+(costs.estimatedTotalMinor===null?esc(tx('غير متاح — تكاليف غير معروفة','Unavailable — costs are unknown')):formatUSD(costs.estimatedTotalMinor))+'</dd></div><div><dt>'+esc(tx('المبلغ المستحق الموثّق','Verified Payable Total'))+'</dt><dd>'+(costs.verifiedPayableTotalMinor===null?esc(tx('غير متاح','Unavailable')):formatUSD(costs.verifiedPayableTotalMinor))+'</dd></div></dl><h3>'+esc(tx('رسوم محتملة عند الوصول','Potential Charges on Arrival'))+'</h3><p>'+esc((costs.potentialChargesOnArrival||[]).map(v=>typeof v==='string'?v:v.label||v.code).join(', ')||tx('لم يؤكد المصدر أي تغطية شاملة لهذه الرسوم.','No complete coverage of arrival charges has been confirmed.'))+'</p><p class="fine">'+esc(tx('رسوم AnoX المقترحة 5 دولارات لكل طلب مؤهل. توقيت الاستحقاق ينتظر قرار المالك؛ لا تُحصّل رسوم الآن.','The proposed AnoX fee is $5 per qualifying order. The fee trigger awaits an owner decision; no fee is collected now.'))+'</p><p class="fine">'+esc(tx('صالح حتى: ','Valid until: ')+dateLabel(quote.expiresAt,true))+'</p></section>';
 }
 function renderOwnedOrders(){
   const route=currentRoute(),single=route.name==='order'||route.name==='track',id=route.params.get('id')||route.params.get('order')||'';
@@ -6571,11 +6704,22 @@ function renderOwnedOrders(){
     }).catch(error=>{if(epoch!==commerceOrders.epoch||version!==window.AnoXAuth.sessionVersion())return;commerceOrders.status='error';commerceOrders.error=error.code||'order_unavailable';if(['orders','order','track'].includes(currentRoute().name))renderOwnedOrders();});
   }
   const row=(label,value)=>'<div><dt>'+esc(label)+'</dt><dd>'+esc(value)+'</dd></div>';
-  const details=order=>'<article class="surface"><h2>'+esc(order.orderId)+'</h2><p class="fine">'+esc(dateLabel(order.createdAt,true))+'</p><dl class="spec-list">'+row(tx('حالة الطلب','Order status'),order.status)+row(tx('حالة الدفع','Payment status'),order.payment.status)+row(tx('حالة الشحن','Fulfillment status'),order.fulfillment?.status||tx('لم تُقدّم معلومات','Not provided'))+(order.merchantOrderReference?row(tx('مرجع المتجر','Merchant reference'),order.merchantOrderReference):'')+(order.fulfillment?.tracking||[]).map(t=>row(tx('التتبع','Tracking'),[t.carrier,t.trackingNumber].filter(Boolean).join(' · '))).join('')+(order.amountMinor!==null&&order.currency==='USD'?row(tx('المبلغ المسجل لدى الخادم','Server-recorded amount'),formatUSD(order.amountMinor)):'')+'</dl>'+(!single?routeLink('order?id='+encodeURIComponent(order.orderId),tx('تفاصيل الطلب والتتبع','Order details and tracking'),'btn secondary'):'')+'</article>';
+  const details=order=>'<article class="surface">'+(order.kind==='service_request'?'<p>'+esc(tx('طلب خدمة — لم يحدث شراء أو دفع.','Service request — no purchase or payment has occurred.'))+'</p>':'')+'<h2>'+esc(order.orderId)+'</h2><p class="fine">'+esc(dateLabel(order.createdAt,true))+'</p><dl class="spec-list">'+row(tx('حالة الطلب','Order status'),order.status)+row(tx('حالة الدفع','Payment status'),order.payment.status)+row(tx('حالة الشحن','Fulfillment status'),order.fulfillment?.status||tx('لم تُقدّم معلومات','Not provided'))+(order.merchantOrderReference?row(tx('مرجع المتجر','Merchant reference'),order.merchantOrderReference):'')+(order.fulfillment?.tracking||[]).map(t=>row(tx('التتبع','Tracking'),[t.carrier,t.trackingNumber].filter(Boolean).join(' · '))).join('')+(order.amountMinor!==null&&order.currency==='USD'?row(tx('المبلغ المسجل لدى الخادم','Server-recorded amount'),formatUSD(order.amountMinor)):'')+'</dl>'+(!single?routeLink('order?id='+encodeURIComponent(order.orderId),tx('تفاصيل الطلب والتتبع','Order details and tracking'),'btn secondary'):'')+'</article>';
   let content=commerceOrders.status==='loading'?'<p role="status">'+esc(tx('جارٍ تحميل الطلبات من الخادم…','Loading orders from the server…'))+'</p>':commerceOrders.status==='error'?'<p class="notice warning" role="alert">'+esc(['not_found','order_not_found'].includes(commerceOrders.error)?tx('لا يوجد طلب متاح بهذا المرجع لهذا الحساب.','No order with this reference is available to this account.'):commerceErrorMessage(commerceOrders.error))+'</p>'+button(tx('إعادة المحاولة','Try again'),'data-commerce-orders-retry','btn secondary'):single?details(commerceOrders.order):commerceOrders.orders.length?'<div class="stack">'+commerceOrders.orders.map(details).join('')+'</div>':emptyMarkup(tx('لا توجد طلبات','No orders'),tx('تُعرض هنا الطلبات الموثّقة من الخادم فقط. السلة المحفوظة ليست طلبًا.','Only server-recorded orders appear here. A saved cart is not an order.'));
   if(!single&&commerceOrders.status==='ready'&&commerceOrders.nextCursor)content+='<div class="actions actions-spaced">'+routeLink('orders?cursor='+encodeURIComponent(commerceOrders.nextCursor),tx('الصفحة التالية','Next page'),'btn secondary')+'</div>';
   if(single)content+='<div class="actions actions-spaced">'+routeLink('orders',tx('كل الطلبات','All orders'),'btn secondary')+'</div><p class="fine">'+esc(tx('الإلغاء والاسترداد غير مدعومين حاليًا. تواصل مع AnoX لمراجعة الطلب.','Cancellation and refunds are currently unsupported. Contact AnoX to review an order.'))+'</p>';
   $('main').innerHTML=pageShell(tx('طلباتك والتتبع','Your orders and tracking'),tx('حالات الطلب والدفع والشحن الواردة من خادم AnoX. لا يثبت رابط التأكيد أو بيانات المتصفح أن الدفع نجح.','Order, payment and fulfillment states come from the AnoX server. Confirmation links and browser data do not establish payment success.'),content);
+}
+
+function serviceRequestMarkup(cart,quote){
+  const state=commerceAPI.state,request=state.serviceRequest;
+  const intro='<p>'+esc(tx('يبقى المتجر بائع المنتجات. طلب الخدمة لا يشتري منتجات ولا يحجز مخزونًا ولا يفوّض دفعًا.','The retailer remains the seller. A service request does not purchase products, reserve stock or authorize payment.'))+'</p><p class="fine">'+esc(tx('رسوم الخدمة المقترحة 5 دولارات لكل طلب مؤهل؛ توقيت استحقاقها ينتظر قرار المالك. لا تُحصّل رسوم الآن.','The proposed service fee is $5 per qualifying order; its trigger awaits an owner decision. No fee is collected now.'))+'</p>';
+  if(request&&request.cartRevision===cart.revision)return '<section class="surface" data-service-request-saved role="status"><h2>'+esc(tx('تم تسجيل طلب الخدمة','Service request recorded'))+'</h2><p>'+esc(tx('لم يحدث دفع أو شراء. المرجع: ','No payment or purchase occurred. Reference: ')+request.orderId)+'</p>'+routeLink('order?id='+encodeURIComponent(request.orderId),tx('عرض طلب الخدمة','View service request'),'btn secondary')+'</section>';
+  if(state.capabilities?.serviceRequests?.create!==true)return '<section class="surface"><h2>'+esc(tx('طلب خدمة AnoX','AnoX service request'))+'</h2>'+intro+'<p>'+esc(tx('استقبال طلبات الخدمة عبر الحساب غير متاح في هذه النسخة المتصلة حاليًا.','Account-based service requests are not available in the currently connected release.'))+'</p></section>';
+  const loading=state.serviceRequestStatus==='loading',retry=state.serviceRequestStatus==='error'&&state.serviceRequestRetryable===true;
+  const action=!cloudAccount.session?routeLink('signin',tx('سجّل الدخول لطلب الخدمة','Sign in to request service'),'btn primary'):'<button type="button" class="btn primary" data-commerce-service-request'+(loading||(!quote&&!retry)?' disabled':'')+(loading?' aria-busy="true"':'')+'>'+esc(loading?tx('جارٍ تسجيل الطلب…','Recording request…'):retry?tx('إعادة المحاولة بأمان','Retry service request'):tx('إرسال طلب خدمة — دون دفع','Submit service request — no payment'))+'</button>';
+  const error=state.serviceRequestError?'<p role="alert" class="notice warning">'+esc(retry?tx('تعذر تأكيد تسجيل طلب الخدمة. أعد المحاولة بأمان بنفس الطلب؛ لن تُحصّل رسوم.','The service request could not be confirmed. Retry the same request safely; no fee will be collected.'):tx('لم يُقبل العرض لهذا الطلب. اطلب التكاليف الحالية مجددًا وراجعها قبل إرسال طلب الخدمة؛ لم تُحصّل رسوم.','The quote was not accepted for this request. Request current costs again and review them before submitting; no fee was collected.'))+'</p>':'';
+  return '<section class="surface"><h2>'+esc(tx('طلب خدمة AnoX','AnoX service request'))+'</h2>'+intro+(!quote&&!retry?'<p>'+esc(tx('حدّث السعر والتكاليف وراجع الاختيارات أولًا.','Refresh price and costs and review your selections first.'))+'</p>':'')+error+action+'</section>';
 }
 
 function renderSelectionCart(){
@@ -6587,7 +6731,7 @@ function renderSelectionCart(){
   const quoteAction=cloudAccount.session?'<button type="button" class="btn primary" data-commerce-quote'+(loading?' disabled aria-busy="true"':limitBlockers.length||commerceCapabilitiesStatus!=='ready'?' disabled':'')+'>'+esc(loading?tx('جارٍ التحقق…','Checking…'):tx('تحديث السعر والتكلفة','Refresh price and costs'))+'</button>':routeLink('signin',tx('سجّل الدخول للتحقق من التكلفة','Sign in to check costs'),'btn primary');
   const error=commerceAPI.state.error?'<p class="notice warning" role="alert">'+esc(commerceErrorMessage(commerceAPI.state.error))+'</p>':'';
   const expired=commerceAPI.state.quote&&!q?'<p role="status" class="notice warning">'+esc(tx('انتهت صلاحية العرض. أعد التحقق من السعر والتكاليف.','The quote expired. Check current prices and costs again.'))+'</p>':'';
-  $('main').innerHTML=pageShell(tx('اختياراتك المحفوظة','Your saved selections'),tx('راجع الخيارات والكمية، ثم اطلب تكلفة موثّقة. الحفظ لا يحجز مخزونًا ولا ينشئ طلبًا.','Review options and quantity, then request current costs. Saving does not reserve stock or create an order.'),selectionNotice()+'<div class="commerce-cart-layout"><section aria-label="'+esc(tx('اختيارات السلة','Cart selections'))+'">'+selectionLinesMarkup()+'</section><aside class="stack">'+capabilityNotice+error+expired+(q?commerceCostMarkup(q):'<section class="surface"><h2>'+esc(tx('تكلفة الوصول','Cost to Algeria'))+'</h2><p>'+esc(tx('الضرائب والشحن والجمارك والتحويل غير معروفة حتى التحقق منها. لا يتوفر إجمالي مضمون.','Tax, shipping, customs and conversion remain unknown until verified. A guaranteed total is unavailable.'))+'</p><p>'+esc(tx('رسوم AnoX: 5 دولارات لكل طلب ناجح.','AnoX fee: $5 per successful order.'))+'</p></section>')+'<div class="actions">'+quoteAction+'</div><section class="surface"><h2>'+esc(tx('إتمام الشراء','Checkout'))+'</h2><ul>'+blockers.map(b=>'<li>'+esc(b.message)+'</li>').join('')+'</ul><button type="button" class="btn primary" data-commerce-checkout disabled aria-describedby="commerce-checkout-blocked">'+esc(tx('الدفع غير متاح','Payment unavailable'))+'</button><p id="commerce-checkout-blocked" class="fine">'+esc(tx('لا تتم معالجة شراء أو تحصيل رسوم في هذه المرحلة.','No purchase or fee can be processed at this stage.'))+'</p></section></aside></div>');
+  $('main').innerHTML=pageShell(tx('اختياراتك المحفوظة','Your saved selections'),tx('راجع الخيارات والكمية، ثم اطلب تكلفة موثّقة. الحفظ لا يحجز مخزونًا ولا ينشئ طلبًا.','Review options and quantity, then request current costs. Saving does not reserve stock or create an order.'),selectionNotice()+'<div class="commerce-cart-layout"><section aria-label="'+esc(tx('اختيارات السلة','Cart selections'))+'">'+selectionLinesMarkup()+'</section><aside class="stack">'+capabilityNotice+error+expired+(q?commerceCostMarkup(q):'<section class="surface"><h2>'+esc(tx('تكلفة الوصول','Cost to Algeria'))+'</h2><p>'+esc(tx('الضرائب والشحن والجمارك والتحويل غير معروفة حتى التحقق منها. لا يتوفر إجمالي مضمون.','Tax, shipping, customs and conversion remain unknown until verified. A guaranteed total is unavailable.'))+'</p><p>'+esc(tx('رسوم AnoX المقترحة: 5 دولارات لكل طلب مؤهل؛ توقيت الاستحقاق غير معتمد بعد.','Proposed AnoX fee: $5 per qualifying order; trigger not yet approved.'))+'</p></section>')+'<div class="actions">'+quoteAction+'</div>'+serviceRequestMarkup(cart,q)+'<section class="surface"><h2>'+esc(tx('إتمام الشراء','Checkout'))+'</h2><ul>'+blockers.map(b=>'<li>'+esc(b.message)+'</li>').join('')+'</ul><button type="button" class="btn primary" data-commerce-checkout disabled aria-describedby="commerce-checkout-blocked">'+esc(tx('الدفع غير متاح','Payment unavailable'))+'</button><p id="commerce-checkout-blocked" class="fine">'+esc(tx('لا تتم معالجة شراء أو تحصيل رسوم في هذه المرحلة.','No purchase or fee can be processed at this stage.'))+'</p></section></aside></div>');
 }
 function selectionDrawerMarkup(){const count=selectionCart.state.lines.reduce((sum,line)=>sum+line.quantity,0);return '<p>'+esc(count?count+' '+tx('قطعة محفوظة؛ لم تُشترَ بعد.','saved items; no purchase has been made.'):tx('السلة فارغة.','Your cart is empty.'))+'</p>'+selectionNotice()+'<div class="actions">'+routeLink('cart',tx('مراجعة السلة والتكلفة','Review cart and costs'),'btn primary')+'</div>';}
 async function addDetailSelection(){
@@ -6600,6 +6744,7 @@ async function addDetailSelection(){
 document.addEventListener('click',event=>{
   const node=event.target.closest('button,a');if(!node)return;
   if(node.hasAttribute('data-commerce-detail-retry')){event.preventDefault();renderChannel3Product(true);}
+  if(node.hasAttribute('data-commerce-service-request')){event.preventDefault();if(node.disabled)return;const pending=commerceAPI.requestService(selectionCart.state);renderSelectionCart();void pending.catch(()=>{}).finally(()=>{if(['cart','checkout'].includes(currentRoute().name))renderSelectionCart();});}
   if(node.hasAttribute('data-commerce-accept-options')){event.preventDefault();detailNavigateOptions(effectiveDetailOptions());}
   if(node.hasAttribute('data-commerce-gallery')){const index=Number(node.dataset.commerceGallery);if(detailView.detail&&whole(index,0,detailView.detail.images.length-1)){detailView.view=index;renderDetailContent('[data-commerce-gallery="'+index+'"]');}}
   if(node.hasAttribute('data-commerce-wishlist')){const id=node.dataset.commerceWishlist;if(/^[A-Za-z0-9_-]{1,80}$/.test(id)){const key='channel3-live__'+id;state.wishlist=state.wishlist.includes(key)?state.wishlist.filter(v=>v!==key):[...state.wishlist.slice(-49),key];void Storage.save();updateShell();if(currentRoute().name==='wishlist')renderLiveWishlist();else renderDetailContent('[data-commerce-wishlist]');}}

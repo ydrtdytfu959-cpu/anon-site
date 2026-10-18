@@ -20,3 +20,8 @@ test('planning refuses broadened credentials methods headers and malformed stage
   }
   for (const stage of [{ StageName: '$default', RouteSettings: [] }, { StageName: '$default', RouteSettings: { 'GET /orders': null } }]) assert.throws(() => stageApiSettings(valid, stage));
 });
+test('service-request writes receive bounded route throttles without broadening CORS', () => {
+ const api={ApiId:'zmumi2wruk',CorsConfiguration:{AllowOrigins:['https://anox.app'],AllowMethods:['GET','POST','PUT','OPTIONS'],AllowHeaders:['content-type','authorization'],AllowCredentials:false}};
+ const result=stageApiSettings(api,{StageName:'$default'});
+ assert.deepEqual(result.stageUpdate.RouteSettings['POST /commerce/service-requests'],{ThrottlingRateLimit:2,ThrottlingBurstLimit:4});
+});

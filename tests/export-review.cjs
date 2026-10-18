@@ -124,3 +124,13 @@ test('archive plus separate HTML retains every source needed by the real canonic
     const result=spawnSync(process.execPath,[script,'--check'],{cwd:restored,encoding:'utf8'});successful(result);
   }
 });
+
+test('nested artifact ignore rules do not block a source-only release or export local packages',t=>{
+ const f=fixture(t);f.write('backend/legacy-catalog/.gitignore','artifacts/\n');
+ f.write('backend/legacy-catalog/index.js','exports.handler=async()=>({ok:true});\n');
+ f.write('backend/legacy-catalog/artifacts/candidate.zip','local build artifact');f.commit();
+ const destination=path.join(f.temporary,'source without artifacts');successful(f.run(destination));
+ const files=zipContents(destination).map(entry=>entry.name);
+ assert.ok(files.includes('backend/legacy-catalog/index.js'));
+ assert.ok(!files.some(name=>name.includes('artifacts/')||name.endsWith('/.gitignore')));
+});

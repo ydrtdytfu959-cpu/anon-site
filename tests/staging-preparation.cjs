@@ -32,9 +32,9 @@ test('staging retains protections exact runtime source and private-to-staging in
 });
 test('staging routes all bind the isolated API and private routes use only staging JWT', () => {
   const t = buildStagingTemplate(), routes = Object.values(t.Resources).filter(r => r.Type === 'AWS::ApiGatewayV2::Route');
-  assert.equal(routes.length, 9);
+  assert.equal(routes.length, 10);
   for (const r of routes) { assert.deepEqual(r.Properties.ApiId, { Ref: 'StagingApi' }); if (r.Properties.AuthorizationType === 'JWT') assert.deepEqual(r.Properties.AuthorizerId, { Ref: 'StagingAuthorizer' }); }
-  assert.equal(routes.filter(r => r.Properties.AuthorizationType === 'JWT').length, 6);
+  assert.equal(routes.filter(r => r.Properties.AuthorizationType === 'JWT').length, 7);
   assert.equal(routes.some(r => /webhook|^POST \/checkout/.test(r.Properties.RouteKey)), false);
 });
 test('acceptance planning never runs cloud operations or treats unchecked approval as evidence', () => {

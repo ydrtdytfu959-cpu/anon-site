@@ -1,12 +1,20 @@
 'use strict';
 const {createHash, randomUUID} = require('node:crypto');
 
-// Version 2 deliberately expires pre-policy cache/cursor identities; spending keys stay period-only.
-const VERSION = 2;
+// Version 3 expires pages/cursors that lack merchant diagnostics and traversal
+// history. Spending counters deliberately retain their period-only identities.
+const VERSION = 3;
 const SEARCH_TTL = 300_000, DISCOVERY_TTL = 600_000, CURSOR_TTL = 1_800_000;
 const DETAIL_TTL = 30_000, PRESENTATION_TTL = 3_600_000, MAX_DETAIL_BYTES = 256 * 1024;
 const MAX_PAGE_BYTES = 300 * 1024, MAX_UPSTREAM_BYTES = 2 * 1024 * 1024;
 const LEASE_MS = 25_000; // Longer than the Lambda's 20s invocation deadline.
+const RETAILERS = Object.freeze({
+  'nike.com':'Nike', 'adidas.com':'Adidas', 'sephora.com':'Sephora',
+  'levi.com':"Levi's", 'tjmaxx.tjx.com':'TJ Maxx', 'elfcosmetics.com':'e.l.f. Cosmetics'
+});
+const RETAILER_HOSTS = Object.freeze(Object.fromEntries(Object.entries(RETAILERS).flatMap(([domain, name]) =>
+  [[domain, name], ['www.' + domain, name], ...(domain === 'tjmaxx.tjx.com' ? [['tjmaxx.com', name], ['www.tjmaxx.com', name]] : [])])));
+const MAX_SELLER_DOMAINS = Object.keys(RETAILER_HOSTS).length;
 const SECTIONS = Object.freeze({
   featured: 'popular fashion', men: "men's fashion", women: "women's fashion",
   shoes: 'shoes', clothing: 'clothing', beauty: 'beauty products',
@@ -36,10 +44,8 @@ function filtersFor(raw) {
   // marketplace URL. This is the Channel3 search/browse website_ids filter.
   // Keeping only one source per request avoids cross-store false attribution.
   if (Object.hasOwn(input, 'website_ids')) {
-    const allowed = ['nike.com', 'adidas.com', 'sephora.com', 'levi.com',
-      'tjmaxx.tjx.com', 'elfcosmetics.com'];
     if (!Array.isArray(input.website_ids) || input.website_ids.length !== 1 ||
-        !allowed.includes(input.website_ids[0])) fail(400, 'INVALID_FILTERS');
+        !Object.hasOwn(RETAILERS, input.website_ids[0])) fail(400, 'INVALID_FILTERS');
     output.website_ids = [input.website_ids[0]];
   }
   for (const key of ['availability', 'conditions']) {
@@ -143,7 +149,7 @@ function sanitizeDetail(input, productId, trustedCache = false) {
   const output = {id:productId, title:detailText(input.title, 200, true), description:detailText(input.description, 60000)};
   output.brands = detailArray(input.brands, 16).filter(object).map(brand => ({id:detailText(brand.id, 200, true), name:detailText(brand.name, 100, true)}));
   output.images = detailArray(input.images, 64).filter(object).flatMap(image => {
-    const url = safeUrl(image.url, 'cdn.trychannel3.com');
+    const url = safeUrl(image.url, 'cdn.trychannel3.com') || safeUrl(image.cleaned_url, 'cdn.trychannel3.com');
     return url ? [{url, cleaned_url:safeUrl(image.cleaned_url, 'cdn.trychannel3.com') || null, alt_text:detailText(image.alt_text, 500), is_main_image:image.is_main_image === true, shot_type:detailText(image.shot_type, 40)}] : [];
   });
   const category = input.category;
@@ -167,14 +173,11 @@ function sanitizeDetail(input, productId, trustedCache = false) {
   });
   // Persist source-proven official seller identity across read-only
   // presentation fallback, but never preserve stale prices or purchase links.
-  const officialHosts=new Set(['nike.com','www.nike.com','adidas.com','www.adidas.com',
-    'levi.com','www.levi.com','elfcosmetics.com','www.elfcosmetics.com',
-    'sephora.com','www.sephora.com','tjmaxx.com','www.tjmaxx.com',
-    'tjmaxx.tjx.com','www.tjmaxx.tjx.com']);
+  const officialHosts=new Set(Object.keys(RETAILER_HOSTS));
   const sources=trustedCache&&Array.isArray(input.sellerDomains)
-    ? input.sellerDomains.slice(0,6).filter(domain=>typeof domain==='string'&&officialHosts.has(domain))
+    ? input.sellerDomains.slice(0,MAX_SELLER_DOMAINS).filter(domain=>typeof domain==='string'&&officialHosts.has(domain))
     : output.offers.filter(offer=>officialHosts.has(offer.domain)).map(offer=>offer.domain);
-  output.sellerDomains=[...new Set(sources)].slice(0,6);
+  output.sellerDomains=[...new Set(sources)].slice(0,MAX_SELLER_DOMAINS);
   output.variants = null;
   if (input.variants !== undefined && input.variants !== null) {
     if (!object(input.variants)) fail(502, 'UPSTREAM_INVALID');
@@ -226,44 +229,85 @@ function sanitizeProduct(input, trustedCache = false) {
   if (!object(input) || typeof input.id !== 'string' || !/^[A-Za-z0-9_-]{1,80}$/.test(input.id) || typeof input.title !== 'string' || !input.title.trim() || input.title.length > 200) return null;
   const output = {id: input.id, title: input.title, description: cleanString(input.description, 2000)};
   output.brands = (Array.isArray(input.brands) ? input.brands : []).slice(0, 4).filter(object).map(brand => ({id: cleanString(brand.id, 200), name: cleanString(brand.name, 100)}));
-  const image = input.images?.[0], url = safeUrl(image?.cleaned_url || image?.url, 'cdn.trychannel3.com');
-  output.images = url ? [{url, alt_text: cleanString(image.alt_text, 200)}] : [];
+  const images = (Array.isArray(input.images) ? input.images : []).slice(0, 64).filter(object);
+  // A malformed cleaned URL must not mask its safe original, and an unusable
+  // leading image must not discard the remaining provider gallery.
+  const choices = [...images.filter(image => image.is_main_image === true), ...images.filter(image => image.is_main_image !== true)];
+  output.images = [];
+  for (const image of choices) {
+    const url = safeUrl(image.cleaned_url, 'cdn.trychannel3.com') || safeUrl(image.url, 'cdn.trychannel3.com');
+    if (url) {output.images = [{url, alt_text:cleanString(image.alt_text, 200)}]; break;}
+  }
   const category = object(input.category) ? input.category : {};
   output.category = {slug: cleanString(category.slug, 100), title: cleanString(category.title, 100), path: (Array.isArray(category.path) ? category.path : []).slice(0, 6).filter(object).map(part => ({slug: cleanString(part.slug, 100), title: cleanString(part.title, 100)}))};
   // Store only official seller identity, not offers, links, prices or stock.
   // The source domain must be evidenced by an HTTPS Channel3 redirect.
-  const hosts=new Set(['nike.com','www.nike.com','adidas.com','www.adidas.com',
-    'levi.com','www.levi.com','elfcosmetics.com','www.elfcosmetics.com',
-    'sephora.com','www.sephora.com','tjmaxx.com','www.tjmaxx.com',
-    'tjmaxx.tjx.com','www.tjmaxx.tjx.com']);
+  const hosts=new Set(Object.keys(RETAILER_HOSTS));
   const verified=trustedCache&&Array.isArray(input.sellerDomains)
-    ? input.sellerDomains.slice(0,6).filter(v=>typeof v==='string'&&hosts.has(v))
+    ? input.sellerDomains.slice(0,MAX_SELLER_DOMAINS).filter(v=>typeof v==='string'&&hosts.has(v))
     : (Array.isArray(input.offers)?input.offers:[]).slice(0,64)
       .filter(o=>object(o)&&hosts.has(String(o.domain||'').toLowerCase())&&
         safeUrl(o.url,'buy.trychannel3.com'))
       .map(o=>String(o.domain).toLowerCase());
-  output.sellerDomains=[...new Set(verified)].slice(0,6);
+  output.sellerDomains=[...new Set(verified)].slice(0,MAX_SELLER_DOMAINS);
   // Search pages are presentation-only. Volatile offers, prices, stock and
   // variants are retrieved fresh only when a user opens product detail.
   output.key_features = (Array.isArray(input.key_features) ? input.key_features : []).slice(0, 8).filter(value => typeof value === 'string').map(value => value.slice(0, 200));
   return output;
 }
-function sanitizePage(input, request, trustedCache = false) {
+function sanitizePage(input, request, trustedCache = false, {seenIds = new Set(), remaining = 500} = {}) {
   if (!object(input) || !Array.isArray(input.products) || input.products.length > request.limit) fail(502, 'UPSTREAM_INVALID');
   const token = input.next_page_token;
   if (token !== null && !tokenValid(token)) fail(502, 'UPSTREAM_INVALID');
-  if (token !== null && token === request.token) fail(502, 'UPSTREAM_INVALID');
-  const products = input.products.map(p=>sanitizeProduct(p,trustedCache)).filter(Boolean);
-  return {products, next_page_token: token};
+  const products = [], reasons = {invalid_product:0, unverified_merchant:0, retailer_mismatch:0, duplicate_product:0, traversal_limit:0};
+  const retailers = Object.fromEntries(Object.values(RETAILERS).map(name => [name, 0]));
+  const requestedRetailer = RETAILERS[request.filters.website_ids?.[0]];
+  let missingImage = 0;
+  for (const [index, raw] of input.products.entries()) {
+    if (index >= remaining) {reasons.traversal_limit++; continue;}
+    const product = sanitizeProduct(raw, trustedCache);
+    if (!product) {reasons.invalid_product++; continue;}
+    if (!product.sellerDomains.length) {reasons.unverified_merchant++; continue;}
+    const sellers = [...new Set(product.sellerDomains.map(domain => RETAILER_HOSTS[domain]))];
+    if (requestedRetailer && !sellers.includes(requestedRetailer)) {reasons.retailer_mismatch++; continue;}
+    if (seenIds.has(product.id)) {reasons.duplicate_product++; continue;}
+    seenIds.add(product.id); products.push(product);
+    // Each merchant count is independent: a genuine multi-merchant product can
+    // contribute to more than one retailer, but remains one accepted record.
+    for (const name of sellers) retailers[name]++;
+    if (!product.images.length) missingImage++;
+  }
+  let diagnostics = {received:input.products.length, accepted:products.length, rejected:input.products.length - products.length,
+    rejectionReasons:reasons, retailers, warnings:{missing_image:missingImage}, pagination:{stopReason:null}};
+  if (trustedCache) {
+    const cached = input.diagnostics, bounded = value => Number.isSafeInteger(value) && value >= 0 && value <= request.limit;
+    if (!object(cached) || Object.keys(cached).length !== 7 || !bounded(cached.received) || cached.accepted !== products.length ||
+      !bounded(cached.rejected) || cached.received !== cached.accepted + cached.rejected ||
+      !object(cached.rejectionReasons) || Object.keys(cached.rejectionReasons).length !== Object.keys(reasons).length ||
+      !Object.keys(reasons).every(key => bounded(cached.rejectionReasons[key])) ||
+      Object.values(cached.rejectionReasons).reduce((sum, count) => sum + count, 0) !== cached.rejected ||
+      JSON.stringify(cached.retailers) !== JSON.stringify(retailers) || JSON.stringify(cached.warnings) !== JSON.stringify(diagnostics.warnings) ||
+      !object(cached.pagination) || Object.keys(cached.pagination).length !== 1 ||
+      ![null, 'cursor_cycle', 'traversal_limit'].includes(cached.pagination.stopReason) ||
+      (cached.pagination.stopReason !== null && token !== null)) fail(502, 'UPSTREAM_INVALID');
+    diagnostics = cached;
+  }
+  return {products, next_page_token:token, diagnostics};
 }
-function validateCached(row, request, now) {
+function validateCached(row, request, now, allowPresentation = false) {
   if (row === undefined || row === null) return null;
   if (row.kind !== 'page' || row.version !== VERSION || row.contextHash !== request.contextHash || !object(row.payload) || row.payload.provider !== 'channel3' || Object.keys(row.payload).some(key => !['provider', 'data', 'fetchedAt', 'expiresAt'].includes(key))) fail(503, 'CACHE_UNAVAILABLE');
   const fetched = Date.parse(row.payload.fetchedAt), expires = Date.parse(row.payload.expiresAt);
-  if (!Number.isFinite(fetched) || !Number.isFinite(expires) || fetched > now + 60_000 || expires <= fetched || expires - fetched > request.ttl || row.expiresAtMs !== expires) fail(503, 'CACHE_UNAVAILABLE');
+  if (!Number.isFinite(fetched) || !Number.isFinite(expires) || fetched > now + 60_000 || expires <= fetched || expires - fetched > request.ttl ||
+    row.expiresAtMs !== expires || row.retentionExpiresAtMs !== fetched + PRESENTATION_TTL) fail(503, 'CACHE_UNAVAILABLE');
   let sanitized;try {sanitized = sanitizePage(row.payload.data, request, true);} catch {fail(503, 'CACHE_UNAVAILABLE');}
   if (JSON.stringify(sanitized) !== JSON.stringify(row.payload.data) || Buffer.byteLength(JSON.stringify(row.payload)) > MAX_PAGE_BYTES) fail(503, 'CACHE_UNAVAILABLE');
-  return expires > now ? row.payload : null;
+  if (expires > now) return row.payload;
+  if (!allowPresentation || row.retentionExpiresAtMs <= now || !row.payload.data.products.length) return null;
+  // Search rows contain no offer, price, inventory or variant snapshot. Preserve
+  // their original age and disable continuation when only presentation remains.
+  return {...row.payload, data:{...row.payload.data, next_page_token:null},
+    expiresAt:new Date(row.retentionExpiresAtMs).toISOString(), status:'presentation_only', error:'CATALOG_REFRESH_UNAVAILABLE'};
 }
 function proxyResponse(statusCode, payload) {
   return {statusCode, headers: {'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': 'https://anox.app', 'X-Content-Type-Options': 'nosniff'}, body: JSON.stringify(payload)};
@@ -271,19 +315,37 @@ function proxyResponse(statusCode, payload) {
 function createHandler({store, upstream, upstreamDetail = upstream?.detail, now = Date.now, sleep = ms => new Promise(resolve => setTimeout(resolve, ms)), metric = () => {}}) {
   const pending = new Map(); let sequence = 0;
   const emit = name => {try {metric(name);} catch {}};
-  async function load(request) {
-    let chainExpires = now() + CURSOR_TTL, count = 0;
-    if (request.token !== undefined) {
-      const cursor = await store.get(cursorKey(request.contextHash, request.token));
-      if (!cursor || cursor.kind !== 'cursor' || cursor.contextHash !== request.contextHash || !Number.isSafeInteger(cursor.expiresAtMs) || !Number.isSafeInteger(cursor.count) || cursor.count < 1 || cursor.count >= 500) fail(400, 'CURSOR_INVALID');
+  async function prepareContinuation(request) {
+    if (request.mode === 'detail' || request.token === undefined) return;
+    const cursor = await store.get(cursorKey(request.contextHash, request.token));
+      if (!cursor || cursor.kind !== 'cursor' || cursor.version !== VERSION || cursor.contextHash !== request.contextHash ||
+        typeof cursor.generation !== 'string' || !/^[a-f0-9-]{36}$/.test(cursor.generation) ||
+        !Number.isSafeInteger(cursor.expiresAtMs) || !Number.isSafeInteger(cursor.count) || cursor.count < 1 || cursor.count >= 500 ||
+        !Array.isArray(cursor.seenIds) || cursor.seenIds.length > cursor.count || !cursor.seenIds.every(detailId) || new Set(cursor.seenIds).size !== cursor.seenIds.length ||
+        !Array.isArray(cursor.tokenHashes) || !cursor.tokenHashes.length || cursor.tokenHashes.length > cursor.count ||
+        !cursor.tokenHashes.every(value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value)) || new Set(cursor.tokenHashes).size !== cursor.tokenHashes.length ||
+        !cursor.tokenHashes.includes(hash(request.token))) fail(400, 'CURSOR_INVALID');
       if (cursor.expiresAtMs <= now()) fail(410, 'CURSOR_EXPIRED');
+    request.cursor = cursor;
+    // Provider tokens may be reused after a first-page refresh. Both durable
+    // page caching and in-flight coalescing must be scoped to that traversal,
+    // because its pages are deduplicated against its own seen-ID history.
+    request.key = 'page#' + hash([VERSION, request.contextHash, request.token, cursor.generation]);
+  }
+  async function load(request, rememberPresentation) {
+    let chainExpires = now() + CURSOR_TTL, count = 0, seenIds = new Set(), tokenHashes = new Set(), generation = randomUUID();
+    if (request.cursor) {
+      const cursor = request.cursor;
       chainExpires = cursor.expiresAtMs; count = cursor.count;
+      seenIds = new Set(cursor.seenIds); tokenHashes = new Set(cursor.tokenHashes); generation = cursor.generation;
     }
     const requireActiveChain = () => {if (now() >= chainExpires) fail(410, 'CURSOR_EXPIRED');};
     const readPage = async () => {
       const row = await store.get(request.key);
       requireActiveChain();
-      return validateCached(row, request, now());
+      const fresh = validateCached(row, request, now());
+      rememberPresentation(fresh ? null : validateCached(row, request, now(), true));
+      return fresh;
     };
     const cached = await readPage();
     if (cached) {emit('cache_hit'); return cached;}
@@ -313,18 +375,24 @@ function createHandler({store, upstream, upstreamDetail = upstream?.detail, now 
       let data, rawCount;
       try {
         requireActiveChain();
-        const raw = await upstream(input, {expiresAt: chainExpires}); data = sanitizePage(raw, request); rawCount = raw.products.length;
-        if (!rawCount && data.next_page_token !== null) fail(502, 'UPSTREAM_INVALID');
+        const raw = await upstream(input, {expiresAt: chainExpires});
+        data = sanitizePage(raw, request, false, {seenIds, remaining:500 - count}); rawCount = raw.products.length;
       } catch (error) {emit('upstream_failure'); if (error instanceof SafeError && [410, 429, 503].includes(error.status)) throw error; fail(502, 'UPSTREAM_UNAVAILABLE');}
       const fetched = now(), expires = Math.min(fetched + request.ttl, chainExpires);
       if (expires <= fetched) fail(410, 'CURSOR_EXPIRED');
-      data.products = data.products.slice(0, 500 - count);
-      count += rawCount;
-      if (count >= 500) data.next_page_token = null;
+      // Empty filtered pages may still have a continuation. Charge one traversal
+      // slot so a provider cannot make an unbounded chain of empty pages.
+      count += Math.max(1, rawCount);
+      if (count >= 500) {data.next_page_token = null; data.diagnostics.pagination.stopReason = 'traversal_limit';}
+      else if (data.next_page_token !== null) {
+        const nextHash = hash(data.next_page_token);
+        if (tokenHashes.has(nextHash)) {data.next_page_token = null; data.diagnostics.pagination.stopReason = 'cursor_cycle';}
+        else tokenHashes.add(nextHash);
+      }
       const payload = {provider: 'channel3', data, fetchedAt: new Date(fetched).toISOString(), expiresAt: new Date(expires).toISOString()};
       if (Buffer.byteLength(JSON.stringify(payload)) > MAX_PAGE_BYTES) {emit('upstream_failure'); fail(502, 'UPSTREAM_INVALID');}
-      const page = {kind: 'page', version: VERSION, contextHash: request.contextHash, expiresAtMs: expires, payload};
-      const cursor = data.next_page_token === null ? null : {key: cursorKey(request.contextHash, data.next_page_token), value: {kind: 'cursor', contextHash: request.contextHash, expiresAtMs: chainExpires, count}};
+      const page = {kind:'page', version:VERSION, contextHash:request.contextHash, expiresAtMs:expires, retentionExpiresAtMs:fetched + PRESENTATION_TTL, payload};
+      const cursor = data.next_page_token === null ? null : {key: cursorKey(request.contextHash, data.next_page_token), value: {kind:'cursor', version:VERSION, generation, contextHash:request.contextHash, expiresAtMs:chainExpires, count, seenIds:[...seenIds], tokenHashes:[...tokenHashes]}};
       await store.publish(request.key, owner, page, cursor, now());
       return payload;
     } finally {
@@ -371,6 +439,7 @@ function createHandler({store, upstream, upstreamDetail = upstream?.detail, now 
     try {
       if (!object(event)) fail(400, 'INVALID_REQUEST');
       request = Object.hasOwn(event, 'operation') || event.rawPath?.startsWith('/catalog/channel3/products') ? parseDetail(event, now()) : parseRequest(event);
+      await prepareContinuation(request);
       request.order = ++sequence;
       let entry = pending.get(request.key);
       while (request.mode === 'detail' && entry?.fetched) {
@@ -379,8 +448,8 @@ function createHandler({store, upstream, upstreamDetail = upstream?.detail, now 
       }
       if (!entry) {
         if (pending.size >= 100) fail(503, 'CACHE_BUSY');
-        const created = {fetched:false};
-        created.work = request.mode === 'detail' ? loadDetail(request, () => {created.fetched = true; created.fetchedOrder = ++sequence;}) : load(request);
+        const created = {fetched:false, presentation:null};
+        created.work = request.mode === 'detail' ? loadDetail(request, () => {created.fetched = true; created.fetchedOrder = ++sequence;}) : load(request, payload => {created.presentation = payload;});
         pending.set(request.key, created); entry = created;
         const done = () => {if (pending.get(request.key) === created) pending.delete(request.key);};
         created.work.then(done, done);
@@ -393,6 +462,12 @@ function createHandler({store, upstream, upstreamDetail = upstream?.detail, now 
         if (request.mode === 'detail' && !(entry.fetchedOrder > request.order || Date.parse(payload.fetchedAt) > request.startedAt)) fail(503, 'CACHE_BUSY');
       }
       catch (error) {
+        if (request.mode !== 'detail' && ['UPSTREAM_UNAVAILABLE', 'CACHE_BUSY', 'UPSTREAM_BUDGET_EXCEEDED', 'UPSTREAM_RATE_LIMITED', 'UPSTREAM_BUDGET_UNAVAILABLE'].includes(error?.code)) {
+          payload = entry.presentation;
+          if (!payload || Date.parse(payload.expiresAt) <= now()) throw error;
+          emit('catalog_presentation_fallback');
+          return proxyResponse(200, payload);
+        }
         if (request.mode !== 'detail' || request.internal || !['DETAIL_REFRESH_UNAVAILABLE', 'CACHE_BUSY', 'UPSTREAM_BUDGET_EXCEEDED', 'UPSTREAM_RATE_LIMITED', 'UPSTREAM_BUDGET_UNAVAILABLE'].includes(error?.code)) throw error;
         payload = validateDetailRow(await store.get(request.presentationKey), request, 'presentation', now());
         if (!payload) throw error;
@@ -444,7 +519,8 @@ function createDynamoStore({client, commands, table}) {
   const {GetItemCommand, PutItemCommand, DeleteItemCommand, TransactWriteItemsCommand} = commands;
   const send = command => client.send(command, {abortSignal: AbortSignal.timeout(1500)});
   const key = pk => ({pk: {S: pk}});
-  const item = (pk, value) => ({pk: {S: pk}, value: {S: JSON.stringify(value)}, expiresAt: {N: String(Math.ceil(value.expiresAtMs / 1000))}});
+  const item = (pk, value) => ({pk: {S: pk}, value: {S: JSON.stringify(value)},
+    expiresAt: {N:String(Math.ceil((value.kind === 'page' && value.retentionExpiresAtMs !== undefined ? value.retentionExpiresAtMs : value.expiresAtMs) / 1000))}});
   return {
     async get(pk) {
       const result = await send(new GetItemCommand({TableName: table, Key: key(pk), ConsistentRead: true}));
@@ -569,7 +645,7 @@ function createUpstream({fetch: transport = globalThis.fetch, getSecret, reserve
 }
 function createMetric({log = line => console.log(line), now = Date.now, namespace = 'AnoX/Catalog'} = {}) {
   if (!['AnoX/Catalog','AnoX/Staging/Catalog'].includes(namespace)) throw Error('INVALID_METRIC_CONFIG');
-  const names = new Set(['cache_hit', 'cache_miss', 'upstream_request', 'upstream_failure', 'cache_contention', 'cache_error', 'search_credit_request', 'product_detail_request', 'detail_fresh', 'detail_coalesced', 'presentation_fallback', 'budget_exceeded', 'rate_limited', 'budget_error']);
+  const names = new Set(['cache_hit', 'cache_miss', 'upstream_request', 'upstream_failure', 'cache_contention', 'cache_error', 'search_credit_request', 'product_detail_request', 'detail_fresh', 'detail_coalesced', 'presentation_fallback', 'catalog_presentation_fallback', 'budget_exceeded', 'rate_limited', 'budget_error']);
   return name => {
     if (!names.has(name)) return;
     log(JSON.stringify({_aws: {Timestamp: now(), CloudWatchMetrics: [{Namespace: namespace, Dimensions: [['Service']], Metrics: [{Name: name, Unit: 'Count'}]}]}, Service: 'Channel3Catalog', event: name, [name]: 1}));

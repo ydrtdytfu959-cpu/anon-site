@@ -1,5 +1,6 @@
 'use strict';
 const { fail } = require('./errors.js');
+const { publicServiceRequest } = require('./service-requests.js');
 const { safeUrl } = require('./quote.js');
 const { ID, text } = require('./validation.js');
 const ORDER_STATES = Object.freeze(['pending', 'confirmed', 'fulfilling', 'shipped', 'delivered', 'canceled', 'failed']);
@@ -8,6 +9,7 @@ const FULFILLMENT_STATES = Object.freeze(['unfulfilled', 'processing', 'shipped'
 function safeText(value, limit = 200) { return text(value, limit) ? value : null; }
 function validDate(value) { return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value; }
 function publicOrder(order) {
+  if (order?.kind === 'service_request') return publicServiceRequest(order);
   if (!order || typeof order.orderId !== 'string' || !ID.test(order.orderId) || !validDate(order.createdAt) || (order.updatedAt !== undefined && !validDate(order.updatedAt)) || !ORDER_STATES.includes(order.status) || order.currency !== 'USD' || !Number.isSafeInteger(order.totalMinor) || order.totalMinor < 0 || !PAYMENT_STATES.includes(order.payment?.status)) fail('order_unavailable', 'This order record is unavailable.', 503);
   return { orderId: order.orderId, status: order.status, currency: order.currency, totalMinor: order.totalMinor, createdAt: order.createdAt, updatedAt: order.updatedAt || order.createdAt, merchantOrderReference: safeText(order.merchantOrderReference), payment: { status: order.payment.status }, fulfillment: { status: FULFILLMENT_STATES.includes(order.fulfillment?.status) ? order.fulfillment.status : 'unknown', tracking: Array.isArray(order.fulfillment?.tracking) ? order.fulfillment.tracking.slice(0, 20).filter(item => item && typeof item === 'object').map(item => ({ carrier: safeText(item.carrier, 80), trackingNumber: safeText(item.trackingNumber, 160), url: item.verified === true ? safeUrl(item.url) : null })) : [] }, capabilities: { cancel: false, refund: false } };
 }

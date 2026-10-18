@@ -2,7 +2,8 @@
 const crypto = require('node:crypto');
 const { CommerceError, fail } = require('./errors.js');
 const { LIMITS, ID, hash, quoteInput, attemptInput, idempotencyKey, object } = require('./validation.js');
-const { checkout } = require('./providers.js');
+const { checkout, serviceFee } = require('./providers.js');
+const { buildServiceRequest, publicServiceRequest } = require('./service-requests.js');
 const { buildQuote } = require('./quote.js');
 const { publicOrder } = require('./orders.js');
 const SAFE_FAILURE_CLASSES = Object.freeze({
@@ -34,11 +35,19 @@ function createHandler({ store, catalog, config = {}, now = Date.now, randomId =
   async function operation({ customer, kind, key, input, build }) {
     const requestHash = hash(input), current = now();
     const begun = await store.begin({ owner: customer, kind, key, hash: requestHash, now: current, leaseMs: 30000 });
-    if (begun.status === 'complete') return { payload: begun.result, replayed: true };
+    if (begun.status === 'complete') return { payload: kind === 'service_request' ? { schemaVersion: 1, serviceRequest: publicServiceRequest(begun.result.serviceRequest) } : begun.result, replayed: true };
     try {
-      const value = await build();
-      const result = { schemaVersion: 1, [kind === 'quote' ? 'quote' : 'attempt']: value };
-      await store.complete({ owner: customer, kind, key, token: begun.token, result, record: { kind, id: kind === 'quote' ? value.quoteId : value.attemptId, data: value, ...(kind === 'quote' ? { ttl: Math.floor(now() / 1000) + 86400 } : {}) }, audit: { eventId: randomId(), type: kind === 'quote' ? 'quote.created' : 'checkout.blocked', resourceId: kind === 'quote' ? value.quoteId : value.attemptId, at: new Date(now()).toISOString() }, now: now() });
+      let value = await build();
+      const metadata = kind === 'quote' ? { field: 'quote', recordKind: 'quote', id: value.quoteId, event: 'quote.created' } : kind === 'service_request' ? { field: 'serviceRequest', recordKind: 'order', id: value.orderId, event: 'service_request.received' } : { field: 'attempt', recordKind: 'attempt', id: value.attemptId, event: 'checkout.blocked' };
+      // A quote has one service record even when two tabs choose different
+      // idempotency keys. The unique record transaction fences the first writer.
+      const existing = kind === 'service_request' ? await store.get(customer, 'order', metadata.id) : null;
+      if (existing) {
+        if (existing.kind !== 'service_request' || existing.quoteId !== value.quoteId || existing.cartHash !== value.cartHash || existing.cartRevision !== value.cartRevision) fail('operation_conflict', 'This request record conflicts with the reviewed quote.', 409);
+        value = existing;
+      }
+      const result = { schemaVersion: 1, [metadata.field]: kind === 'service_request' ? publicServiceRequest(value) : value };
+      await store.complete({ owner: customer, kind, key, token: begun.token, result, record: existing ? undefined : { kind: metadata.recordKind, id: metadata.id, data: value, ...(kind === 'quote' ? { ttl: Math.floor(now() / 1000) + 86400 } : {}) }, audit: existing ? undefined : { eventId: randomId(), type: metadata.event, resourceId: metadata.id, at: new Date(now()).toISOString() }, now: now() });
       return { payload: result, replayed: false };
     } catch (error) { await store.release({ owner: customer, kind, key, token: begun.token }).catch(() => {}); throw error; }
   }
@@ -52,7 +61,7 @@ function createHandler({ store, catalog, config = {}, now = Date.now, randomId =
       const method = event?.requestContext?.http?.method, path = event?.rawPath;
       if (event?.version !== '2.0' || typeof path !== 'string' || !path.startsWith('/commerce/')) fail('not_found', 'Route not found.', 404);
       if (method === 'OPTIONS') return respond(204, null);
-      if (method === 'GET' && path === '/commerce/capabilities') return respond(200, { schemaVersion: 1, quote: { enabled: true, limits: LIMITS }, checkout: checkout(), orders: { read: true, cancel: false, refund: false }, serviceFee: { currency: 'USD', amountMinor: 500, appliesOn: 'successful_order' } });
+      if (method === 'GET' && path === '/commerce/capabilities') return respond(200, { schemaVersion: 1, quote: { enabled: true, limits: LIMITS }, checkout: checkout(), orders: { read: true, cancel: false, refund: false }, serviceRequests: { create: true, read: true, paymentRequired: false }, serviceFee: serviceFee() });
       if (path === '/commerce/webhooks/stripe') fail('webhook_disabled', 'Payment webhooks are not activated for this unsupported checkout integration.', 409);
       const customer = owner(event);
       if (method === 'POST' && path === '/commerce/quotes') {
@@ -60,12 +69,14 @@ function createHandler({ store, catalog, config = {}, now = Date.now, randomId =
         const result = await operation({ customer, kind: 'quote', key, input, build: () => buildQuote({ input, catalog, now, randomId, hydrationTimeoutMs }) });
         return respond(201, result.payload, result.replayed ? { 'Idempotency-Replayed': 'true' } : {});
       }
-      if (method === 'POST' && path === '/commerce/checkout-attempts') {
+      if (method === 'POST' && (path === '/commerce/checkout-attempts' || path === '/commerce/service-requests')) {
+        const isServiceRequest = path === '/commerce/service-requests';
         const input = attemptInput(parseBody(event, headers)), key = idempotencyKey(headers);
-        const result = await operation({ customer, kind: 'attempt', key, input, build: async () => {
+        const result = await operation({ customer, kind: isServiceRequest ? 'service_request' : 'attempt', key, input, build: async () => {
           const quote = await store.get(customer, 'quote', input.quoteId); if (!quote) fail('quote_not_found', 'Quote not found.', 404);
           if (quote.cartRevision !== input.cartRevision || quote.cartHash !== input.cartHash) fail('cart_changed', 'The quote does not match the reviewed cart.', 409);
           if (!Number.isFinite(Date.parse(quote.expiresAt)) || Date.parse(quote.expiresAt) <= now()) fail('quote_expired', 'The quote expired. Request a fresh quote.', 409);
+          if (isServiceRequest) return buildServiceRequest({ quote, now: now(), randomId });
           return { attemptId: randomId(), quoteId: quote.quoteId, cartHash: quote.cartHash, cartRevision: quote.cartRevision, status: 'blocked', createdAt: new Date(now()).toISOString(), checkout: quote.checkout };
         } }); return respond(201, result.payload, result.replayed ? { 'Idempotency-Replayed': 'true' } : {});
       }

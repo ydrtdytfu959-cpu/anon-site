@@ -1,0 +1,98 @@
+{
+  "verifiedAt": "2026-10-17T12:54:10.574717+00:00",
+  "branch": "fix/anox-engineering-overhaul-20261016",
+  "baseline": "c6c58956ebc28f61f32509f0848f115907d31a7a",
+  "node": "v24.18.0",
+  "npm": "11.16.0",
+  "playwright": "1.63.0",
+  "commands": [
+    {
+      "command": "npm ci --ignore-scripts",
+      "exitCode": 0,
+      "log": "install.txt"
+    },
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "log": "build.txt"
+    },
+    {
+      "command": "npm run check",
+      "exitCode": 0,
+      "log": "check.txt"
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "log": "node.txt"
+    },
+    {
+      "command": "ENGINES=chromium,firefox npm run test:browser",
+      "exitCode": 0,
+      "log": "browser.txt"
+    }
+  ],
+  "nodeTests": {
+    "passed": 377,
+    "failed": 0,
+    "skipped": 0
+  },
+  "browserGroups": {
+    "catalogChromium": 10,
+    "catalogFirefox": 10,
+    "commerceChromiumDesktop": 13,
+    "commerceChromiumMobile": 13,
+    "commerceFirefoxDesktop": 13,
+    "commerceFirefoxMobile": 13,
+    "total": 72
+  },
+  "browserExternalBoundaries": "Intercepted fixtures only; no provider, payment or live customer operations",
+  "screenshots": "Eight local fixture screenshots reviewed from /private/tmp/anox-final-screenshots; reproduce with SCREENSHOT_DIR",
+  "validatedSourceSha256": {
+    "auth.js": "4f29a4bc2a557f8ac35bb07d8a51efd3287670a05b637c5f102a5a465b474316",
+    "backend/cj-official/index.js": "a8bdae77ab1c05b33a2195e7af73e2585d14859f70291efcc74a1ebe22ab2b72",
+    "backend/cloudformation.json": "539b58770b1b36f6b986d4a8baa4f13b14f7fefeb40fe9aa0087048ba9ccef69",
+    "backend/commerce/build-template.cjs": "571ddddac808c9702bb865837feb9625885ca593c9db762e757d325cf975fadc",
+    "backend/commerce/cloudformation.json": "ea2c46c623a2be9c456387650cfb12cccdb5c283b1f81f319b4b5d197154b98d",
+    "backend/commerce/index.js": "1b4d946e757d247b0425eab05648a2e262e753671cf1eebcb4e65e572ed4b974",
+    "backend/commerce/orders.js": "8e50af9418404b8c0de4b19f3dc2888beee37b4ed6043181a8b83080f747b57c",
+    "backend/commerce/providers.js": "2374cdade3ac2061e72a89977ea88791f51a24e78c906217f9fc6a171e76597a",
+    "backend/commerce/quote.js": "2ad0fc964bb97844a0a9650e9c04ca5ec753d0ec84631f4ecca47fe7fc8d26ac",
+    "backend/commerce/service-requests.js": "84a78f174eaf955e12e99d0f1b098edf0d899d0822bb93c934ee3b9424b26447",
+    "backend/commerce/stage-api-settings.cjs": "7599ebf8f37674f4839c4b052966086dc272f9bb4b38dbd198860f76c89c0c41",
+    "backend/commerce/validation.js": "449a6e5d18224ca22b1116d4153f64dde4b569fc1da71cb5d3bbd0353234d9b1",
+    "backend/index.js": "20bea481d00ee32318779e556fba36324effca5728b9846d4a95d9027a6b708c",
+    "backend/legacy-catalog/build.cjs": "ffe3faf35a9093d3dcc335e266538054cf4f81cb21083d2178d3262445996a88",
+    "backend/legacy-catalog/cj-handler.js": "c8992eae2d05719857b2aa19e2e9b260e78876cce4e376b797e90349d0a74418",
+    "backend/legacy-catalog/deployed-index.js": "1ef4ba50216bb43853efeec9b0dced0fdccd69702e851583bc55b60f035ba418",
+    "backend/legacy-catalog/index.js": "4c76c87b9235ab669e17b0b0c6b4e5a76b1289904be182789c61e1a80aa96e00",
+    "backend/legacy-catalog/provenance.json": "c438e4116da5fc9d6e463258d6b1e9aab7652cc4259145c4217a7a0fa8a04ce4",
+    "backend/staging/cloudformation.json": "da629398b35ebf4eedd94ecab8dcf696becc83cea0fd00c4d473c764f3289d1b",
+    "catalog-live.js": "b954d7dfe81ac749be9573b6da5e1d8964ce5d40d30c486553fea97b2572b976",
+    "commerce-client.js": "d02e7d7104e7e057e9a600aad2429d3beda17f4f6e082732014b8899cb9760fd",
+    "index.html": "e9813fe542f354604221a767f63aca90fe985b39d830735f6c95cf5b6e94cb96",
+    "scripts/browser-commerce.cjs": "cb82af9e116b3bc29d1629f8e3ec2c37f3ffeddb5be5525758d1c6e36dd13848",
+    "scripts/export-review.cjs": "f282806ffc37c794cbf71862090a2513e967e174f9a4944a4b97518fab83b0b3",
+    "scripts/profile-commerce-quotes.cjs": "6cc8024db27fcc317e2f44e6b396112e29d35140191cfc531d6b399c283d1a00",
+    "scripts/verify-retailer-coverage.cjs": "f1575fa2afb7eee339f9917e5a97bcf47cba15b0ac7a5782baea61b3fc278678",
+    "tests/adapter-cursor.cjs": "598066d199a1785e5da184e0cb915756772b1e19bbcfafd4604b453bd2ac51dd",
+    "tests/adapter-detail.cjs": "013471b753ab11a28cce962142523e901771fe88a2a328399d12e96aa9ba0540",
+    "tests/auth-commerce.cjs": "0d6e4e5894674b8090cee903dcc87caea14db1c202d116de83285137bf45a109",
+    "tests/backend-cache.cjs": "77fff1d5c9e8670ec09e381548a8816c8fb5af825620b6fb92ba64859d120953",
+    "tests/backend-catalog.cjs": "f947ca64b1ec63cd22dd00b193aab00dc941c28363ab76e0f7a570f0f1a50d48",
+    "tests/backend-detail.cjs": "8bd9f7953ef382042ea3ab73d7789e7b2e01cc5e4253a3831636212bca12043a",
+    "tests/catalog-overhaul.cjs": "14d9346c37a131017290b569bcdc017648afe90b57898f6392ab463bd3f14f34",
+    "tests/cj-official.cjs": "9b0a52a11cb25e5eaaccf133a6113a3c34409110451a3cf53216a77a21473306",
+    "tests/commerce-api-settings.cjs": "bde39277c65291ef437a1a6e0faaf90ca40f303b6f159cf0df750f39ec068c78",
+    "tests/commerce-client.cjs": "795ec5536636bab5007001fe236895a31d1ae9b9fa6705128b753837edccdbdb",
+    "tests/commerce-service-requests.cjs": "a8b310f8a8aa9a2b24cc4dc175bd89e251729e1d45c02b62af6c7436f13fcc7c",
+    "tests/commerce-service.cjs": "f21f09cd7ced2305d4e5397b8126cc056e4030646b84519ac878a1d2fb9c160d",
+    "tests/commerce-template.cjs": "e0dcc30fb0638efb7417561d1dd84f1a7ea777bec0fa22e8e49f070d5bef3b4a",
+    "tests/export-review.cjs": "4232688959c183f70491f7680883a2a5b72129b5ad7cac0baa84db5878b88bfc",
+    "tests/helpers/commerce.cjs": "dc1b624152aae9d81cb0551ff0ba2d64b8fb1c25599fa1cac3e745d15d430ca8",
+    "tests/legacy-catalog.cjs": "8abdadbc71da52858829c20dd24f1b2d0713b82f1b9158010123e512e1bc0b3d",
+    "tests/repository.test.cjs": "6c116ac711dc88d57191c72e01bb2d5a2e87d21220848245c87604db19e259e1",
+    "tests/staging-preparation.cjs": "bb2097ebafc8f9211e6f56919062168e3d5bb0090425fc7f14b3e051bbe01de2",
+    "tests/storefront-overhaul.cjs": "1d222c9668a9792e9a2e8ef3cf822afdf4b4818f39d8b223feec18f01e6ad37e"
+  }
+}

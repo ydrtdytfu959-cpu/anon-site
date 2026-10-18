@@ -53,7 +53,7 @@ async function run(engine,mobile=false){
    if(url.pathname==='/catalog/products')return send({error:'cj_fixture_unavailable'},503);
    if(url.pathname.startsWith('/commerce/')){
     const body=request.method()==='POST'?request.postDataJSON():undefined;
-    const type=url.pathname==='/commerce/quotes'?'quote':url.pathname==='/commerce/capabilities'?'capabilities':url.pathname==='/commerce/orders'?'orders':'order';
+    const type=url.pathname==='/commerce/quotes'?'quote':url.pathname==='/commerce/service-requests'?'service-request':url.pathname==='/commerce/capabilities'?'capabilities':url.pathname==='/commerce/orders'?'orders':'order';
     calls.push({type,body,headers:request.headers()});if(type==='capabilities'&&capabilityAbsentOnce){capabilityAbsentOnce=false;return send({message:'Not Found'},404);}if(type==='quote'&&slowQuote)await quoteGate;
     const event=backendEvent(request.method(),url.pathname,body,{headers:request.headers(),queryStringParameters:Object.fromEntries(url.searchParams)});
     event.requestContext.authorizer.jwt.claims.exp=String(Math.floor(Date.now()/1000)+3600);
@@ -67,11 +67,16 @@ async function run(engine,mobile=false){
   const page=await context.newPage();await page.clock.install();page.on('pageerror',e=>errors.push(e.message));
   const nav=hash=>page.evaluate(hash=>{location.hash=hash;},hash),ready=()=>page.waitForFunction(()=>{const raw=location.hash.slice(1),at=raw.indexOf('?'),key=at<0?raw+'?':raw;return document.querySelector('#main')?.dataset.commerceDetailKey===key&&!!document.querySelector('[data-commerce-add]');});
   const record=name=>checks.push({engine,mobile,name,pass:true});
+  const capture=async name=>{
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,name+' must fit the viewport');
+   if(process.env.SCREENSHOT_DIR){fs.mkdirSync(process.env.SCREENSHOT_DIR,{recursive:true});await page.evaluate(()=>scrollTo({top:0,behavior:'instant'}));await page.screenshot({path:path.join(process.env.SCREENSHOT_DIR,engine+'-'+(mobile?'mobile':'desktop')+'-'+name+'.png'),fullPage:true});}
+  };
   await page.goto('https://anox.app/#product/channel3/shoe_1');await ready();
   if(await page.locator('[data-language="en"]').count())await page.locator('[data-language="en"]').click();
   await ready();assert.equal(calls.filter(c=>c.type==='detail').length,1);assert.equal(calls.filter(c=>c.type==='quote').length,0);
   assert.equal(await page.locator('.commerce-thumbs img').count(),12);assert.equal(await page.locator('.commerce-thumbs img[loading="lazy"]').count(),12);
   assert.match(await page.locator('.commerce-description').textContent(),/Detailed product information/);assert.equal(await page.locator('[data-commerce-add]').isEnabled(),true);
+  await capture('product-fixture');
   await page.locator('[data-commerce-swipe]').focus();await page.keyboard.press('ArrowRight');assert.equal(await page.locator('[data-commerce-gallery="1"][aria-pressed="true"]').count(),1);
   if(mobile){await page.locator('[data-commerce-swipe]').dispatchEvent('pointerdown',{clientX:320,clientY:180,pointerId:2,isPrimary:true,pointerType:'touch'});await page.locator('[data-commerce-swipe]').dispatchEvent('pointerup',{clientX:80,clientY:185,pointerId:2,isPrimary:true,pointerType:'touch'});assert.equal(await page.locator('[data-commerce-gallery="2"][aria-pressed="true"]').count(),1);}
   assert.equal(await page.locator('[data-commerce-wishlist]').count(),1,'PDP retains the saved-product action');await page.locator('[data-commerce-wishlist]').click();await nav('wishlist');await page.locator('[data-channel3-saved]').waitFor();await page.reload();await page.locator('[data-channel3-saved]').waitFor();await page.locator('[data-channel3-saved]').click();await ready();
@@ -86,9 +91,22 @@ async function run(engine,mobile=false){
   await page.locator('[data-commerce-edit]').click();await ready();assert.equal(await page.locator('[data-commerce-option="Size"]').inputValue(),'L');await page.locator('[data-commerce-option="Size"]').selectOption('M');await ready();await page.locator('[data-commerce-add]').click();await page.locator('[data-commerce-cart-quantity]').waitFor();
   await page.locator('[data-commerce-quote]').click();await page.locator('#commerce-cost-title').waitFor();
   const cost=await page.locator('.commerce-cost').textContent();assert.match(cost,/Estimated TotalUnavailable/);assert.match(cost,/Verified Payable TotalUnavailable/);assert.match(cost,/\$5\.00/);assert.match(cost,/Potential Charges on Arrival/);assert.equal(await page.locator('[data-commerce-checkout]').isDisabled(),true);
+  assert.match(cost,/Pending decision/);assert.doesNotMatch(cost,/On success only/);
+  assert.equal(await page.locator('[data-commerce-price-change] bdi').evaluateAll(nodes=>nodes.every(node=>node.getBoundingClientRect().height<=parseFloat(getComputedStyle(node).lineHeight)*1.1)),true,'price-change amounts must remain readable on one line');
+  await capture('quoted-cart-fixture');
   assert.equal(await page.locator('[data-commerce-quote-line]').count(),1);assert.match(await page.locator('[data-commerce-quote-line]').textContent(),/Fresh unit price.*\$104\.95/);assert.match(await page.locator('[data-commerce-price-change]').textContent(),/Saved unit price.*\$99\.95.*Fresh unit price.*\$104\.95/);assert.match(await page.locator('[data-commerce-quote-line]').textContent(),/Line subtotal.*\$314\.85/);
   const request=calls.filter(c=>c.type==='quote').at(-1);assert.equal(request.body.lines[0].quantity,3);assert.equal(request.body.lines[0].options.Size,'M');assert.equal(request.body.lines[0].priceCents,undefined);assert.match(request.headers['idempotency-key'],/^[A-Za-z0-9_-]{16,128}$/);
   record('cart restores, edits, requests authenticated server quote and leaves unknown costs and payment unavailable');
+  await page.locator('[data-commerce-service-request]').click();await page.locator('[data-service-request-saved]').waitFor();
+  assert.equal(calls.filter(c=>c.type==='service-request').length,1);
+  assert.match(await page.locator('[data-service-request-saved]').textContent(),/No payment or purchase occurred/);
+  assert.equal(await page.locator('[data-commerce-checkout]').isDisabled(),true);
+  await page.locator('[data-service-request-saved] a').click();await page.waitForFunction(()=>document.querySelector('#main')?.textContent.includes('Service request — no purchase'));
+  assert.match(await page.locator('#main').textContent(),/Order statusreceived/);
+  assert.doesNotMatch(await page.locator('#main').textContent(),/Server-recorded amount|succeeded/);
+  await page.reload();await page.waitForFunction(()=>document.querySelector('#main')?.textContent.includes('Service request — no purchase'));
+  await nav('cart');await page.locator('[data-commerce-cart-quantity]').waitFor();
+  record('authenticated service request persists, reloads and tracks without a payment or merchant order');
   const second=await context.newPage();await second.goto('https://anox.app/#cart');await second.locator('[data-commerce-cart-quantity]').waitFor();assert.equal(await second.locator('[data-commerce-cart-quantity]').inputValue(),'3');
   await page.locator('[data-commerce-cart-quantity]').fill('2');await page.locator('[data-commerce-cart-quantity]').blur();await page.waitForFunction(()=>!document.querySelector('#commerce-cost-title'));await second.waitForFunction(()=>document.querySelector('[data-commerce-cart-quantity]')?.value==='2');await second.close();
   slowQuote=true;quoteGate=new Promise(r=>releaseQuote=r);await page.locator('[data-commerce-quote]').click();await page.waitForFunction(()=>document.querySelector('[data-commerce-quote]')?.disabled);

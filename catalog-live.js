@@ -12,7 +12,7 @@
   const channel3Provider = Object.freeze({id:"channel3-live", merchant:"Channel3", mode:"live", transport:"api", pagination:"cursor", timeoutMs:18000, sourceType:"catalog-api", authorization:Object.freeze({status:"provider-terms",evidence:"Channel3 customer output"}), approvedLive:false, imageHosts:Object.freeze(["cdn.trychannel3.com"]), merchantHosts:Object.freeze(["buy.trychannel3.com"]), staleAfterMs:86400000});
   const CHANNEL3_SECTIONS = Object.freeze(["featured","men","women","shoes","clothing","beauty","accessories","sports","brands"]);
   const MAX_BYTES=2*1024*1024;
-  let retryAt=0, cjRetryAt=0;
+  const retryAfterByUrl=new Map();
   const DEFAULT_LIMIT = 24;
 
   const stringValue = value => typeof value === "string" ? value.trim() : "";
@@ -190,13 +190,21 @@
   }
   async function readJson(url,signal,timeoutMs=8000,cjSource=false) {
     if(signal?.aborted)throw Error("catalog_aborted");
-    if(Date.now()<(cjSource?cjRetryAt:retryAt))throw Error("catalog_rate_limited");
+    const cooldown=retryAfterByUrl.get(url);
+    if(cooldown&&Date.now()<cooldown.until)throw catalogError(cooldown.code,429);
     const controller=new AbortController(),abort=()=>controller.abort(),timer=setTimeout(abort,timeoutMs);
     signal?.addEventListener("abort",abort,{once:true});
     try{
       const response=await fetch(url,{credentials:"omit",cache:"no-store",referrerPolicy:"no-referrer",redirect:"error",signal:controller.signal});
-      if(response.status===429){const header=response.headers.get("retry-after"),seconds=Number(header);const until=Date.now()+Math.min(300000,Math.max(1000,Number.isFinite(seconds)?seconds*1000:(Date.parse(header)-Date.now())||30000));if(cjSource)cjRetryAt=until;else retryAt=until;throw Error("catalog_rate_limited");}
-      if(!response.ok)throw Error(`catalog_http_${response.status}`);
+      if(!response.ok){
+        let errorBody='',bytes=0;const reader=response.body?.getReader(),decoder=new TextDecoder();
+        if(reader)for(;;){const {value,done}=await reader.read();if(done)break;bytes+=value.byteLength;if(bytes>4096){await reader.cancel();errorBody='';break;}errorBody+=decoder.decode(value,{stream:true});}
+        let upstream;try{upstream=JSON.parse(errorBody).error;}catch{}
+        const codes={UPSTREAM_BUDGET_EXCEEDED:'catalog_budget_exhausted',UPSTREAM_RATE_LIMITED:'catalog_rate_limited',UPSTREAM_BUDGET_UNAVAILABLE:'catalog_budget_unavailable',UPSTREAM_UNAVAILABLE:'catalog_provider_unavailable',UPSTREAM_INVALID:'catalog_provider_unavailable',CURSOR_EXPIRED:'catalog_cursor_expired',CURSOR_INVALID:'catalog_cursor_invalid'};
+        const code=Object.hasOwn(codes,upstream)?codes[upstream]:response.status===429?'catalog_rate_limited':`catalog_http_${response.status}`;
+        if(response.status===429){const header=response.headers.get('retry-after'),seconds=header===null?NaN:Number(header);const until=Date.now()+Math.min(300000,Math.max(1000,Number.isFinite(seconds)?seconds*1000:(Date.parse(header)-Date.now())||30000));retryAfterByUrl.set(url,{until,code});while(retryAfterByUrl.size>100)retryAfterByUrl.delete(retryAfterByUrl.keys().next().value);}
+        throw catalogError(code,response.status);
+      }
       if(!/application\/(?:[a-z0-9.-]+\+)?json/i.test(response.headers.get("content-type")||"")||Number(response.headers.get("content-length"))>MAX_BYTES)throw Error("catalog_payload_limit");
       const reader=response.body?.getReader();if(!reader)throw Error("catalog_payload");
       let size=0,body="";const decoder=new TextDecoder();
@@ -239,14 +247,26 @@
         sourceType:"affiliate-feed"}};
   }
   function parseCjNikePreviewPage(payload,{limit=24,offset=0}={}) {
-    if(!payload||payload.source!=="CJ"||payload.advertiser!=="NIKE"||
+    if(!Number.isSafeInteger(limit)||limit<1||limit>24||!Number.isSafeInteger(offset)||offset<0||offset>5000||
+       !payload||payload.source!=="CJ"||payload.advertiser!=="NIKE"||
        !Array.isArray(payload.products)||payload.products.length>limit||
        !Number.isSafeInteger(payload.totalCount)||payload.totalCount<0)throw catalogError("catalog_payload");
+    const explicit=Object.hasOwn(payload,'rawCount')||Object.hasOwn(payload,'nextOffset');
+    const rawCount=explicit?payload.rawCount:payload.products.length;
+    if(!Number.isSafeInteger(rawCount)||rawCount<payload.products.length||rawCount>limit)throw catalogError("catalog_payload");
+    const nextOffset=rawCount&&offset+rawCount<payload.totalCount&&offset+rawCount<=5000?offset+rawCount:null;
+    if(explicit){
+      if(payload.nextOffset!==nextOffset)throw catalogError("catalog_payload");
+      let previous=offset-1;
+      for(const product of payload.products){
+        const index=product?.sourceIndex;
+        if(!Number.isSafeInteger(index)||index<=previous||index<offset||index>=offset+rawCount)throw catalogError("catalog_payload");
+        previous=index;
+      }
+    }
     const fetchedAt=new Date().toISOString();
-    const items=payload.products.map((raw,i)=>normalizeCjNikePreview(raw,offset+i,fetchedAt)).filter(Boolean);
-    const nextOffset=payload.products.length&&offset+payload.products.length<payload.totalCount?
-      offset+payload.products.length:null;
-    return {items,total:payload.totalCount,nextOffset,invalidCount:payload.products.length-items.length,fetchedAt};
+    const items=payload.products.map((raw,i)=>normalizeCjNikePreview(raw,explicit?raw.sourceIndex:offset+i,fetchedAt)).filter(Boolean);
+    return {items,total:payload.totalCount,nextOffset,rawCount,invalidCount:rawCount-items.length,fetchedAt};
   }
   async function fetchCjNikePreviewPage({limit=24,offset=0,signal}={}) {
     if(!Number.isSafeInteger(limit)||limit<1||limit>24||!Number.isSafeInteger(offset)||offset<0||offset>5000)
@@ -264,20 +284,24 @@
 
   function channel3Category(raw) {
     const path=Array.isArray(raw?.category?.path)?raw.category.path.map(entry=>stringValue(entry?.title)).filter(Boolean):[];
-    const value=[stringValue(raw?.category?.title),...path].join(" ").toLowerCase();
-    if(/shoe|sneaker|boot|footwear/.test(value))return "Shoes";
-    if(/beauty|cosmetic|skin|fragrance|makeup/.test(value))return "Beauty";
-    if(/accessor|bag|watch|jewel|eyewear/.test(value))return "Accessories";
-    if(/sport|fitness|training|outdoor/.test(value))return "Sports";
+    // The ancestor "Apparel & Accessories" also contains jeans and dresses.
+    // Prefer the most specific category before considering broad ancestors.
+    for(const part of [stringValue(raw?.category?.title),...path.reverse()]){
+      const value=part.toLowerCase();
+      if(/shoe|sneaker|boot|footwear/.test(value))return "Shoes";
+      if(/beauty|cosmetic|skin|fragrance|makeup/.test(value))return "Beauty";
+      if(/clothing|jeans|pants|dress|shirt|jacket|sweater|skirt|shorts|underwear|apparel/.test(value))return "Fashion";
+      if(/accessor|bag|watch|jewel|eyewear/.test(value))return "Accessories";
+      if(/sport|fitness|training|outdoor/.test(value))return "Sports";
+    }
     return "Fashion";
   }
   function channel3Brand(raw){
     const brands=Array.isArray(raw?.brands)?raw.brands:[];
     return stringValue(brands.find(entry=>stringValue(entry?.name))?.name)||"Brand";
   }
-  // A product is in the public catalog only when its source declares one of
-  // four approved brands, or a fresh offer identifies an approved retailer.
-  // Titles and search terms are NEVER evidence of brand or retailer identity.
+  // Official seller identity determines coverage, including a retailer's
+  // genuine sub-brands. Brand names and search terms are not merchant proof.
   const APPROVED_BRANDS=Object.freeze({nike:"Nike",adidas:"Adidas",levis:"Levi's",elf:"e.l.f. Cosmetics",elfcosmetics:"e.l.f. Cosmetics"});
   // Strict direct retailer attribution, not any marketplace carrying a branded item.
   // Buy links are Channel3-managed HTTPS redirects, never an invented store URL.
@@ -293,9 +317,14 @@
     ["Nike","Nike"],["Adidas","adidas"],["Levi's","Levi's"],
     ["e.l.f. Cosmetics","e.l.f. cosmetics"],["Sephora","Sephora"],["TJ Maxx","TJ Maxx"]
   ]);
+  const WEBSITE_IDS=Object.freeze(['nike.com','adidas.com','levi.com','elfcosmetics.com','sephora.com','tjmaxx.tjx.com']);
   const SECTION_QUERIES=Object.freeze({
     men:"Levi's men",women:"Nike women",shoes:"adidas",clothing:"Levi's",
     beauty:"e.l.f. cosmetics",accessories:"Nike accessories",sports:"Nike sports",brands:"Sephora"
+  });
+  const SECTION_WEBSITES=Object.freeze({
+    men:'levi.com',women:'nike.com',shoes:'adidas.com',clothing:'levi.com',
+    beauty:'elfcosmetics.com',accessories:'nike.com',sports:'nike.com',brands:'sephora.com'
   });
   const OFFICIAL_DOMAINS=new Set(Object.values(OFFICIAL_STORES).flat());
   function officialOffers(raw) {
@@ -317,13 +346,10 @@
     OFFICIAL_STORES["TJ Maxx"].includes(stringValue(o.domain).toLowerCase())
   );}
   function approvedSellerDomains(raw) {
-    const brand=approvedBrand(raw);
     const fromOffers=officialOffers(raw).map(o=>stringValue(o.domain).toLowerCase());
     const fromCache=(Array.isArray(raw?.sellerDomains)?raw.sellerDomains:[])
-      .slice(0,6).map(v=>stringValue(v).toLowerCase()).filter(d=>OFFICIAL_DOMAINS.has(d));
-    const retail=[...OFFICIAL_STORES.Sephora,...OFFICIAL_STORES["TJ Maxx"]];
-    return [...new Set([...fromOffers,...fromCache])].filter(d=>
-      (brand&&OFFICIAL_STORES[brand].includes(d))||retail.includes(d));
+      .slice(0,14).map(v=>stringValue(v).toLowerCase()).filter(d=>OFFICIAL_DOMAINS.has(d));
+    return [...new Set([...fromOffers,...fromCache])];
   }
   function approvedOfficialOffers(raw){
     const allowed=new Set(approvedSellerDomains(raw));
@@ -339,7 +365,7 @@
     if(!label)return null;
     // Ignore volatile fields even from an older backend during rollout.
     const name=localized(title,title);
-    const media=(Array.isArray(raw.images)?raw.images:[]).slice(0,1).flatMap(image=>{const url=trustedImageUrl(firstValue(image?.cleaned_url,image?.url));if(!url)return [];return [{url,alt:localized(stringValue(image?.alt_text)||title,title),width:420,height:390}];});
+    const media=(Array.isArray(raw.images)?raw.images:[]).slice(0,12).flatMap(image=>{const url=trustedImageUrl(image?.cleaned_url)||trustedImageUrl(image?.url);if(!url)return [];return [{url,alt:localized(stringValue(image?.alt_text)||title,title),width:420,height:390}];}).slice(0,1);
     const category=channel3Category(raw),kind=safeKey(firstValue(raw?.category?.slug,raw?.category?.title,category),"product").toLowerCase();
     return {id,slug:id,name,brand:label,category,kind:/^[a-z][a-z-]{0,29}$/.test(kind)?kind:"product",currency:"USD",priceCents:null,presentationOnly:true,
       compareAtPriceCents:null,weightGrams:0,variantDetailsKnown:false,stock:null,variants:[],media,
@@ -376,12 +402,19 @@
     if (q && section || section && !CHANNEL3_SECTIONS.includes(section)) throw catalogError("catalog_options");
     if (!q) section = section || "featured";
     if (!filters || typeof filters !== "object" || Array.isArray(filters)) throw catalogError("catalog_options");
-    const allowed = { availability: ["InStock", "OutOfStock"], conditions: ["new", "used"] }, clean = {};
+    const allowed = { availability: ["InStock", "OutOfStock"], conditions: ["new", "used"], website_ids:WEBSITE_IDS }, clean = {};
     for (const key of Object.keys(filters).sort()) {
       const values = filters[key];
-      if (!Object.hasOwn(allowed, key) || !Array.isArray(values) || !values.length || values.length > 2 ||
+      if (!Object.hasOwn(allowed, key) || !Array.isArray(values) || !values.length || values.length > (key==='website_ids'?1:2) ||
           values.some(value => !allowed[key].includes(value))) throw catalogError("catalog_options");
       clean[key] = [...new Set(values)].sort();
+    }
+    // Generated shelves and exact retailer searches use the same merchant
+    // scope when requesting and validating a page. Generic queries stay broad.
+    if(!clean.website_ids){
+      const source=FEATURED_SOURCES.findIndex(([,term])=>term.toLowerCase()===q.toLowerCase());
+      const website=source>=0?WEBSITE_IDS[source]:SECTION_WEBSITES[section];
+      if(website)clean.website_ids=[website];
     }
     return { q, section, limit, cursor: channel3Cursor(cursor), filters: clean };
   }
@@ -399,21 +432,40 @@
   }
 
   function parseChannel3Page(payload, options = {}) {
-    const { q, section, limit } = channel3Options(options);
+    const { q, section, limit, filters } = channel3Options(options);
     const data = payload?.data;
     if (!payload || typeof payload !== "object" || Array.isArray(payload) || payload.provider !== "channel3" ||
         !data || typeof data !== "object" || Array.isArray(data) || !Array.isArray(data.products) ||
         !Object.hasOwn(data, "next_page_token")) throw catalogError("catalog_payload");
     const raw = data.products;
     if (raw.length > limit) throw catalogError("catalog_record_limit");
-    const nextCursor = channel3Cursor(data.next_page_token);
+    const degraded=payload.status==='presentation_only'&&payload.error==='CATALOG_REFRESH_UNAVAILABLE';
+    const nextCursor = degraded?null:channel3Cursor(data.next_page_token);
     const fetchedAt = normalizedDate(payload.fetchedAt), expiresAt = normalizedDate(payload.expiresAt), now = Date.now();
     if (!fetchedAt || !expiresAt || Date.parse(fetchedAt) > now + 60000 ||
         Date.parse(expiresAt) <= Date.parse(fetchedAt) ||
-        Date.parse(expiresAt) - Date.parse(fetchedAt) > (q ? 300000 : 600000)) throw catalogError("catalog_payload");
+        Date.parse(expiresAt) - Date.parse(fetchedAt) > (degraded?3600000:q ? 300000 : 600000)) throw catalogError("catalog_payload");
     if (Date.parse(expiresAt) <= now) throw catalogError("catalog_expired");
-    const items = raw.map((item, index) => normalizeChannel3Product(item, index, fetchedAt)).filter(Boolean);
-    return { q, section, limit, items, total: null, nextCursor, fetchedAt, expiresAt, invalidCount: raw.length - items.length };
+    const items=[],seen=new Set(),rejectionReasons={invalid_product:0,unverified_merchant:0,retailer_mismatch:0,duplicate_product:0};
+    const expected=filters.website_ids?.[0],store=expected&&Object.values(OFFICIAL_STORES).find(domains=>domains.includes(expected));
+    for(const [index,item] of raw.entries()){
+      const sellers=approvedSellerDomains(item);
+      if(!sellers.length){rejectionReasons.unverified_merchant++;continue;}
+      if(store&&!sellers.some(domain=>store.includes(domain))){rejectionReasons.retailer_mismatch++;continue;}
+      const normalized=normalizeChannel3Product(store?{...item,sellerDomains:sellers.filter(domain=>store.includes(domain)),offers:officialOffers(item).filter(offer=>store.includes(stringValue(offer.domain).toLowerCase()))}:item,index,fetchedAt);
+      if(!normalized){rejectionReasons.invalid_product++;continue;}
+      if(seen.has(normalized.id)){rejectionReasons.duplicate_product++;continue;}
+      seen.add(normalized.id);items.push(normalized);
+    }
+    const diagnostics={received:raw.length,accepted:items.length,rejected:raw.length-items.length,rejectionReasons,retailers:Object.fromEntries(Object.keys(OFFICIAL_STORES).map(store=>[store,items.filter(p=>p.brand===store).length]))};
+    // Add only reconciled, bounded server rejection counts; never accept prices
+    // or links through diagnostic metadata. Older deployments omit this field.
+    const upstream=data.diagnostics;
+    if(record(upstream)&&Number.isSafeInteger(upstream.received)&&upstream.received>=raw.length&&upstream.received<=limit&&upstream.accepted===raw.length&&upstream.rejected===upstream.received-raw.length&&record(upstream.rejectionReasons)){
+      const reasons=Object.values(upstream.rejectionReasons);
+      if(reasons.every(n=>Number.isSafeInteger(n)&&n>=0&&n<=limit)&&reasons.reduce((a,b)=>a+b,0)===upstream.rejected){diagnostics.received=upstream.received;diagnostics.rejected+=upstream.rejected;for(const [key,value] of Object.entries(upstream.rejectionReasons))if(['invalid_product','unverified_merchant','retailer_mismatch','duplicate_product','traversal_limit'].includes(key))diagnostics.rejectionReasons[key]=(diagnostics.rejectionReasons[key]||0)+value;}
+    }
+    return { q, section, limit, items, total: null, nextCursor, fetchedAt, expiresAt, invalidCount:diagnostics.rejected, diagnostics, degraded };
   }
 
   // Scan a full source page per metered query, while emitting at most one
@@ -468,7 +520,7 @@
     mixedPageCache.delete(key);
     await paceFeaturedSearch(signal);
     const url=buildChannel3Url({q:query,limit:24,cursor,filters});
-    const page=parseChannel3Page(await readJson(url,signal,channel3Provider.timeoutMs),{q:query,limit:24});
+    const page=parseChannel3Page(await readJson(url,signal,channel3Provider.timeoutMs),{q:query,limit:24,filters});
     if(signal?.aborted){const error=new Error("catalog_aborted");error.name="AbortError";throw error;}
     const expiresAt=Date.parse(page.expiresAt);
     if(Number.isFinite(expiresAt)&&expiresAt>Date.now()){
@@ -481,11 +533,17 @@
   function shuffleRoundRobin(groups,limit){
     const order=groups.map((_,i)=>i),used=groups.map(()=>0);
     for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
-    const items=[];
+    const items=[],seen=new Set();
     for(let pos=0;pos<24&&items.length<limit;pos++){
       for(const i of order){
         if(items.length>=limit)break;
-        if(groups[i][pos]){items.push(groups[i][pos]);used[i]++;}
+        const product=groups[i][pos];
+        if(product){
+          // Consume duplicate source rows as well as displayed rows so the
+          // continuation remains a prefix offset and preserves unused cards.
+          used[i]++;
+          if(!seen.has(product.id)){seen.add(product.id);items.push(product);}
+        }
       }
     }
     return {items,used};
@@ -494,14 +552,15 @@
     const state=parseMixedCursor(normalized.cursor),cursors=state.c,offsets=state.o;
     const groups=Array(6).fill(null).map(()=>[]),totals=Array(6).fill(0);
     const sourceNext=cursors.slice(),next=cursors.slice(),nextOffsets=offsets.slice();
-    let errors=0,earliestFetched=null,earliestExpiry=state.until??Infinity;
+    let errors=0,invalidCount=0,degraded=false,earliestFetched=null,earliestExpiry=state.until??Infinity;
+    const sourceDiagnostics=FEATURED_SOURCES.map(([retailer])=>({retailer,status:'exhausted',received:0,accepted:0,rejected:0}));
     // First display reads at most six sources; subsequent mixed pages reuse
     // validated unexpired source pages without any additional provider calls.
     for(let start=0;start<6;start+=3){
       const results=await Promise.allSettled(FEATURED_SOURCES.slice(start,start+3).map(async([,query],offset)=>{
         const i=start+offset;
         if(cursors[i]==="")return null;
-        const page=await featuredSourcePage(query,cursors[i],normalized.filters,signal);
+        const page=await featuredSourcePage(query,cursors[i],{...normalized.filters,website_ids:[WEBSITE_IDS[i]]},signal);
         if(offsets[i]>page.items.length)throw catalogError("catalog_cursor_invalid",400);
         return page;
       }));
@@ -510,9 +569,11 @@
       if(cursorError)throw cursorError.reason;
       results.forEach((res,k)=>{
         const i=start+k;
-        if(res.status==="rejected"){errors++;return;}
+        if(res.status==="rejected"){errors++;sourceDiagnostics[i]={...sourceDiagnostics[i],status:'unavailable',error:res.reason?.code||'catalog_provider_unavailable'};return;}
         if(!res.value){next[i]="";nextOffsets[i]=0;return;}
         const page=res.value;
+        invalidCount+=page.invalidCount;degraded=degraded||page.degraded;
+        sourceDiagnostics[i]={retailer:FEATURED_SOURCES[i][0],status:page.degraded?'presentation_only':page.items.length?'ready':page.invalidCount?'rejected':'empty',...page.diagnostics};
         totals[i]=page.items.length;groups[i]=page.items.slice(offsets[i]);
         sourceNext[i]=page.nextCursor??"";
         const fetched=Date.parse(page.fetchedAt),expiry=Date.parse(page.expiresAt);
@@ -535,7 +596,7 @@
         earliestExpiry=Math.min(earliestExpiry,now+120000);
       }catch{cj=null;}
     }
-    if(errors===6&&!cj)throw catalogError("catalog_unavailable",503);
+    if(errors>0&&earliestFetched===null&&!cj){const codes=sourceDiagnostics.filter(s=>s.status==='unavailable').map(s=>s.error);throw catalogError(codes.every(code=>code===codes[0])?codes[0]:'catalog_provider_unavailable',503);}
     groups.push(cj?.items||[]);
     const {items,used}=shuffleRoundRobin(groups,normalized.limit);
     for(let i=0;i<6;i++){
@@ -552,8 +613,8 @@
     }
     const consumed=used[6]||0;
     const nextJ=cj?(consumed<cj.items.length?
-      (consumed?cj.items[consumed-1].sourceIndex+1:Math.min(state.j+24,5000)):
-      (cj.nextOffset??Math.min(state.j+24,5000))):state.j;
+      (consumed?cj.items[consumed-1].sourceIndex+1:state.j):
+      (cj.nextOffset??Math.min(state.j+cj.rawCount,5000))):state.j;
     const cjMore=cj?nextJ<5000&&(consumed<cj.items.length||cj.nextOffset!==null):state.jMore;
     // A source failure preserves its last cursor for an explicit later retry.
     const nextCursor=next.every(v=>v==="")&&!cjMore?null:JSON.stringify({
@@ -562,7 +623,7 @@
     return {q:"",section:"featured",limit:normalized.limit,items,total:null,nextCursor,
       fetchedAt:new Date(earliestFetched??Date.now()).toISOString(),
       expiresAt:new Date(Number.isFinite(earliestExpiry)?earliestExpiry:Date.now()+60000).toISOString(),
-      invalidCount:0,partialErrors:errors};
+      invalidCount,partialErrors:errors,degraded,sourceDiagnostics};
   }
   // A separate Nike-only authorized CJ feed can serve Nike searches and
   // Nike-relevant shelves without consuming scarce Channel3 search credits.
@@ -583,7 +644,7 @@
     }
     const url=buildCatalogUrl({q:term,limit:normalized.limit,offset});
     const page=parseCjNikePreviewPage(await readJson(url,signal,12000,true),{limit:normalized.limit,offset});
-    if(!page.items.length)throw catalogError("catalog_unavailable",503);
+    if(!page.items.length&&page.nextOffset===null)throw catalogError("catalog_unavailable",503);
     return {q:normalized.q,section:normalized.section,limit:normalized.limit,items:page.items,
       total:null,nextCursor:page.nextOffset!==null&&page.nextOffset<=5000?"cj:"+page.nextOffset:null,
       fetchedAt:page.fetchedAt,expiresAt:new Date(Date.now()+120000).toISOString(),
@@ -703,7 +764,7 @@
     const category = record(raw.category) ? {slug:detailString(raw.category.slug, 100), title:detailString(raw.category.title, 100), path:detailList(raw.category.path, 16).filter(record).map(part => ({slug:detailString(part.slug, 100), title:detailString(part.title, 100)}))} : null;
     return {schema:"anox.product-detail/1", provider:"channel3", id:productId, slug:productId, title, description:detailString(raw.description, 60000),
       brands:detailList(raw.brands, 16).filter(record).map(brand => ({id:detailString(brand.id, 200, true), name:detailString(brand.name, 100, true)})),
-      images:detailList(raw.images, 64).filter(record).flatMap(image => {const url = detailUrl(image.url, "cdn.trychannel3.com"); return url ? [{url, altText:detailString(image.alt_text, 500) || title, isMainImage:image.is_main_image === true, shotType:detailString(image.shot_type, 40)}] : [];}),
+      images:detailList(raw.images, 64).filter(record).flatMap(image => {const url = detailUrl(image.cleaned_url, "cdn.trychannel3.com") || detailUrl(image.url, "cdn.trychannel3.com"); return url ? [{url, altText:detailString(image.alt_text, 500) || title, isMainImage:image.is_main_image === true, shotType:detailString(image.shot_type, 40)}] : [];}),
       category, gender:["male", "female"].includes(raw.gender) ? raw.gender : null, age:["newborn", "infant", "toddler", "kids", "adult"].includes(raw.age) ? raw.age : null,
       materials:detailList(raw.materials, 64).map(value => detailString(value, 2000, true)), keyFeatures:detailList(raw.key_features, 64).map(value => detailString(value, 2000, true)), structuredAttributes,
       offers, variants:{options:variantOptions, selected}, stock:null, purchasable:false, freshness:{status:payload.status, fetchedAt, expiresAt}, selectionMismatch, error:payload.error};

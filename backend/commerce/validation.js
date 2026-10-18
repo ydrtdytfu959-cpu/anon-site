@@ -3,6 +3,10 @@ const crypto = require('node:crypto');
 const { fail } = require('./errors.js');
 const LIMITS = Object.freeze({ maxLines: 10, maxDistinctProducts: 5, maxQuantityPerLine: 20 });
 const ID = /^[A-Za-z0-9_-]{1,80}$/;
+const APPROVED_MERCHANTS = Object.freeze(['nike.com', 'adidas.com', 'sephora.com', 'levi.com', 'tjmaxx.tjx.com', 'elfcosmetics.com']);
+// Exact official aliases already recognized by catalog detail; these represent
+// the same six retailers, not additional marketplaces or suffix matches.
+const APPROVED_MERCHANT_HOSTS = new Set(APPROVED_MERCHANTS.flatMap(domain => [domain, 'www.' + domain]).concat(['tjmaxx.com', 'www.tjmaxx.com']));
 const forbidden = new Set(['__proto__', 'constructor', 'prototype']);
 function object(value, allowed, required = allowed) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) fail('invalid_request', 'Expected a plain JSON object.');
@@ -28,6 +32,7 @@ function quoteInput(input) {
     if (line.provider !== 'channel3') fail('unsupported_provider', 'This catalog provider is not supported.', 422);
     if (typeof line.productId !== 'string' || !ID.test(line.productId)) fail('invalid_request', 'Invalid product identifier.');
     if (typeof line.merchantDomain !== 'string' || line.merchantDomain.length > 253 || !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(line.merchantDomain)) fail('invalid_request', 'Invalid merchant domain.');
+    if (!APPROVED_MERCHANT_HOSTS.has(line.merchantDomain)) fail('unsupported_merchant', 'Choose an offer from an approved retailer.', 422);
     if (line.condition !== null && line.condition !== 'new' && line.condition !== 'used') fail('invalid_request', 'Invalid product condition.');
     if (!Number.isInteger(line.quantity) || line.quantity < 1 || line.quantity > LIMITS.maxQuantityPerLine) fail('invalid_request', 'Quantity must be between one and twenty.');
     if (!line.options || typeof line.options !== 'object' || Array.isArray(line.options) || Object.getPrototypeOf(line.options) !== Object.prototype || Object.keys(line.options).length > 8) fail('invalid_request', 'Invalid variant options.');
@@ -47,4 +52,4 @@ function attemptInput(input) {
 function idempotencyKey(headers) {
   const key = headers['idempotency-key']; if (typeof key !== 'string' || !/^[A-Za-z0-9_-]{16,128}$/.test(key)) fail('idempotency_key_required', 'Use a stable 16–128 character Idempotency-Key for retries.'); return key;
 }
-module.exports = { LIMITS, ID, object, text, canonical, hash, productKey, quoteInput, attemptInput, idempotencyKey };
+module.exports = { LIMITS, ID, APPROVED_MERCHANTS, object, text, canonical, hash, productKey, quoteInput, attemptInput, idempotencyKey };
