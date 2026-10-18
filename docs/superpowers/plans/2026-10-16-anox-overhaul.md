@@ -16,7 +16,7 @@
 - [x] Commerce: regress nullable merchant links, undecided fee trigger, six-retailer input validation and authenticated idempotent service requests. Repair `backend/commerce`, `commerce-client.js`, and add gated Astra request/tracking controls.
 - [x] AWS and sources: read-only runtime, budget, IAM, legacy secret access and cached coverage verification; preserve evidence and separate live findings from simulations. Never request secrets or paid provider calls.
 - [x] Generate templates/client bundle and run npm ci --ignore-scripts, build, check, complete Node tests, Chromium+Firefox desktop/mobile suites. Add browser regression for service request and source failure states.
-- [ ] Independent code review, address material findings with tests; record remaining provider/owner blockers; commit and publish reviewable PR with rollback instructions.
+- [x] Independent code review, address material findings with tests; record remaining provider/owner blockers; commit and publish reviewable PR with rollback instructions.
 
 ## Review focus
 

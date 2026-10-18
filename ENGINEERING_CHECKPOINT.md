@@ -7,7 +7,7 @@ Checkout: `/Users/anestifour/Documents/New project/anox-engineering-overhaul`.
 
 - `cd70159`: official-retailer discovery, rejection diagnostics, bounded presentation fallback, traversal-safe pagination, authenticated non-payment service requests and regression coverage.
 - `c05e3e9`: CJ-only scheduled warmer repair, verified original source and deterministic candidate/rollback packages; review exporter compatibility.
-- Final review corrections: generated category filters, mixed-source deduplication, full official-domain alias support, safe historical service records and replay projection, definitive quote rejection recovery, neutral fee badge, mobile price notice, legacy merchant validation/redacted logging/source-slot pagination. These are tested, not abandoned experiments.
+- `826e7cd`: final review corrections: generated category filters, mixed-source deduplication, full official-domain alias support, safe historical service records and replay projection, definitive quote rejection recovery, neutral fee badge, mobile price notice, legacy merchant validation/redacted logging/source-slot pagination. These are tested, not abandoned experiments.
 - Full implementation/evidence: `docs/reviews/engineering-overhaul-2026-10-17.md`.
 
 ## Final validation
@@ -23,9 +23,15 @@ Logs and validated source hashes: `docs/evidence/validation-2026-10-17/`.
 - CloudFormation UPDATE_COMPLETE, Lambda Active/Successful. No budget/counter/infrastructure changes. User-reported provider balance is not a verified current balance.
 - Legacy deployed Catalog-API is CJ-only; unused Channel3 credential permission remains an infrastructure review item. Source/provenance immutable. Candidate ZIP SHA256915276662c3b84e679f89861980d0ee583b6d6a654cc8f2a655a8305e72ee386.
 
-## Exact next action
+## Publication and exact next action
 
-Publish the tested source tree through the connected GitHub app, create and attach the owner-requested PR, verify its tree and CI, and export the committed review artifacts. Shell git push has no credentials; connector authentication works. Preserve local commits if API publishing creates an equivalent commit with different metadata; never reset this checkout. Record any CI or publication blocker accurately.
+PR **https://github.com/ydrtdytfu959-cpu/anon-site/pull/26** is open for owner review and attached to this chat. The owner explicitly approved public publication of infrastructure identifiers, IAM configuration and audit findings after automatic approval review required that clarification. No secret values were retrieved or published. Earlier upload review/usage-limit blockers are resolved.
+
+Publication commit `928f35fe2f594ff37dcfb8bcbc93f24e54ae19e2` has exactly the same tree as tested local release `826e7cd24535c1e60a6290ad9c6afe093ed20a78`: `725b7d6d00d1f1d94ec291bb65209350c4a10e71`. Independently fetched the remote branch and verified git diff is empty. GitHub API publication was necessary because shell git push has no credentials. Local engineering history was retained, not reset; publication commit metadata differs. Subsequent commits only record checkpoint/export evidence. Use the PR's latest head and checks for the current remote revision; do not infer current CI status from an old checkpoint.
+
+Next required work is independent owner review and authorized staging JWT/CORS/Dynamo acceptance, followed by separately approved deployment. Do not repeat completed repairs or provider smoke tests merely because this checkpoint is reopened. Any new metered test requires fresh budget verification and a bounded request allocation. Follow-up engineering should start from the published PR head while preserving the original local commits.
+
+Verified export: `/Users/anestifour/Documents/New project/anox-release-826e7cd`; prepared PR text is `pull-request.md`. Complete implementation history bundle: `/Users/anestifour/Documents/New project/anox-engineering-history-826e7cd.bundle`; a later bundle through the publication-approval checkpoint is `/Users/anestifour/Documents/New project/anox-engineering-history-993a4f9.bundle`. Both pass git bundle verify. Independent actual-export reconstruction checked185 source files byte-for-byte and npm run check passed. Evidence: `docs/evidence/validation-2026-10-17/export-verification.json`. No runtime/test code changed after final validation.
 
 ## Release boundaries
 
