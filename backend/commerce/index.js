@@ -9,6 +9,7 @@ const { publicOrder } = require('./orders.js');
 const SAFE_FAILURE_CLASSES = Object.freeze({
   TimeoutError: 'timeout', AbortError: 'timeout', RequestTimeout: 'timeout',
   AccessDeniedException: 'access_denied', ResourceNotFoundException: 'resource_missing',
+  ValidationException: 'validation_failed',
   ProvisionedThroughputExceededException: 'throttled', ThrottlingException: 'throttled',
   TransactionConflictException: 'transaction_conflict', TransactionInProgressException: 'transaction_conflict'
 });

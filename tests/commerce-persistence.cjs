@@ -3,6 +3,44 @@ const assert = require('node:assert/strict');
 const { createDynamoStore } = require('../backend/commerce/store.js');
 const { transitionOrder } = require('../backend/commerce/orders.js');
 function fake(results = []) { const calls = []; return { calls, send: async (operation, input) => { calls.push({ operation, input }); const value = results.shift(); if (value instanceof Error) throw value; return value || {}; } }; }
+// DynamoDB rejects these reserved attribute names in expressions, even though
+// the same names are allowed in stored items. DocumentClient does not alias them.
+// https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/ReservedWords.html
+function expressionCheckedFake(results = []) {
+  const db = fake(results), send = db.send;
+  db.send = async (operation, input) => {
+    const check = value => {
+      for (const [key, field] of Object.entries(value || {})) {
+        if (key.endsWith('Expression') && typeof field === 'string') {
+          const identifiers = field.replace(/[#:]\w+/g, '').match(/\b[a-zA-Z][a-zA-Z0-9_]*\b/g) || [];
+          if (identifiers.some(word => ['TOKEN', 'TTL', 'STATUS', 'RESULT'].includes(word.toUpperCase()))) throw Object.assign(new Error('Invalid expression: unaliased reserved attribute'), { name: 'ValidationException' });
+        } else if (field && typeof field === 'object') check(field);
+      }
+    };
+    check(input); return send(operation, input);
+  };
+  return db;
+}
+test('Dynamo expression validation accepts completion of a quote and its audit', async () => {
+  const db = expressionCheckedFake(), store = createDynamoStore({ send: db.send, tableName: 'test-table' });
+  await store.complete({ owner: 'alice', kind: 'quote', key: 'stablekey', token: 'lease1', result: { quote: { quoteId: 'quote1' } }, record: { kind: 'quote', id: 'quote1', data: { quoteId: 'quote1' }, ttl: 999 }, audit: { eventId: 'audit1', type: 'quote.created', at: '2026-10-09T00:00:00Z' }, now: 1000 });
+  assert.equal(db.calls[0].operation, 'TransactWrite');
+  assert.equal(db.calls[0].input.TransactItems.length, 3);
+});
+test('Dynamo expression validation accepts releasing a failed operation lease', async () => {
+  const db = expressionCheckedFake(), store = createDynamoStore({ send: db.send, tableName: 'test-table' });
+  await store.release({ owner: 'alice', kind: 'quote', key: 'stablekey', token: 'lease1' });
+  assert.equal(db.calls[0].operation, 'Update');
+  assert.equal(db.calls[0].input.ExpressionAttributeValues[':zero'], 0);
+});
+test('Dynamo expression validation accepts reclaiming a prior expired lease', async () => {
+  const db = expressionCheckedFake([{ Item: { requestHash: 'same', status: 'working', token: 'old', leaseUntil: 100 } }]);
+  const store = createDynamoStore({ send: db.send, tableName: 'test-table' });
+  const claim = await store.begin({ owner: 'alice', kind: 'quote', key: 'stablekey', hash: 'same', now: 101, leaseMs: 30000 });
+  assert.equal(claim.status, 'acquired');
+  assert.equal(db.calls.at(-1).operation, 'Put');
+  assert.equal(db.calls.at(-1).input.Item.requestHash, 'same');
+});
 test('Dynamo idempotency creates conditional claim before any downstream work', async () => {
   const db = fake(); const store = createDynamoStore({ send: db.send, tableName: 'test-table' });
   const op = await store.begin({ owner: 'alice', kind: 'quote', key: 'key123', hash: 'request123', now: 1000, leaseMs: 30000 });

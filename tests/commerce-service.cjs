@@ -229,7 +229,7 @@ test('permitted upstream clock skew does not grant more than thirty seconds from
 });
 
 test('unexpected Commerce 503 logs a fixed diagnostic class, never error internals',async()=>{
-  for(const [name,want] of [['TimeoutError','timeout'],['AccessDeniedException','access_denied'],['UntrustedDetailSecret','unclassified']]){
+  for(const [name,want] of [['TimeoutError','timeout'],['AccessDeniedException','access_denied'],['ValidationException','validation_failed'],['UntrustedDetailSecret','unclassified']]){
     const entries=[];
     const {handler}=setup({store:{begin:async()=>{throw Object.assign(Error('private-secret-and-customer-id'),{name,code:'private-secret'});}},logger:{error:line=>entries.push(JSON.parse(line))}});
     const response=await handler(event('POST','/commerce/quotes',requestBody()));
