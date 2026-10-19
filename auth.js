@@ -55,7 +55,7 @@
         if(new Set(selections.map(selection=>JSON.stringify(selection))).size>5)throw fail('INVALID_BODY');
         const identities=data.lines.map((line,i)=>JSON.stringify([line.provider,...selections[i],line.merchantDomain,line.condition]));
         if(new Set(identities).size!==identities.length)throw fail('INVALID_BODY');
-      }else if(path==='/commerce/checkout-attempts'){
+      }else if(path==='/commerce/checkout-attempts'||path==='/commerce/service-requests'){
         if(!only(data,['quoteId','cartRevision','cartHash'])||!identifier(data.quoteId)||(!identifier(data.cartRevision)||data.cartRevision.length>80)||typeof data.cartHash!=='string'||!/^[a-f0-9]{64}$/.test(data.cartHash))throw fail('INVALID_BODY');
       }else if(!only(data,[]))throw fail('INVALID_BODY');
       return JSON.stringify(data);
@@ -63,7 +63,7 @@
     async function api(path,options={},retry=true){
       const method=options.method||'GET',commerce=typeof path==='string'&&path.startsWith('/commerce/');
       const read=method==='GET'&&(/^(?:\/commerce\/orders\/[A-Za-z0-9_-]{1,80}|\/commerce\/orders(?:\?cursor=[A-Za-z0-9_-]{1,80})?)$/.test(path));
-      const post=method==='POST'&&(path==='/commerce/quotes'||path==='/commerce/checkout-attempts'||/^\/commerce\/orders\/[A-Za-z0-9_-]{1,80}\/(?:cancel|refund)$/.test(path));
+      const post=method==='POST'&&(path==='/commerce/quotes'||path==='/commerce/checkout-attempts'||path==='/commerce/service-requests'||/^\/commerce\/orders\/[A-Za-z0-9_-]{1,80}\/(?:cancel|refund)$/.test(path));
       if(commerce?!(read||post):!['/me','/orders'].includes(path)||!(method==='GET'||path==='/me'&&method==='PUT'))throw fail('INVALID_PATH');
       const headers={};let body;
       if(post){if(typeof options.idempotencyKey!=='string'||!/^[-A-Za-z0-9_]{16,128}$/.test(options.idempotencyKey))throw fail('INVALID_IDEMPOTENCY_KEY');body=commerceBody(path,options.body);headers['Content-Type']='application/json';headers['Idempotency-Key']=options.idempotencyKey;}

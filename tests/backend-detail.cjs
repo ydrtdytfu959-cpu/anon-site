@@ -95,3 +95,16 @@ test('a later local waiter cannot inherit another request eligibility for a dist
   const later=handler({operation:'commerce.product',productId:'shoe_1'});release();assert.equal((await earlier).statusCode,200);const result=await later;
   assert.notEqual(result.status,'fresh');assert.equal(result.error,'CACHE_BUSY');assert.equal(calls,0);
 });
+
+test('detail gallery retains a safe cleaned image when its original URL is absent or unsafe',async()=>{
+  const f=fixture({upstreamDetail:async()=>raw({images:[
+    {url:'https://untrusted.example/original',cleaned_url:'https://cdn.trychannel3.com/cleaned.jpg'},
+    {cleaned_url:'https://cdn.trychannel3.com/only-cleaned.jpg'},
+    {url:'https://cdn.trychannel3.com/regular.jpg',cleaned_url:'https://untrusted.example/cleaned'}
+  ]})});
+  const result=await f.handler(event());assert.equal(result.statusCode,200);
+  assert.deepEqual(body(result).data.product.images.map(image=>image.url),[
+    'https://cdn.trychannel3.com/cleaned.jpg','https://cdn.trychannel3.com/only-cleaned.jpg','https://cdn.trychannel3.com/regular.jpg'
+  ]);
+  assert.ok(!result.body.includes('untrusted.example'));
+});

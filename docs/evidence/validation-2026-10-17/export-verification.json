@@ -1,0 +1,14 @@
+{
+  "commit": "826e7cd24535c1e60a6290ad9c6afe093ed20a78",
+  "sourceTree": "725b7d6d00d1f1d94ec291bb65209350c4a10e71",
+  "artifactHashes": {
+    "index.html": "e9813fe542f354604221a767f63aca90fe985b39d830735f6c95cf5b6e94cb96",
+    "backend-infrastructure.zip": "1727299966e5b76d983cb6acf8df0860658bfd3f215c7362a6bda6c4a3b95891"
+  },
+  "archiveFiles": 184,
+  "sourceFilesVerified": 185,
+  "runtimeFiles": 32,
+  "testFiles": 35,
+  "missingRuntimeOrTestSources": [],
+  "extractedRoot": "/private/tmp/anox-release-826e7cd-verified-qtwtdxau"
+}

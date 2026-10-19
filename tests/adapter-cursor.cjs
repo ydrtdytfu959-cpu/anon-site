@@ -17,16 +17,16 @@ function envelope(products = [product()], next = null, patch = {}) {
   return { provider: 'channel3', data: { products, next_page_token: next }, fetchedAt: new Date(now - 60000).toISOString(), expiresAt: new Date(now + 240000).toISOString(), ...patch };
 }
 
-test('Astra presentation catalog accepts only the four approved brands or explicit retailer evidence',()=>{
+test('Astra presentation catalog requires official retailer evidence regardless of brand',()=>{
  const api=adapter(),names=['Nike','Adidas',"Levi\u2019s",'e.l.f. Cosmetics'];
  const sellerHosts=['nike.com','adidas.com','levi.com','elfcosmetics.com'];
  const matching=names.map((name,i)=>product('brand'+i,{brands:[{id:'x',name}],offers:[{url:'https://buy.trychannel3.com/test',domain:sellerHosts[i]}]}));
  const seller=product('sephora',{brands:[{name:'Another'}],offers:[{domain:'sephora.com',url:'https://buy.trychannel3.com/a'}]});
- const rejected=[product('other',{brands:[{name:'Another'}]}),product('title-spoof',{title:'Nike Sephora',brands:[]}),
+ const rejected=[product('other',{brands:[{name:'Another'}],offers:[]}),product('title-spoof',{title:'Nike Sephora',brands:[],offers:[]}),
  product('reseller',{brands:[{name:'Nike'}],offers:[{url:'https://buy.trychannel3.com/reseller',domain:'kickscrew.com'}]}),
  product('fake-official',{brands:[{name:'Nike'}],offers:[{url:'https://wrong.example/test',domain:'nike.com'}]})];
  const r=api.parseChannel3Page(envelope([...matching,seller,...rejected],'next'));
- assert.deepEqual(r.items.map(x=>x.id),[...matching,seller].map(x=>x.id));
+ assert.deepEqual(Array.from(r.items,x=>x.id),[...matching,seller].map(x=>x.id));
  assert.equal(r.invalidCount,rejected.length);
  assert.equal(r.nextCursor,'next');
  assert.equal(api.normalizeChannel3Product(product('unknown',{brands:[],offers:[]})),null);
@@ -299,9 +299,9 @@ test('Non-Nike stores cannot be silently replaced with CJ Nike products',async()
    if(u.pathname==='/catalog/products')throw Error('Unexpected CJ access for another store');
    return new Response('{"error":"UPSTREAM_BUDGET_EXCEEDED"}',{status:429,headers:{'content-type':'application/json','retry-after':'1'}});
  });
- await assert.rejects(api.fetchChannel3Page({q:'Adidas running',limit:24}),/catalog_rate_limited|catalog_http_429/);
- await assert.rejects(api.fetchChannel3Page({section:'beauty',limit:24}),/catalog_rate_limited|catalog_http_429/);
- assert.deepEqual(calls,['/catalog/search']);
+ await assert.rejects(api.fetchChannel3Page({q:'Adidas running',limit:24}),/catalog_budget_exhausted|catalog_rate_limited|catalog_http_429/);
+ await assert.rejects(api.fetchChannel3Page({section:'beauty',limit:24}),/catalog_budget_exhausted|catalog_rate_limited|catalog_http_429/);
+ assert.deepEqual(calls,['/catalog/search','/catalog/search']);
  await assert.rejects(api.fetchChannel3Page({section:'shoes',limit:24,cursor:'cj:0'}),/catalog_cursor_invalid/);
 });
 

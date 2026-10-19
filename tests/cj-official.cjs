@@ -57,3 +57,21 @@ test('provider exceptions and malformed payloads fail closed',async()=>{
   const invalid=createOfficialCJSource({authorization:evidence,search:async()=>({totalCount:NaN,resultList:[product()]})});
   assert.deepEqual(await invalid.page(),{statusCode:502,body:{error:'CJ_SOURCE_INVALID'}});
 });
+
+test('CJ must not truncate an overlong source ID into a different accepted product identity',()=>{
+  assert.equal(normalizeTJMaxxProduct(product('a'.repeat(81))),null);
+  assert.equal(normalizeTJMaxxProduct(product(' a')),null);
+});
+
+test('CJ reports rejection reasons separately from missing approved imagery',async()=>{
+  const {api}=make([product('official'),product('official'),product('wrong-advertiser',{advertiserId:'1'}),
+    product('wrong-destination',{link:'https://marketplace.example/item'}),product('no-image',{imageLink:null}),
+    product('a'.repeat(81)),null]);
+  const result=await api.page();
+  assert.equal(result.statusCode,200);
+  assert.equal(result.body.rawCount,7);
+  assert.equal(result.body.acceptedCount,2);
+  assert.equal(result.body.rejectedCount,5);
+  assert.deepEqual(result.body.rejectionReasons,{invalid_record:1,merchant_identity:1,invalid_product:1,merchant_destination:1,duplicate_product:1});
+  assert.deepEqual(result.body.warnings,{missing_image:1});
+});

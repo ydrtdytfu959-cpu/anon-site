@@ -30,27 +30,30 @@ function allowedImage(value, approvedImageHosts) {
   if (!parsed || !approvedImageHosts.has(parsed.hostname.toLowerCase())) return null;
   return parsed.href;
 }
-function normalizeTJMaxxProduct(input, {approvedImageHosts = []} = {}) {
-  if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+function inspectTJMaxxProduct(input, {approvedImageHosts = []} = {}) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return {reason:'invalid_record'};
   const source = OFFICIAL_SOURCES.tjmaxx;
   if (String(input.advertiserId || '') !== source.advertiserId ||
-      text(input.advertiserName, 100).toLowerCase() !== source.advertiserName.toLowerCase()) return null;
-  const id = text(input.id, 80), title = text(input.title, 200);
-  if (!/^[A-Za-z0-9_-]{1,80}$/.test(id) || !title) return null;
+      text(input.advertiserName, 100).toLowerCase() !== source.advertiserName.toLowerCase()) return {reason:'merchant_identity'};
+  const id = input.id, title = text(input.title, 200);
+  // IDs are opaque source identities. Trimming or truncating can alias two
+  // different upstream records into one displayed product.
+  if (typeof id !== 'string' || !/^[A-Za-z0-9_-]{1,80}$/.test(id) || !title) return {reason:'invalid_product'};
   const merchantUrl = safeUrl(input.link);
-  if (!merchantUrl || !source.domains.includes(merchantUrl.hostname.toLowerCase())) return null;
+  if (!merchantUrl || !source.domains.includes(merchantUrl.hostname.toLowerCase())) return {reason:'merchant_destination'};
   const hosts = new Set(approvedImageHosts);
   const imageUrl = allowedImage(input.imageLink, hosts);
   // No CJ feed price, stock, offer, commission or short-lived affiliate URL
   // becomes an authoritative purchasable quote in AnoX.
-  return Object.freeze({
+  return {product:Object.freeze({
     id: 'cj-tjmaxx-' + id, productId: id,
     store: source.store, title, description: text(input.description, 1200),
     merchantUrl: merchantUrl.href, imageUrl,
     source: 'CJ', presentationOnly: true, priceCents: null,
     stock: null, availability: 'unknown', purchasable: false
-  });
+  })};
 }
+function normalizeTJMaxxProduct(input, options) {return inspectTJMaxxProduct(input, options).product || null;}
 function err(statusCode, error) {
   return {statusCode, body: {error}};
 }
@@ -90,9 +93,11 @@ function createOfficialCJSource({search, authorization = null, approvedImageHost
         return err(502, 'CJ_SOURCE_INVALID');
       }
       const seen = new Set(), products = [];
+      const rejectionReasons = {invalid_record:0, merchant_identity:0, invalid_product:0, merchant_destination:0, duplicate_product:0};
       for (const raw of response.resultList) {
-        const product = normalizeTJMaxxProduct(raw, {approvedImageHosts: imageHosts});
-        if (!product || seen.has(product.id)) continue;
+        const {product, reason} = inspectTJMaxxProduct(raw, {approvedImageHosts:imageHosts});
+        if (!product) {rejectionReasons[reason]++; continue;}
+        if (seen.has(product.id)) {rejectionReasons.duplicate_product++; continue;}
         seen.add(product.id);
         products.push(product);
       }
@@ -101,6 +106,7 @@ function createOfficialCJSource({search, authorization = null, approvedImageHost
         source: 'CJ', store: source.store, offset, limit, totalCount: response.totalCount,
         rawCount: response.resultList.length, acceptedCount: products.length,
         rejectedCount: response.resultList.length - products.length,
+        rejectionReasons, warnings:{missing_image:products.filter(product => !product.imageUrl).length},
         nextOffset: response.resultList.length && end < response.totalCount && end <= 5000 ? end : null,
         products
       }};

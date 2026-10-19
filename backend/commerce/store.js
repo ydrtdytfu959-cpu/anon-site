@@ -17,7 +17,7 @@ function createDynamoStore({ send, tableName }) {
     if (previous?.status === 'complete') return { status: 'complete', result: previous.result };
     if (previous?.leaseUntil > now) fail('operation_in_progress', 'This operation is already running. Retry with the same key.', 409);
     const token = crypto.randomUUID(), Item = { ...Key, requestHash, status: 'working', token, leaseUntil: now + leaseMs, ttl: Math.floor(now / 1000) + 86400 };
-    const condition = previous ? { ConditionExpression: 'token = :previous AND leaseUntil <= :now AND requestHash = :hash AND #status = :working', ExpressionAttributeNames: { '#status': 'status' }, ExpressionAttributeValues: { ':previous': previous.token, ':now': now, ':hash': requestHash, ':working': 'working' } } : { ConditionExpression: 'attribute_not_exists(pk) AND attribute_not_exists(sk)' };
+    const condition = previous ? { ConditionExpression: '#token = :previous AND leaseUntil <= :now AND requestHash = :hash AND #status = :working', ExpressionAttributeNames: { '#status': 'status', '#token': 'token' }, ExpressionAttributeValues: { ':previous': previous.token, ':now': now, ':hash': requestHash, ':working': 'working' } } : { ConditionExpression: 'attribute_not_exists(pk) AND attribute_not_exists(sk)' };
     try { await send('Put', { TableName: tableName, Item, ...condition }); }
     catch (error) {
       if (!conditional(error)) throw error;
@@ -29,14 +29,14 @@ function createDynamoStore({ send, tableName }) {
     return { status: 'acquired', token };
   }
   async function complete({ owner, kind, key, token, result, record, audit, now }) {
-    const TransactItems = [{ Update: { TableName: tableName, Key: operationKey(owner, kind, key), UpdateExpression: 'SET #status = :complete, #result = :result, ttl = :ttl', ConditionExpression: 'token = :token AND #status = :working AND leaseUntil > :now', ExpressionAttributeNames: { '#status': 'status', '#result': 'result' }, ExpressionAttributeValues: { ':complete': 'complete', ':working': 'working', ':result': result, ':token': token, ':now': now, ':ttl': Math.floor(now / 1000) + 86400 } } }];
+    const TransactItems = [{ Update: { TableName: tableName, Key: operationKey(owner, kind, key), UpdateExpression: 'SET #status = :complete, #result = :result, #ttl = :ttl', ConditionExpression: '#token = :token AND #status = :working AND leaseUntil > :now', ExpressionAttributeNames: { '#status': 'status', '#result': 'result', '#token': 'token', '#ttl': 'ttl' }, ExpressionAttributeValues: { ':complete': 'complete', ':working': 'working', ':result': result, ':token': token, ':now': now, ':ttl': Math.floor(now / 1000) + 86400 } } }];
     if (record) TransactItems.push(putUnique({ ...keyFor(owner, record.kind, record.id), data: record.data, ...(record.ttl ? { ttl: record.ttl } : {}) }));
     if (audit) TransactItems.push(putUnique({ pk: partition(owner), sk: 'AUDIT#' + audit.at + '#' + audit.eventId, data: audit }));
     try { await send('TransactWrite', { TransactItems, ClientRequestToken: token }); }
     catch (error) { if (conditional(error)) fail('operation_conflict', 'The operation changed before it could be committed. Retry with the same key.', 409); throw error; }
   }
   async function release({ owner, kind, key, token }) {
-    try { await send('Update', { TableName: tableName, Key: operationKey(owner, kind, key), UpdateExpression: 'SET leaseUntil = :zero', ConditionExpression: 'token = :token AND #status = :working', ExpressionAttributeNames: { '#status': 'status' }, ExpressionAttributeValues: { ':zero': 0, ':token': token, ':working': 'working' } }); }
+    try { await send('Update', { TableName: tableName, Key: operationKey(owner, kind, key), UpdateExpression: 'SET leaseUntil = :zero', ConditionExpression: '#token = :token AND #status = :working', ExpressionAttributeNames: { '#status': 'status', '#token': 'token' }, ExpressionAttributeValues: { ':zero': 0, ':token': token, ':working': 'working' } }); }
     catch (error) { if (!conditional(error)) throw error; }
   }
   async function get(owner, kind, id) { return (await getItem(keyFor(owner, kind, id)))?.data; }

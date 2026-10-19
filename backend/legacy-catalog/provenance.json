@@ -1,0 +1,16 @@
+{
+  "functionName": "AnoX-Catalog-API",
+  "region": "us-east-2",
+  "inspectedOn": "2026-10-16",
+  "lastModified": "2026-10-07T02:57:02.000+0000",
+  "deployedPackageSha256Base64": "ZpmZQUfS7jzSblQBdSerfzueAl/pFGByHec1IV/P9Uo=",
+  "deployedSourceFile": "deployed-index.js",
+  "deployedSourceBytes": 4649,
+  "deployedSourceSha256": "1ef4ba50216bb43853efeec9b0dced0fdccd69702e851583bc55b60f035ba418",
+  "entrypoint": "index.handler",
+  "runtime": "nodejs24.x",
+  "scheduleName": "AnoX-Catalog-Warm-V2",
+  "scheduleExpression": "rate(6 hours)",
+  "scheduleInput": {"action": "warm"},
+  "scope": "Local source and deterministic package preparation only; deployment requires owner approval."
+}

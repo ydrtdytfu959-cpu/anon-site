@@ -57,7 +57,7 @@ test('atomic in-flight idempotency prevents duplicate upstream fanout', async ()
   release(); assert.equal((await first).statusCode, 201); assert.equal(calls, 1);
 });
 test('merchant, condition, selection relaxation, currency and stale data fail closed', async () => {
-  for (const mutate of [p => { p.data.product.id = 'wrong'; }, p => { p.selectionMismatch = [{ name: 'Size', requested: 'M', effective: 'L' }]; }, p => { p.data.product.variants.selected = [{ name: 'Size', label: 'L' }]; }, p => { p.data.product.offers[0].domain = 'other.example'; }, p => { p.data.product.offers[0].condition = 'used'; }, p => { p.data.product.offers[0].price.currency = 'EUR'; }, p => { p.expiresAt = new Date(FIXED_NOW - 1).toISOString(); }, p => { p.status = 'cached'; }]) {
+  for (const mutate of [p => { p.data.product.id = 'wrong'; }, p => { p.selectionMismatch = [{ name: 'Size', requested: 'M', effective: 'L' }]; }, p => { p.data.product.variants.selected = [{ name: 'Size', label: 'L' }]; }, p => { p.data.product.offers[0].domain = 'adidas.com'; }, p => { p.data.product.offers[0].condition = 'used'; }, p => { p.data.product.offers[0].price.currency = 'EUR'; }, p => { p.expiresAt = new Date(FIXED_NOW - 1).toISOString(); }, p => { p.status = 'cached'; }]) {
     const { handler } = setup({ catalog: { freshProduct: async x => { const p = freshProduct(x); mutate(p); return p; } } });
     const response = await handler(event('POST', '/commerce/quotes', requestBody())); assert.ok([409, 422, 503].includes(response.statusCode), response.body);
   }
@@ -85,9 +85,9 @@ test('fresh read deadline aborts, returns503, persists no partial quote and rele
 });
 test('duplicate product/options share read and distinct fresh calls never exceed three', async () => {
   let active = 0, maximum = 0, calls = 0;
-  const { handler } = setup({ catalog: { freshProduct: async x => { calls++; maximum = Math.max(maximum, ++active); await new Promise(resolve => setTimeout(resolve, 5)); active--; const p = freshProduct(x); p.data.product.offers.push({ ...structuredClone(p.data.product.offers[0]), domain: 'other.example', url: 'https://other.example/item' }); return p; } } });
+  const { handler } = setup({ catalog: { freshProduct: async x => { calls++; maximum = Math.max(maximum, ++active); await new Promise(resolve => setTimeout(resolve, 5)); active--; const p = freshProduct(x); p.data.product.offers.push({ ...structuredClone(p.data.product.offers[0]), domain: 'adidas.com', url: 'https://adidas.com/item' }); return p; } } });
   const body = requestBody(); body.lines = Array.from({ length: 5 }, (_, i) => ({ ...structuredClone(body.lines[0]), productId: 'product' + i }));
-  body.lines.push({ ...structuredClone(body.lines[0]), merchantDomain: 'other.example' });
+  body.lines.push({ ...structuredClone(body.lines[0]), merchantDomain: 'adidas.com' });
   assert.equal((await handler(event('POST', '/commerce/quotes', body))).statusCode, 201); assert.equal(calls, 5); assert.equal(maximum, 3);
 });
 test('blocked checkout attempt requires quote owner/cart/expiry and never writes an order', async () => {
@@ -171,7 +171,7 @@ test('all private routes reject wrong JWT authority and expired identity before 
   const store = new Proxy({}, { get() { accessed = true; throw new Error('Customer persistence must not be accessed'); } });
   const { handler } = setup({ store });
   const routes = [['POST', '/commerce/quotes', requestBody()], ['POST', '/commerce/checkout-attempts', {}], ['GET', '/commerce/orders'], ['GET', '/commerce/orders/order1'], ['POST', '/commerce/orders/order1/cancel', {}], ['POST', '/commerce/orders/order1/refund', {}]];
-  const mutations = [claims => { claims.iss = 'https://other.example'; }, claims => { claims.aud = 'other-client'; }, claims => { claims.sub = ''; }, claims => { claims.sub = 'x#OTHER'; }, claims => { claims.exp = String(FIXED_NOW / 1000); }, claims => { claims.token_use = 'access'; }, claims => { delete claims.exp; }];
+  const mutations = [claims => { claims.iss = 'https://adidas.com'; }, claims => { claims.aud = 'other-client'; }, claims => { claims.sub = ''; }, claims => { claims.sub = 'x#OTHER'; }, claims => { claims.exp = String(FIXED_NOW / 1000); }, claims => { claims.token_use = 'access'; }, claims => { delete claims.exp; }];
   for (const [method, path, body] of routes) for (const mutate of mutations) {
     const input = event(method, path, body); mutate(input.requestContext.authorizer.jwt.claims);
     assert.equal((await handler(input)).statusCode, 401);
@@ -182,10 +182,10 @@ test('maximum ten-line cart has one conditional fee, exact quantities and only f
   let calls = 0;
   const { handler } = setup({ catalog: { freshProduct: async input => {
     calls++; const snapshot = freshProduct(input), first = snapshot.data.product.offers[0];
-    first.price.price = '0.29'; snapshot.data.product.offers.push({ ...structuredClone(first), domain: 'second.example' }); return snapshot;
+    first.price.price = '0.29'; snapshot.data.product.offers.push({ ...structuredClone(first), domain: 'adidas.com' }); return snapshot;
   } } });
   const body = requestBody(), original = body.lines[0];
-  body.lines = Array.from({ length: 10 }, (_, index) => ({ ...structuredClone(original), productId: 'product' + Math.floor(index / 2), merchantDomain: index % 2 ? 'second.example' : 'merchant.example', quantity: index + 1 }));
+  body.lines = Array.from({ length: 10 }, (_, index) => ({ ...structuredClone(original), productId: 'product' + Math.floor(index / 2), merchantDomain: index % 2 ? 'adidas.com' : 'nike.com', quantity: index + 1 }));
   const response = await handler(event('POST', '/commerce/quotes', body)); assert.equal(response.statusCode, 201);
   const quote = json(response).quote; assert.equal(calls, 5);
   assert.deepEqual(quote.lines.map(line => line.lineTotalMinor), [29, 58, 87, 116, 145, 174, 203, 232, 261, 290]);
@@ -229,7 +229,7 @@ test('permitted upstream clock skew does not grant more than thirty seconds from
 });
 
 test('unexpected Commerce 503 logs a fixed diagnostic class, never error internals',async()=>{
-  for(const [name,want] of [['TimeoutError','timeout'],['AccessDeniedException','access_denied'],['UntrustedDetailSecret','unclassified']]){
+  for(const [name,want] of [['TimeoutError','timeout'],['AccessDeniedException','access_denied'],['ValidationException','validation_failed'],['UntrustedDetailSecret','unclassified']]){
     const entries=[];
     const {handler}=setup({store:{begin:async()=>{throw Object.assign(Error('private-secret-and-customer-id'),{name,code:'private-secret'});}},logger:{error:line=>entries.push(JSON.parse(line))}});
     const response=await handler(event('POST','/commerce/quotes',requestBody()));

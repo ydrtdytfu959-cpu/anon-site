@@ -20,7 +20,8 @@ function exportReview(destination){
   });
   const files=entries.map(entry=>entry.file);
   const workflow='.github/workflows/catalog.yml';
-  const chosen=files.filter(file=>file===workflow||/^(?:backend\/|scripts\/|tests\/|docs\/|README\.md$|package(?:-lock)?\.json$|(?:auth|commerce-client|catalog-live)\.js$|favicon\.svg$)/.test(file));
+  // Git ignore rules select local build outputs, but are not runtime sources.
+  const chosen=files.filter(file=>!file.endsWith('/.gitignore')&&(file===workflow||/^(?:backend\/|scripts\/|tests\/|docs\/|README\.md$|package(?:-lock)?\.json$|(?:auth|commerce-client|catalog-live)\.js$|favicon\.svg$)/.test(file)));
   if(!files.includes('index.html')||!chosen.includes('backend/index.js'))throw Error('Required release sources missing');
   const selected=new Set(['index.html',...chosen]);
   for(const {mode,type,file} of entries.filter(entry=>selected.has(entry.file))){
@@ -45,7 +46,7 @@ function exportReview(destination){
     execFileSync('python3',['-c',program],{input:JSON.stringify({stage,files:chosen,zip:path.join(destination,'backend-infrastructure.zip')})});
   }finally{fs.rmSync(stage,{recursive:true,force:true});}
   const hashes={};for(const file of ['index.html','backend-infrastructure.zip'])hashes[file]=createHash('sha256').update(fs.readFileSync(path.join(destination,file))).digest('hex');
-  const manifest={branch,commit,sourceTree:git('rev-parse',commit+'^{tree}').toString().trim(),repositoryPath:'index.html',htmlBytes:html.length,files:chosen,sha256:hashes,sourceSha256,reproduce:{node:process.version,python:execFileSync('python3',['--version'],{encoding:'utf8'}).trim(),instructions:'Extract backend-infrastructure.zip and copy the separate index.html into the extracted root. All commands below are local; no deployment is authorized.',commands:['npm ci --ignore-scripts','npm run build','npm run check','npm test'],browser:'Install Chromium and Firefox for the pinned Playwright version; run ENGINES=chromium,firefox npm run test:browser. See docs/release-candidate/validation.md for infrastructure tools and evidence.',evidence:'docs/release-candidate/validation.md'}};
+  const manifest={branch,commit,sourceTree:git('rev-parse',commit+'^{tree}').toString().trim(),repositoryPath:'index.html',htmlBytes:html.length,files:chosen,sha256:hashes,sourceSha256,reproduce:{node:process.version,python:execFileSync('python3',['--version'],{encoding:'utf8'}).trim(),instructions:'Extract backend-infrastructure.zip and copy the separate index.html into the extracted root. All commands below are local; no deployment is authorized.',commands:['npm ci --ignore-scripts','npm run build','npm run check','npm test'],browser:'Install Chromium and Firefox for the pinned Playwright version; run ENGINES=chromium,firefox npm run test:browser. See docs/reviews/engineering-overhaul-2026-10-17.md for current evidence and release boundaries.',evidence:'docs/reviews/engineering-overhaul-2026-10-17.md'}};
   fs.writeFileSync(path.join(destination,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
   fs.writeFileSync(path.join(destination,'SHA256SUMS.txt'),Object.entries(hashes).map(([file,hash])=>hash+'  '+file).join('\n')+'\n');
   console.log(JSON.stringify({destination,branch,commit,htmlBytes:html.length,sha256:hashes},null,2));

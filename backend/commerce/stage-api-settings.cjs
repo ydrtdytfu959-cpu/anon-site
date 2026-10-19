@@ -12,7 +12,7 @@ function stageApiSettings(api, stage) {
   };
   const CorsConfiguration = { ...structuredClone(cors), AllowHeaders: add(cors.AllowHeaders, ['Idempotency-Key']), ExposeHeaders: add(cors.ExposeHeaders || [], ['Idempotency-Replayed', 'Retry-After']) };
   const RouteSettings = structuredClone(stage.RouteSettings || {});
-  const limits = { 'GET /commerce/capabilities': [10, 20], 'POST /commerce/quotes': [2, 4], 'POST /commerce/checkout-attempts': [2, 4], 'GET /commerce/orders': [5, 10], 'GET /commerce/orders/{orderId}': [5, 10], 'POST /commerce/orders/{orderId}/cancel': [2, 4], 'POST /commerce/orders/{orderId}/refund': [2, 4] };
+  const limits = { 'GET /commerce/capabilities': [10, 20], 'POST /commerce/quotes': [2, 4], 'POST /commerce/checkout-attempts': [2, 4], 'POST /commerce/service-requests': [2, 4], 'GET /commerce/orders': [5, 10], 'GET /commerce/orders/{orderId}': [5, 10], 'POST /commerce/orders/{orderId}/cancel': [2, 4], 'POST /commerce/orders/{orderId}/refund': [2, 4] };
   for (const [route, [rate, burst]] of Object.entries(limits)) RouteSettings[route] = { ...RouteSettings[route], ThrottlingRateLimit: rate, ThrottlingBurstLimit: burst };
   return { apiUpdate: { ApiId: api.ApiId, CorsConfiguration }, stageUpdate: { ApiId: api.ApiId, StageName: stage.StageName, RouteSettings }, apiRollback: { ApiId: api.ApiId, CorsConfiguration: structuredClone(cors) }, stageRollback: { ApiId: api.ApiId, StageName: stage.StageName, RouteSettings: structuredClone(stage.RouteSettings || {}) } };
 }
