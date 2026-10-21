@@ -1,0 +1,123 @@
+#!/usr/bin/env node
+'use strict';
+// Real shipped HTML/CSP, deterministic preview fixtures, and fail-closed routing.
+// Every request is fulfilled locally or aborted. No provider/auth/customer writes.
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),crypto=require('node:crypto');
+const engines=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const root=path.resolve(__dirname,'..'),source=path.resolve(process.env.HTML_PATH||path.join(root,'index.html'));
+const html=fs.readFileSync(source,'utf8'),baseline=process.env.BASELINE==='1',out=process.env.SCREENSHOT_DIR&&path.resolve(process.env.SCREENSHOT_DIR);
+const detailFixture=require('../tests/fixtures/channel3-detail.cjs');
+const {createHandler}=require('../backend/commerce/index.js');
+const {MemoryStore,event:backendEvent,config}=require('../tests/helpers/commerce.cjs');
+const VIEWPORTS={desktop:{width:1440,height:960},mobile:{width:390,height:844},tablet:{width:768,height:1024},narrow:{width:320,height:780}};
+const CLOCK=Date.parse('2026-10-20T12:00:00.000Z');
+const favicon=fs.readFileSync(path.join(root,'favicon.svg'),'utf8');
+const report={source:path.relative(root,source),sha256:crypto.createHash('sha256').update(html).digest('hex'),baseline,fixture:'Offline visual preview; synthetic product art and accounts. No real products, customer data, or live services.',runs:[]};
+const retailers={Nike:['Nike','nike.com','nike'],adidas:['adidas','adidas.com','adidas'],Sephora:['Sephora Collection','sephora.com','sephora'],"Levi's":["Levi's",'levi.com','levis'],'TJ Maxx':['Other','tjmaxx.tjx.com','tjmaxx'],'e.l.f. cosmetics':['e.l.f. Cosmetics','elfcosmetics.com','elf']};
+function illustration(tag='nike'){
+ const colors={nike:'#bac9b9',adidas:'#cec5b9',sephora:'#cbbbc8',levis:'#b4c2ce',tjmaxx:'#cdbfae',elf:'#c3bdd3'},fill=colors[tag]||colors.nike;
+ return `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="620" viewBox="0 0 640 620"><rect width="640" height="620" fill="#252a28"/><ellipse cx="320" cy="452" rx="215" ry="24" fill="#000" opacity=".2"/><path d="M126 355c35-9 72-38 94-83l34 24 20-72 72 30c20 49 42 67 103 82l58 18c26 8 35 30 29 54-4 17-16 24-41 24H158c-32 0-53-26-48-51 2-12 7-20 16-26Z" fill="${fill}"/><path d="M114 396c44 9 80 13 118 13h300v25H157c-25 0-40-13-43-38Z" fill="#edf0e8"/><path d="m270 277 65 25m-78-3 63 26m-76-3 61 26" stroke="#eef1e9" stroke-width="10" stroke-linecap="round"/><path d="M359 333c26 17 64 32 104 39" fill="none" stroke="#5c7067" stroke-width="8" stroke-linecap="round"/><text x="320" y="550" text-anchor="middle" fill="#c3cbc3" font-family="Arial,sans-serif" font-size="15" letter-spacing="3">VISUAL PREVIEW · SAMPLE ART</text></svg>`;
+}
+function searchProduct(query,n){const [brand,domain,tag]=retailers[query]||retailers.Nike;return {id:`preview-${tag}-${n}`,title:`Preview ${brand} everyday trainer ${n+1}`,brands:[{id:tag,name:brand}],category:{slug:'shoes',title:'Shoes'},images:[{url:`https://cdn.trychannel3.com/preview-${tag}.svg`}],offers:[{url:`https://buy.trychannel3.com/preview-${tag}-${n}`,domain,availability:'InStock',condition:'new',price:{price:85,currency:'USD'}}]};}
+function productDetail(id,now=CLOCK){const product=detailFixture.product({id,title:'Everyday trainer · visual preview',description:'Deterministic sample used only to review the AnoX interface. Product artwork and this description are fixtures, not merchandise listings.',images:[0,1,2].map(n=>({url:`https://cdn.trychannel3.com/preview-nike.svg?view=${n}`,alt_text:`Preview trainer view ${n+1}`,is_main_image:n===0})),variants:{options:[{name:'Size',values:[{label:'M',exists:true,available:'InStock'},{label:'L',exists:true,available:'InStock'}]}],selected:[{name:'Size',label:'M'}]}});return detailFixture.envelope({fetchedAt:new Date(now).toISOString(),expiresAt:new Date(now+30000).toISOString()},product);}
+const ownedOrder={orderId:'preview-order',createdAt:'2026-10-19T12:00:00.000Z',status:'pending',totalMinor:9995,currency:'USD',payment:{status:'pending'},fulfillment:{status:'unfulfilled',tracking:[]},capabilities:{cancel:false,refund:false}};
+async function run(engine,view){
+ const mobile=view!=='desktop',clockNow=()=>CLOCK;
+ let page;
+ const browser=await engines[engine].launch(),run={engine,viewport:view,checks:[],screenshots:[],requests:[],unexpected:[],icons:[]};report.runs.push(run);
+ const record=name=>run.checks.push(name);
+ try{
+  const context=await browser.newContext({viewport:VIEWPORTS[view],isMobile:engine==='firefox'?false:mobile,hasTouch:mobile,reducedMotion:'reduce',serviceWorkers:'block'});
+  const store=new MemoryStore();store.seed('customer-a','order',ownedOrder.orderId,ownedOrder);
+  const handleCommerce=createHandler({store,catalog:{freshProduct:async()=>{throw Error('Visual review must not quote or hydrate through commerce');}},config,now:clockNow,logger:{error(){}}});
+  // Fix non-cryptographic randomness for comparable fixture shuffling. Crypto and timers remain native.
+  await context.addInitScript(()=>{Math.random=()=>0.5;window.__iconCsp=[];window.addEventListener('securitypolicyviolation',e=>window.__iconCsp.push(e.violatedDirective));if(location.hostname==='anox.app'&&!sessionStorage.getItem('icon-fixture-initialized')){sessionStorage.setItem('icon-fixture-initialized','1');sessionStorage.setItem('anox:auth:v1',JSON.stringify({idToken:'fixture-token',accessToken:'fixture-access',refreshToken:'fixture-refresh',expiresAt:Date.now()+3600000}));}});
+  await context.route('**/*',async route=>{
+   const request=route.request(),url=new URL(request.url());run.requests.push({method:request.method(),path:url.pathname});
+   const headers={'access-control-allow-origin':'https://anox.app','access-control-allow-headers':'Authorization,Content-Type,Idempotency-Key','access-control-allow-methods':'GET,OPTIONS','content-type':'application/json'};
+   const send=(body,status=200)=>route.fulfill({status,headers,body:JSON.stringify(body)});
+   if(url.hostname==='anox.app'&&request.method()==='GET'&&['/','/favicon.svg'].includes(url.pathname))return route.fulfill({contentType:url.pathname==='/favicon.svg'?'image/svg+xml':'text/html; charset=utf-8',body:url.pathname==='/favicon.svg'?favicon:html});
+   if(url.hostname==='cdn.trychannel3.com'&&request.method()==='GET')return route.fulfill({contentType:'image/svg+xml',body:illustration(url.pathname.match(/preview-([a-z]+)\.svg/)?.[1])});
+   if(url.hostname==='zmumi2wruk.execute-api.us-east-2.amazonaws.com'){
+    if(request.method()==='OPTIONS')return route.fulfill({status:204,headers,body:''});
+    if(request.method()==='GET'&&url.pathname==='/catalog/search'){const query=url.searchParams.get('q'),now=clockNow();return send({provider:'channel3',data:{products:Array.from({length:4},(_,n)=>searchProduct(query,n)),next_page_token:null},fetchedAt:new Date(now).toISOString(),expiresAt:new Date(now+300000).toISOString()});}
+    if(request.method()==='GET'&&url.pathname.startsWith('/catalog/channel3/products/'))return send(productDetail(url.pathname.split('/').pop(),clockNow()));
+    if(request.method()==='GET'&&url.pathname==='/catalog/products')return send({products:[],total:0,nextOffset:null});
+    if(request.method()==='GET'&&url.pathname==='/me')return send({user:{displayName:'Preview account',email:'preview@example.test'}});
+    if(request.method()==='GET'&&url.pathname==='/orders')return send({orders:[]});
+    if(request.method()==='GET'&&(url.pathname==='/commerce/capabilities'||url.pathname.startsWith('/commerce/orders'))){const event=backendEvent('GET',url.pathname,undefined,{headers:request.headers(),queryStringParameters:Object.fromEntries(url.searchParams)});event.requestContext.authorizer.jwt.claims.exp=String(Math.floor(clockNow()/1000)+3600);if(!request.headers().authorization)delete event.requestContext.authorizer;const result=await handleCommerce(event);return route.fulfill({status:result.statusCode,headers:result.headers,body:result.body});}
+   }
+   run.unexpected.push(request.method()+' '+url.origin+url.pathname);return route.abort();
+  });
+  let reducedMotion=true;
+  page=await context.newPage();const errors=[];await page.clock.install({time:CLOCK});page.on('pageerror',error=>errors.push(error.message));
+  const nav=async hash=>{await page.evaluate(hash=>{window.__iconPreviousMain=document.querySelector('#main')?.firstElementChild;location.hash=hash;},hash);await page.waitForFunction(hash=>location.hash==='#'+hash&&document.querySelector('#main')?.firstElementChild!==window.__iconPreviousMain&&document.querySelector('#main')?.textContent.trim().length>0,hash);};
+  const visible=async locator=>{const list=[];for(const node of await locator.all())if(await node.isVisible())list.push(node);return list;};
+  const capture=async(name,anchor)=>{
+   if(anchor)await page.locator(anchor).first().evaluate(n=>{const header=document.querySelector('#site-header');scrollTo({top:n.getBoundingClientRect().top+scrollY-(header?.getBoundingClientRect().height||0)-24,behavior:'instant'});});else await page.evaluate(()=>scrollTo({top:0,behavior:'instant'}));await page.evaluate(()=>document.fonts.ready);
+   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,name+' fits the viewport');
+   if(!baseline){
+    const invalid=await page.locator('svg.icon').evaluateAll(nodes=>nodes.filter(n=>n.getAttribute('aria-hidden')!=='true'||n.getAttribute('focusable')!=='false'||n.getAttribute('viewBox')!=='0 0 24 24').map(n=>n.outerHTML.slice(0,160)));
+    assert.deepEqual(invalid,[],name+' decorative glyph semantics');
+    for(const control of await visible(page.locator('button[data-theme],.v2-header-action,.v2-product-wishlist,.v2-pdp-wish,[data-anox-send],#dialog-close'))){
+     const data=await control.evaluate(n=>{const r=n.getBoundingClientRect();return {width:r.width,height:r.height,name:n.getAttribute('aria-label')||n.textContent.trim(),html:n.outerHTML.slice(0,150)};});
+     assert.ok(data.name,name+' control has an accessible name: '+data.html);assert.ok(data.width>=43.9&&data.height>=43.9,name+' icon control target >=44px: '+JSON.stringify(data));
+    }
+    const motion=reducedMotion?await page.locator('svg.icon').evaluateAll(nodes=>nodes.filter(n=>{const c=getComputedStyle(n);return c.animationName!=='none'||c.transitionDuration.split(',').some(v=>parseFloat(v)>0);}).length):0;assert.equal(motion,0,name+' respects reduced motion');
+    const contrasts=await page.locator('.v2-product-wishlist,.v2-pdp-wish,.anox-conversation-send').evaluateAll(nodes=>{
+     const parse=v=>{if(v.startsWith('#')){let h=v.slice(1);if(h.length===3)h=h.split('').map(c=>c+c).join('');return [0,2,4].map(i=>parseInt(h.slice(i,i+2),16)).concat(h.length===8?parseInt(h.slice(6),16)/255:1);}const n=v.match(/[\d.]+/g)?.map(Number)||[];return n.length>=3?[...n.slice(0,3),n[3]??1]:null;};
+     const over=(front,back)=>front.slice(0,3).map((v,i)=>v*front[3]+back[i]*(1-front[3]));
+     const luminance=c=>c.map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
+     const ratio=(a,b)=>{const x=luminance(a),y=luminance(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
+     return nodes.filter(n=>n.getBoundingClientRect().width&&!n.disabled).map(n=>{const c=getComputedStyle(n),svg=n.querySelector('svg'),ink=parse(getComputedStyle(svg||n).color),base=parse(c.backgroundColor);if(!ink||!base)return {selector:n.className,ratio:0};const bases=[[0,0,0],[255,255,255]].map(back=>over(base,back));const paints=c.backgroundImage==='none'?bases:bases.flatMap(back=>['--icon-glass-top','--icon-glass-bottom'].map(token=>over(parse(c.getPropertyValue(token).trim())||[0,0,0,0],back)));return {selector:n.className,selected:n.getAttribute('aria-pressed')==='true',ratio:Math.min(...paints.map(bg=>ratio(over(ink,bg),bg)))};});
+    });
+    for(const sample of contrasts)assert.ok(sample.ratio>=3,name+' icon contrast over glass/background range >=3:1: '+JSON.stringify(sample));
+    if(contrasts.length)(run.contrast||=[]).push({state:name,minimum:Number(Math.min(...contrasts.map(c=>c.ratio)).toFixed(2)),samples:contrasts.length});
+    const names=await page.locator('svg[data-icon]').evaluateAll(nodes=>nodes.map(n=>n.dataset.icon));run.icons.push(...names);
+   }
+   if(out){fs.mkdirSync(out,{recursive:true});const file=`${engine}-${run.viewport}-${name}.png`;await page.screenshot({path:path.join(out,file),fullPage:false,animations:'disabled'});run.screenshots.push(file);}
+   record(name+' screenshot/layout/semantics');
+  };
+  const settledHome=()=>page.waitForFunction(()=>document.querySelectorAll('.anox-home-grid .v2-product-card').length>0&&!/Loading products|جارٍ تحميل المنتجات/.test(document.querySelector('#main')?.textContent||''));
+  const dialog=async(selector,name)=>{
+   const opener=page.locator(selector).filter({visible:true}).first();await opener.focus();await page.keyboard.press('Enter');await page.locator('#dialog:not([hidden])').waitFor();await capture(name);if(name==='menu'){const summary=page.locator('.v2-mobile-category>summary').first();await summary.focus();await page.keyboard.press('Enter');assert.equal(await page.locator('.v2-mobile-category').first().getAttribute('open'),'');await capture('menu-expanded');await page.keyboard.press('Enter');record('category disclosure keyboard toggle');}await page.keyboard.press('Escape');await page.locator('#dialog').waitFor({state:'hidden'});assert.ok(await opener.evaluate(n=>document.activeElement===n),name+' restores keyboard focus');record(name+' keyboard open/Escape/focus restoration');
+  };
+  await page.goto('https://anox.app/#home');await page.locator('#site-header .v2-header-main').waitFor();await settledHome();await capture('home');
+  if(view==='desktop'){for(const width of [1060,1200]){await page.setViewportSize({width,height:960});await capture('home-'+width);}await page.setViewportSize(VIEWPORTS.desktop);}
+  await page.emulateMedia({reducedMotion:'no-preference'});reducedMotion=false;const headerSearch=page.locator('[data-open="search"]').filter({visible:true}).first();await headerSearch.focus();assert.ok(await headerSearch.evaluate(n=>parseFloat(getComputedStyle(n).outlineWidth)>=2),'keyboard focus remains visible');await capture('home-keyboard-focus');await headerSearch.hover();await capture('home-hover');await page.mouse.move(0,0);await page.emulateMedia({reducedMotion:'reduce'});reducedMotion=true;
+  await dialog('[data-open="search"]','search');await dialog('[data-open="assistant"]','assistant');
+  if(mobile)await dialog('[data-open="menu"]','menu');else{const trigger=page.locator('[data-v2-mega]').first();await trigger.focus();await page.keyboard.press('Enter');await page.locator('[data-v2-mega-panel]:not([hidden])').waitFor();await capture('categories');await page.keyboard.press('Escape');}
+  await nav('shop');await page.waitForFunction(()=>document.querySelectorAll('.v2-catalog-grid .v2-product-card').length===24);await capture('shop');await capture('shop-grid','.v2-catalog-grid');
+  const heart=page.locator('.v2-product-wishlist').first();assert.equal(await heart.getAttribute('aria-pressed'),'false');await heart.click();await page.waitForFunction(()=>document.querySelector('.v2-product-wishlist')?.getAttribute('aria-pressed')==='true');await page.emulateMedia({reducedMotion:'no-preference'});reducedMotion=false;await heart.hover();await capture('shop-saved','.v2-catalog-grid');await page.mouse.down();try{await capture('shop-pressed','.v2-catalog-grid');}finally{await page.mouse.move(0,0);await page.mouse.up();}await page.waitForFunction(()=>!document.querySelector('#toasts .toast'));await page.emulateMedia({reducedMotion:'reduce'});reducedMotion=true;record('wishlist action exposes selected state');
+  if(mobile)await dialog('[data-open="filters"]','filters');else{await page.locator('.v2-filter-panel').waitFor();await capture('filters');}
+  await nav('shop?category=Shoes');await page.locator('[data-remove-filter="category"]').waitFor();await capture('filter-chip');await page.locator('[data-remove-filter="category"]').click();await page.waitForFunction(()=>!document.querySelector('[data-remove-filter="category"]'));record('filter chip removal preserves filtering interaction');
+  await nav('wishlist');await page.locator('[data-channel3-saved]').first().waitFor();await capture('wishlist');
+  await nav('product/channel3/preview-nike-0');await page.locator('[data-commerce-add]').waitFor();await page.waitForFunction(()=>document.querySelector('.commerce-main-image')?.naturalWidth>0);await capture('product');await capture('product-actions','[data-commerce-add]');
+  await page.locator('[data-commerce-swipe]').focus();await page.keyboard.press('ArrowRight');assert.equal(await page.locator('[data-commerce-gallery="1"][aria-pressed="true"]').count(),1);record('gallery keyboard navigation remains usable');
+  await page.locator('[data-commerce-add]').click();await nav('cart');await page.locator('[data-commerce-cart-quantity]').waitFor();await page.waitForFunction(()=>document.querySelector('[data-commerce-quote]')?.disabled===false);assert.equal(await page.locator('[data-commerce-checkout]').isDisabled(),true);await capture('cart');await page.emulateMedia({reducedMotion:'no-preference'});reducedMotion=false;await capture('cart-disabled','[data-commerce-checkout]');await page.emulateMedia({reducedMotion:'reduce'});reducedMotion=true;
+  await page.reload();await page.locator('[data-commerce-cart-quantity]').waitFor();assert.equal(await page.locator('[data-commerce-cart-quantity]').inputValue(),'1');record('icon changes preserve cart persistence and disabled payments');
+  await nav('account');await page.waitForFunction(()=>document.querySelector('#main')?.textContent.includes('preview@example.test'));await capture('account');
+  await nav('orders');await page.locator('#main h2').filter({hasText:'preview-order'}).waitFor();await capture('orders');
+  await nav('track?order=preview-order');await page.locator('#main h2').filter({hasText:'preview-order'}).waitFor();await capture('tracking');
+  await nav('signin');await page.locator('[data-anox-auth]').waitFor();await capture('signin');
+  await nav('request');await page.locator('[data-inquiry-email]').waitFor();await capture('request');
+  await nav('home');await settledHome();await capture('home-products','.anox-home-grid');await page.locator('button[data-theme]').filter({visible:true}).first().click();await page.waitForFunction(()=>document.documentElement.dataset.theme==='light');await capture('home-light');await capture('home-products-light','.anox-home-grid');
+  await page.locator('button[data-theme]').filter({visible:true}).first().click();await page.locator('[data-language="ar"]').filter({visible:true}).first().click();await page.waitForFunction(()=>document.documentElement.dir==='rtl');await settledHome();await capture('home-rtl');await dialog('[data-open="search"]','search-rtl');
+  await page.locator('[data-language="en"]').filter({visible:true}).first().click();
+  if(!baseline){
+   await nav('account');await page.waitForFunction(()=>document.querySelector('#main')?.textContent.includes('preview@example.test'));
+   assert.ok(await page.evaluate(()=>window.AnoXIcons&&typeof AnoXIcons.render==='function'),'actual icon renderer is available');
+   const names=await page.evaluate(()=>Object.keys(AnoXIcons.paths));assert.ok(names.length>=30,'registry covers original and new interface glyphs');
+   for(const theme of ['dark','light']){
+    await page.evaluate(theme=>{document.documentElement.dataset.theme=theme;document.querySelector('#main').innerHTML='<section id="icon-review-atlas" style="padding:24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px"></section>';const atlas=document.querySelector('#icon-review-atlas');for(const name of Object.keys(AnoXIcons.paths)){const cell=document.createElement('article');cell.style.cssText='padding:16px;border:1px solid var(--line);border-radius:12px;min-width:0';const label=document.createElement('p');label.textContent=name;label.style.cssText='font-size:12px;margin-bottom:16px';cell.append(label);const row=document.createElement('div');row.style.cssText='display:flex;gap:8px;align-items:center;justify-content:space-between';for(const size of [16,20,24,32]){const wrapper=document.createElement('span');wrapper.innerHTML=AnoXIcons.render(name);const svg=wrapper.firstElementChild;svg.style.width=size+'px';svg.style.height=size+'px';svg.dataset.reviewSize=size;row.append(wrapper);}cell.append(row);atlas.append(cell);}},theme);
+    const glyphs=await page.locator('#icon-review-atlas svg').evaluateAll(nodes=>nodes.map(n=>({name:n.dataset.icon,size:Number(n.dataset.reviewSize),width:n.getBoundingClientRect().width,height:n.getBoundingClientRect().height,stroke:getComputedStyle(n).strokeWidth,bounds:(()=>{const b=n.getBBox();return {x:b.x,y:b.y,width:b.width,height:b.height};})()})));
+    assert.equal(glyphs.length,names.length*4);for(const glyph of glyphs){assert.equal(glyph.width,glyph.size);assert.equal(glyph.height,glyph.size);assert.equal(Number.parseFloat(glyph.stroke),1.75,glyph.name+' consistent stroke');assert.ok(glyph.bounds.width>0||glyph.bounds.height>0,glyph.name+' renders visible geometry');assert.ok(glyph.bounds.x>=0&&glyph.bounds.y>=0&&glyph.bounds.x+glyph.bounds.width<=24.01&&glyph.bounds.y+glyph.bounds.height<=24.01,glyph.name+' fits viewBox');}
+    await capture('atlas-'+theme);if(out){const file=`${engine}-${run.viewport}-atlas-${theme}-full.png`;await page.locator('#icon-review-atlas').screenshot({path:path.join(out,file),animations:'disabled'});run.screenshots.push(file);}record('all '+names.length+' actual registry glyphs at 16/20/24/32px in '+theme);
+   }
+   await page.emulateMedia({forcedColors:'active'});const forced=await page.locator('#icon-review-atlas svg').evaluateAll(nodes=>nodes.every(n=>getComputedStyle(n).visibility==='visible'&&getComputedStyle(n).stroke!=='none'));assert.equal(forced,true,'glyphs remain drawn in forced colors');record('forced-colors glyph visibility');
+  }
+  assert.deepEqual(errors,[],'no browser errors');assert.deepEqual(await page.evaluate(()=>window.__iconCsp),[],'production CSP remains valid');assert.deepEqual(run.unexpected,[],'all networking was fulfilled locally');assert.equal(run.requests.filter(r=>!['GET','OPTIONS'].includes(r.method)).length,0,'no authenticated or commerce writes');run.icons=[...new Set(run.icons)].sort();record('zero unexpected network, writes, CSP violations, or runtime errors');
+  await context.close();console.log(`${engine} ${run.viewport}: ${run.checks.length} icon checks passed`);
+ }catch(error){run.failure=error.message;if(page){run.pageState=await page.evaluate(()=>({hash:location.hash,theme:document.documentElement.dataset.theme,text:document.querySelector('#main')?.textContent.slice(0,1600)})).catch(()=>null);if(out)await page.screenshot({path:path.join(out,`${engine}-${view}-failure.png`)}).catch(()=>{});}throw error;}finally{await browser.close();}
+}
+(async()=>{try{for(const engine of (process.env.ENGINES||'chromium').split(',')){for(const view of (process.env.VIEWPORTS||'desktop,mobile,tablet,narrow').split(',')){assert.ok(VIEWPORTS[view],'known viewport '+view);await run(engine,view);}}}finally{if(out){fs.mkdirSync(out,{recursive:true});fs.writeFileSync(path.join(out,'report.json'),JSON.stringify(report,null,2)+'\n');}}console.log(`${report.runs.length} viewport runs passed; ${report.runs.reduce((sum,r)=>sum+r.checks.length,0)} icon checks; report ${out?path.join(out,'report.json'):'not saved'}`);})().catch(error=>{console.error(error);process.exitCode=1;});

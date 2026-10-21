@@ -9,7 +9,7 @@
     "build": "node backend/build-template.cjs && node backend/commerce/build-template.cjs && node backend/staging/build-template.cjs && node scripts/build-clients.cjs",
     "check": "node backend/build-template.cjs --check && node backend/commerce/build-template.cjs --check && node backend/staging/build-template.cjs --check && node scripts/build-clients.cjs --check",
     "test": "node --test tests/*.cjs",
-    "test:browser": "node scripts/browser-catalog.cjs && node scripts/browser-commerce.cjs"
+    "test:browser": "node scripts/browser-catalog.cjs && node scripts/browser-commerce.cjs && node scripts/browser-icons.cjs && node scripts/browser-icon-preview.cjs"
   },
   "devDependencies": {
     "playwright": "1.63.0"

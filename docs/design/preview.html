@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'none'; font-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>AnoX — Icon system review</title>
+  <link rel="stylesheet" href="../../icons.css"><link rel="stylesheet" href="preview.css">
+  <script src="../../icons.js" defer></script><script src="preview.js" defer></script>
+</head>
+<body>
+  <main>
+    <header class="intro">
+      <p class="eyebrow">ANOX / DESIGN REVIEW / 01</p>
+      <h1>Quiet detail.<br>Clear intention.</h1>
+      <div class="intro-row"><p>One original family of 35 icons. Refined geometry, a subtle glass edge, and controls that feel considered at every size.</p><button id="theme" class="review-button" type="button">Switch to light</button></div>
+      <div class="principles"><span>24-point grid</span><span>1.75 stroke</span><span>44px touch targets</span><span>Original · MIT licensed</span></div>
+    </header>
+    <section aria-labelledby="comparison-title">
+      <div class="section-heading"><div><p class="eyebrow">01 / IN CONTEXT</p><h2 id="comparison-title">The same storefront. A clearer visual language.</h2></div><span class="review-tag">Local fixtures · not deployed</span></div>
+      <p class="description">Drag the divider to compare the released baseline with the candidate. Both use identical offline sample products and accounts; no live provider, payment, or customer service is contacted.</p>
+      <div class="toolbar">
+        <label>Screen<select id="screen"><option value="home">Home</option><option value="search">Search</option><option value="shop">Catalog</option><option value="shop-saved">Saved state</option><option value="assistant">Assistant</option><option value="menu">Category menu</option><option value="product-actions">Product controls</option><option value="cart">Cart</option><option value="account">Account</option><option value="orders">Orders</option><option value="tracking">Tracking</option><option value="signin">Sign in</option><option value="request">Product inquiry</option><option value="home-light">Light theme</option><option value="home-rtl">Arabic layout</option></select></label>
+        <label>Viewport<select id="viewport"><option value="desktop">Desktop · 1440px</option><option value="mobile">Mobile · 390px</option><option value="tablet">Tablet · 768px</option><option value="narrow">Narrow · 320px</option></select></label>
+        <a class="review-button" id="open-after" href="evidence/after/chromium-desktop-home.png" target="_blank" rel="noopener">Open full screenshot</a>
+      </div>
+      <div class="comparison" id="comparison">
+        <img id="before" src="evidence/before/chromium-desktop-home.png" alt="Released AnoX home before icon refinement" width="1440" height="960">
+        <img id="after" src="evidence/after/chromium-desktop-home.png" alt="Candidate AnoX home with refined original icons" width="1440" height="960">
+        <span class="image-label before-label">BEFORE</span><span class="image-label after-label">AFTER</span><span class="divider" aria-hidden="true"></span>
+      </div>
+      <label class="range-label" for="reveal"><span>Before</span><input id="reveal" type="range" min="0" max="100" value="50" aria-label="Amount of candidate screenshot revealed"><span>After</span></label>
+      <p class="caption">The logo, typography, content layer and business flows are preserved. The utility row gains height for the 44px theme-control target.</p>
+    </section>
+    <section aria-labelledby="glyph-title">
+      <div class="section-heading"><div><p class="eyebrow">02 / THE FAMILY</p><h2 id="glyph-title">Balanced at the size you use.</h2></div><label class="size-label">Icon size<select id="size"><option>16</option><option>20</option><option selected>24</option><option>32</option></select></label></div>
+      <p class="description">These are the actual production-renderer glyphs, not a separate illustration. Category silhouettes are distinct; every stroke belongs to the same family.</p>
+      <div id="atlas" class="atlas"></div>
+    </section>
+    <section aria-labelledby="states-title">
+      <div class="section-heading"><div><p class="eyebrow">03 / FEEL & FEEDBACK</p><h2 id="states-title">Small surfaces. Deliberate feedback.</h2></div></div>
+      <div class="state-grid">
+        <div class="state-card"><button class="icon-btn" type="button" aria-label="Preview search control" id="sample-search"></button><p>Rest / hover / focus</p><small>Use Tab to inspect the focus ring.</small></div>
+        <div class="state-card"><button class="v2-product-wishlist" type="button" aria-label="Toggle saved preview" aria-pressed="false" id="sample-heart"></button><p>Saved state</p><small>Click to toggle; shape and color both respond.</small></div>
+        <div class="state-card"><button class="icon-btn" type="button" disabled aria-label="Unavailable preview action" id="sample-disabled"></button><p>Unavailable</p><small>Native disabled semantics remain intact.</small></div>
+        <div class="state-card"><span class="v2-action-icon" id="sample-account"></span><p>Quiet depth</p><small>A soft rim, one highlight, a restrained shadow.</small></div>
+      </div>
+      <p class="caption" id="state-feedback" role="status">This review page has no connection to commerce or customer services.</p>
+    </section>
+    <footer><p>Original artwork for AnoX. No Apple SF Symbols, icon fonts or new runtime dependencies.</p><a href="icon-system.md">Inventory and design notes</a> · <a href="../../LICENSE-icons.txt">Asset license</a></footer>
+  </main>
+</body>
+</html>
