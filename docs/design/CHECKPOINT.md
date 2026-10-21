@@ -12,4 +12,12 @@ Deliverables: docs/design/preview.html (60 before/after combinations and actual 
 
 HTML SHA-256: b31bdf9639ad0ecbdf4c4ad778d87a82cb16973c0ed30fd6edf8b3e60a31d31c. Gzip growth: 1,833 bytes.
 
-Next action: publish the committed feature candidate using the connected GitHub app, open/attach the PR, verify its exact tree and CI, then record its URL and remote commit in the publication receipt. Shell Git has no stored GitHub credentials; its dry-run push made no changes. Do not repeat design implementation or historical production deployment work. Owner review and separate merge/deployment authorization remain the release boundary.
+Published for review: https://github.com/ydrtdytfu959-cpu/anon-site/pull/27 (open, not merged). The connected GitHub app published remote commit `12ecd1b90b99fb2cd4f5c82bd1c494e3082a38c6`; its tree `fc5f3764929a89733e0d14ad8377adf2ca836960` exactly matches locally tested candidate `7cb04313b88e050f40c7055ff9b00fe7c5bfa93e`. All 162 changed blobs were checked against their local Git hashes. Local implementation history is preserved; connector publication uses a different commit identity with identical source bytes. This checkpoint update changes documentation only.
+
+Publication controls: owner explicitly approved public publication of the 142 fixture PNGs on October 21 after automatic approval review blocked them. A separate export-script rejection was resolved by verifying against the public baseline that the only change adds the two icon sources and their license; existing backend export behavior is unchanged. Both publication blockers are resolved. Shell Git has no stored GitHub credentials; its dry-run push made no changes.
+
+CI: the existing Catalog and commerce validation workflow runs on PR #27 and includes the new icon and interactive-review browser suites. Inspect the latest PR-head checks at https://github.com/ydrtdytfu959-cpu/anon-site/pull/27/checks; final publication and CI receipts are saved in `../anox-icon-review/publication-receipt.json`. The local full-suite results above remain the verified implementation baseline.
+
+Preservation: `../anox-icon-review/icon-candidate.bundle` retains the local feature history; `publication-progress.json` records exact uploaded file hashes. The preview returned HTTP 200 at publication. No production deployment, merge, paid usage, live provider query or business-data operation occurred.
+
+Next action: verify the latest PR-head CI conclusion, then owner review of the interactive preview and PR. Do not repeat design implementation or historical production deployment work. Separate owner merge/deployment authorization remains required for this icon release.
