@@ -1,0 +1,112 @@
+{
+  "method": "Sequential Chromium desktop runs, one warmup then five batches of100 selected-state changes and synchronous computed-style flush. Browser CDP CPU metrics. Not a GPU/mobile-device frame-rate benchmark.",
+  "results": {
+    "v1": {
+      "medianPer100ChangesMs": {
+        "RecalcStyleDuration": 0.988,
+        "LayoutDuration": 0,
+        "ScriptDuration": 0,
+        "TaskDuration": 1.279
+      },
+      "medianLayoutCount": 0,
+      "batches": [
+        {
+          "RecalcStyleDuration": 0.0010159999999999998,
+          "LayoutDuration": 0,
+          "ScriptDuration": 0,
+          "TaskDuration": 0.0012789999999999998,
+          "LayoutCount": 0
+        },
+        {
+          "RecalcStyleDuration": 0.0010010000000000002,
+          "LayoutDuration": 0,
+          "ScriptDuration": 0,
+          "TaskDuration": 0.001278,
+          "LayoutCount": 0
+        },
+        {
+          "RecalcStyleDuration": 0.0008909999999999999,
+          "LayoutDuration": 0,
+          "ScriptDuration": 0,
+          "TaskDuration": 0.0011380000000000001,
+          "LayoutCount": 0
+        },
+        {
+          "RecalcStyleDuration": 0.0009849999999999998,
+          "LayoutDuration": 0,
+          "ScriptDuration": 0,
+          "TaskDuration": 0.0018469999999999997,
+          "LayoutCount": 0
+        },
+        {
+          "RecalcStyleDuration": 0.0009880000000000002,
+          "LayoutDuration": 0,
+          "ScriptDuration": 0,
+          "TaskDuration": 0.0012800000000000008,
+          "LayoutCount": 0
+        }
+      ]
+    },
+    "v2": {
+      "medianPer100ChangesMs": {
+        "RecalcStyleDuration": 0.924,
+        "LayoutDuration": 0,
+        "ScriptDuration": 0,
+        "TaskDuration": 1.211
+      },
+      "medianLayoutCount": 0,
+      "batches": [
+        {
+          "RecalcStyleDuration": 0.0009450000000000001,
+          "LayoutDuration": 0,
+          "ScriptDuration": 0,
+          "TaskDuration": 0.001253,
+          "LayoutCount": 0
+        },
+        {
+          "RecalcStyleDuration": 0.0009239999999999999,
+          "LayoutDuration": 0,
+          "ScriptDuration": 0,
+          "TaskDuration": 0.0012110000000000003,
+          "LayoutCount": 0
+        },
+        {
+          "RecalcStyleDuration": 0.0009330000000000002,
+          "LayoutDuration": 0,
+          "ScriptDuration": 0,
+          "TaskDuration": 0.0012199999999999997,
+          "LayoutCount": 0
+        },
+        {
+          "RecalcStyleDuration": 0.000876,
+          "LayoutDuration": 0,
+          "ScriptDuration": 0,
+          "TaskDuration": 0.0011450000000000002,
+          "LayoutCount": 0
+        },
+        {
+          "RecalcStyleDuration": 0.0008879999999999999,
+          "LayoutDuration": 0,
+          "ScriptDuration": 0,
+          "TaskDuration": 0.0011529999999999995,
+          "LayoutCount": 0
+        }
+      ]
+    }
+  },
+  "size": {
+    "production": {
+      "html": 1081336,
+      "gzip": 428002
+    },
+    "v1": {
+      "html": 1090281,
+      "gzip": 429835
+    },
+    "v2": {
+      "html": 1094085,
+      "gzip": 430401,
+      "sha256": "a2249d95b5bba32dc42d3dba6e1819e4ecd9731f9cc01aa57a2e74d0b895bca1"
+    }
+  }
+}

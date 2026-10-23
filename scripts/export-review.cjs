@@ -21,7 +21,7 @@ function exportReview(destination){
   const files=entries.map(entry=>entry.file);
   const workflow='.github/workflows/catalog.yml';
   // Git ignore rules select local build outputs, but are not runtime sources.
-  const chosen=files.filter(file=>!file.endsWith('/.gitignore')&&(file===workflow||/^(?:backend\/|scripts\/|tests\/|docs\/|README\.md$|package(?:-lock)?\.json$|(?:auth|commerce-client|catalog-live)\.js$|favicon\.svg$)/.test(file)));
+  const chosen=files.filter(file=>!file.endsWith('/.gitignore')&&(file===workflow||/^(?:backend\/|scripts\/|tests\/|docs\/|README\.md$|LICENSE-icons\.txt$|icons\.(?:js|css)$|package(?:-lock)?\.json$|(?:auth|commerce-client|catalog-live)\.js$|favicon\.svg$)/.test(file)));
   if(!files.includes('index.html')||!chosen.includes('backend/index.js'))throw Error('Required release sources missing');
   const selected=new Set(['index.html',...chosen]);
   for(const {mode,type,file} of entries.filter(entry=>selected.has(entry.file))){

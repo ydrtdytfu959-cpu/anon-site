@@ -26,5 +26,7 @@ test('full client bundle is deterministic, canonical and protected by the actual
   assert.deepEqual(check(html,sources),[],'committed HTML must match all canonical modules');
   assert.ok(check(built,{...sources,auth:sources.auth+'\n// drift'}).some(x=>x.includes('auth.js')));
   assert.ok(check(built,{...sources,commerce:sources.commerce+'\n// drift'}).some(x=>x.includes('commerce-client.js')));
+  assert.ok(check(built,{...sources,icons:sources.icons+'\n// drift'}).some(x=>x.includes('icons.js')));
+  assert.ok(check(built,{...sources,iconStyles:sources.iconStyles+'\n/* drift */'}).some(x=>x.includes('icons.css')));
   for (const script of scripts(built)) new vm.Script(script,{filename:'generated index.html'});
 });

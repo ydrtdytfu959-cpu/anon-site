@@ -1,0 +1,927 @@
+{
+  "source": "baseline index.html at 0ce6c538a333bf12028500649294580fae4e3509",
+  "sha256": "e9813fe542f354604221a767f63aca90fe985b39d830735f6c95cf5b6e94cb96",
+  "baseline": true,
+  "fixture": "Offline visual preview; synthetic product art and accounts. No real products, customer data, or live services.",
+  "runs": [
+    {
+      "engine": "chromium",
+      "viewport": "desktop",
+      "checks": [
+        "home screenshot/layout/semantics",
+        "home-1060 screenshot/layout/semantics",
+        "home-1200 screenshot/layout/semantics",
+        "home-keyboard-focus screenshot/layout/semantics",
+        "home-hover screenshot/layout/semantics",
+        "search screenshot/layout/semantics",
+        "search keyboard open/Escape/focus restoration",
+        "assistant screenshot/layout/semantics",
+        "assistant keyboard open/Escape/focus restoration",
+        "categories screenshot/layout/semantics",
+        "shop screenshot/layout/semantics",
+        "shop-grid screenshot/layout/semantics",
+        "shop-saved screenshot/layout/semantics",
+        "shop-pressed screenshot/layout/semantics",
+        "wishlist action exposes selected state",
+        "filters screenshot/layout/semantics",
+        "filter-chip screenshot/layout/semantics",
+        "filter chip removal preserves filtering interaction",
+        "wishlist screenshot/layout/semantics",
+        "product screenshot/layout/semantics",
+        "product-actions screenshot/layout/semantics",
+        "gallery keyboard navigation remains usable",
+        "cart screenshot/layout/semantics",
+        "cart-disabled screenshot/layout/semantics",
+        "icon changes preserve cart persistence and disabled payments",
+        "account screenshot/layout/semantics",
+        "orders screenshot/layout/semantics",
+        "tracking screenshot/layout/semantics",
+        "signin screenshot/layout/semantics",
+        "request screenshot/layout/semantics",
+        "home-products screenshot/layout/semantics",
+        "home-light screenshot/layout/semantics",
+        "home-products-light screenshot/layout/semantics",
+        "home-rtl screenshot/layout/semantics",
+        "search-rtl screenshot/layout/semantics",
+        "search-rtl keyboard open/Escape/focus restoration",
+        "zero unexpected network, writes, CSP violations, or runtime errors"
+      ],
+      "screenshots": [
+        "chromium-desktop-home.png",
+        "chromium-desktop-home-1060.png",
+        "chromium-desktop-home-1200.png",
+        "chromium-desktop-home-keyboard-focus.png",
+        "chromium-desktop-home-hover.png",
+        "chromium-desktop-search.png",
+        "chromium-desktop-assistant.png",
+        "chromium-desktop-categories.png",
+        "chromium-desktop-shop.png",
+        "chromium-desktop-shop-grid.png",
+        "chromium-desktop-shop-saved.png",
+        "chromium-desktop-shop-pressed.png",
+        "chromium-desktop-filters.png",
+        "chromium-desktop-filter-chip.png",
+        "chromium-desktop-wishlist.png",
+        "chromium-desktop-product.png",
+        "chromium-desktop-product-actions.png",
+        "chromium-desktop-cart.png",
+        "chromium-desktop-cart-disabled.png",
+        "chromium-desktop-account.png",
+        "chromium-desktop-orders.png",
+        "chromium-desktop-tracking.png",
+        "chromium-desktop-signin.png",
+        "chromium-desktop-request.png",
+        "chromium-desktop-home-products.png",
+        "chromium-desktop-home-light.png",
+        "chromium-desktop-home-products-light.png",
+        "chromium-desktop-home-rtl.png",
+        "chromium-desktop-search-rtl.png"
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-tjmaxx.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-adidas.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-sephora.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-levis.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-elf.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/preview-nike-0"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/"
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/me"
+        },
+        {
+          "method": "GET",
+          "path": "/orders"
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/orders"
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/orders/preview-order"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-tjmaxx.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-adidas.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-sephora.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-levis.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-elf.svg"
+        }
+      ],
+      "unexpected": [],
+      "icons": []
+    },
+    {
+      "engine": "chromium",
+      "viewport": "mobile",
+      "checks": [
+        "home screenshot/layout/semantics",
+        "home-keyboard-focus screenshot/layout/semantics",
+        "home-hover screenshot/layout/semantics",
+        "search screenshot/layout/semantics",
+        "search keyboard open/Escape/focus restoration",
+        "assistant screenshot/layout/semantics",
+        "assistant keyboard open/Escape/focus restoration",
+        "menu screenshot/layout/semantics",
+        "menu-expanded screenshot/layout/semantics",
+        "category disclosure keyboard toggle",
+        "menu keyboard open/Escape/focus restoration",
+        "shop screenshot/layout/semantics",
+        "shop-grid screenshot/layout/semantics",
+        "shop-saved screenshot/layout/semantics",
+        "shop-pressed screenshot/layout/semantics",
+        "wishlist action exposes selected state",
+        "filters screenshot/layout/semantics",
+        "filters keyboard open/Escape/focus restoration",
+        "filter-chip screenshot/layout/semantics",
+        "filter chip removal preserves filtering interaction",
+        "wishlist screenshot/layout/semantics",
+        "product screenshot/layout/semantics",
+        "product-actions screenshot/layout/semantics",
+        "gallery keyboard navigation remains usable",
+        "cart screenshot/layout/semantics",
+        "cart-disabled screenshot/layout/semantics",
+        "icon changes preserve cart persistence and disabled payments",
+        "account screenshot/layout/semantics",
+        "orders screenshot/layout/semantics",
+        "tracking screenshot/layout/semantics",
+        "signin screenshot/layout/semantics",
+        "request screenshot/layout/semantics",
+        "home-products screenshot/layout/semantics",
+        "home-light screenshot/layout/semantics",
+        "home-products-light screenshot/layout/semantics",
+        "home-rtl screenshot/layout/semantics",
+        "search-rtl screenshot/layout/semantics",
+        "search-rtl keyboard open/Escape/focus restoration",
+        "zero unexpected network, writes, CSP violations, or runtime errors"
+      ],
+      "screenshots": [
+        "chromium-mobile-home.png",
+        "chromium-mobile-home-keyboard-focus.png",
+        "chromium-mobile-home-hover.png",
+        "chromium-mobile-search.png",
+        "chromium-mobile-assistant.png",
+        "chromium-mobile-menu.png",
+        "chromium-mobile-menu-expanded.png",
+        "chromium-mobile-shop.png",
+        "chromium-mobile-shop-grid.png",
+        "chromium-mobile-shop-saved.png",
+        "chromium-mobile-shop-pressed.png",
+        "chromium-mobile-filters.png",
+        "chromium-mobile-filter-chip.png",
+        "chromium-mobile-wishlist.png",
+        "chromium-mobile-product.png",
+        "chromium-mobile-product-actions.png",
+        "chromium-mobile-cart.png",
+        "chromium-mobile-cart-disabled.png",
+        "chromium-mobile-account.png",
+        "chromium-mobile-orders.png",
+        "chromium-mobile-tracking.png",
+        "chromium-mobile-signin.png",
+        "chromium-mobile-request.png",
+        "chromium-mobile-home-products.png",
+        "chromium-mobile-home-light.png",
+        "chromium-mobile-home-products-light.png",
+        "chromium-mobile-home-rtl.png",
+        "chromium-mobile-search-rtl.png"
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-tjmaxx.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-adidas.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-sephora.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-levis.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-elf.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/preview-nike-0"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/"
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/me"
+        },
+        {
+          "method": "GET",
+          "path": "/orders"
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/orders"
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/orders/preview-order"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-tjmaxx.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-adidas.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-sephora.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-levis.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-elf.svg"
+        }
+      ],
+      "unexpected": [],
+      "icons": []
+    },
+    {
+      "engine": "chromium",
+      "viewport": "tablet",
+      "checks": [
+        "home screenshot/layout/semantics",
+        "home-keyboard-focus screenshot/layout/semantics",
+        "home-hover screenshot/layout/semantics",
+        "search screenshot/layout/semantics",
+        "search keyboard open/Escape/focus restoration",
+        "assistant screenshot/layout/semantics",
+        "assistant keyboard open/Escape/focus restoration",
+        "menu screenshot/layout/semantics",
+        "menu-expanded screenshot/layout/semantics",
+        "category disclosure keyboard toggle",
+        "menu keyboard open/Escape/focus restoration",
+        "shop screenshot/layout/semantics",
+        "shop-grid screenshot/layout/semantics",
+        "shop-saved screenshot/layout/semantics",
+        "shop-pressed screenshot/layout/semantics",
+        "wishlist action exposes selected state",
+        "filters screenshot/layout/semantics",
+        "filters keyboard open/Escape/focus restoration",
+        "filter-chip screenshot/layout/semantics",
+        "filter chip removal preserves filtering interaction",
+        "wishlist screenshot/layout/semantics",
+        "product screenshot/layout/semantics",
+        "product-actions screenshot/layout/semantics",
+        "gallery keyboard navigation remains usable",
+        "cart screenshot/layout/semantics",
+        "cart-disabled screenshot/layout/semantics",
+        "icon changes preserve cart persistence and disabled payments",
+        "account screenshot/layout/semantics",
+        "orders screenshot/layout/semantics",
+        "tracking screenshot/layout/semantics",
+        "signin screenshot/layout/semantics",
+        "request screenshot/layout/semantics",
+        "home-products screenshot/layout/semantics",
+        "home-light screenshot/layout/semantics",
+        "home-products-light screenshot/layout/semantics",
+        "home-rtl screenshot/layout/semantics",
+        "search-rtl screenshot/layout/semantics",
+        "search-rtl keyboard open/Escape/focus restoration",
+        "zero unexpected network, writes, CSP violations, or runtime errors"
+      ],
+      "screenshots": [
+        "chromium-tablet-home.png",
+        "chromium-tablet-home-keyboard-focus.png",
+        "chromium-tablet-home-hover.png",
+        "chromium-tablet-search.png",
+        "chromium-tablet-assistant.png",
+        "chromium-tablet-menu.png",
+        "chromium-tablet-menu-expanded.png",
+        "chromium-tablet-shop.png",
+        "chromium-tablet-shop-grid.png",
+        "chromium-tablet-shop-saved.png",
+        "chromium-tablet-shop-pressed.png",
+        "chromium-tablet-filters.png",
+        "chromium-tablet-filter-chip.png",
+        "chromium-tablet-wishlist.png",
+        "chromium-tablet-product.png",
+        "chromium-tablet-product-actions.png",
+        "chromium-tablet-cart.png",
+        "chromium-tablet-cart-disabled.png",
+        "chromium-tablet-account.png",
+        "chromium-tablet-orders.png",
+        "chromium-tablet-tracking.png",
+        "chromium-tablet-signin.png",
+        "chromium-tablet-request.png",
+        "chromium-tablet-home-products.png",
+        "chromium-tablet-home-light.png",
+        "chromium-tablet-home-products-light.png",
+        "chromium-tablet-home-rtl.png",
+        "chromium-tablet-search-rtl.png"
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-tjmaxx.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-adidas.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-sephora.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-levis.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-elf.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/preview-nike-0"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/"
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/me"
+        },
+        {
+          "method": "GET",
+          "path": "/orders"
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/orders"
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/orders/preview-order"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-tjmaxx.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-adidas.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-sephora.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-levis.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-elf.svg"
+        }
+      ],
+      "unexpected": [],
+      "icons": []
+    },
+    {
+      "engine": "chromium",
+      "viewport": "narrow",
+      "checks": [
+        "home screenshot/layout/semantics",
+        "home-keyboard-focus screenshot/layout/semantics",
+        "home-hover screenshot/layout/semantics",
+        "search screenshot/layout/semantics",
+        "search keyboard open/Escape/focus restoration",
+        "assistant screenshot/layout/semantics",
+        "assistant keyboard open/Escape/focus restoration",
+        "menu screenshot/layout/semantics",
+        "menu-expanded screenshot/layout/semantics",
+        "category disclosure keyboard toggle",
+        "menu keyboard open/Escape/focus restoration",
+        "shop screenshot/layout/semantics",
+        "shop-grid screenshot/layout/semantics",
+        "shop-saved screenshot/layout/semantics",
+        "shop-pressed screenshot/layout/semantics",
+        "wishlist action exposes selected state",
+        "filters screenshot/layout/semantics",
+        "filters keyboard open/Escape/focus restoration",
+        "filter-chip screenshot/layout/semantics",
+        "filter chip removal preserves filtering interaction",
+        "wishlist screenshot/layout/semantics",
+        "product screenshot/layout/semantics",
+        "product-actions screenshot/layout/semantics",
+        "gallery keyboard navigation remains usable",
+        "cart screenshot/layout/semantics",
+        "cart-disabled screenshot/layout/semantics",
+        "icon changes preserve cart persistence and disabled payments",
+        "account screenshot/layout/semantics",
+        "orders screenshot/layout/semantics",
+        "tracking screenshot/layout/semantics",
+        "signin screenshot/layout/semantics",
+        "request screenshot/layout/semantics",
+        "home-products screenshot/layout/semantics",
+        "home-light screenshot/layout/semantics",
+        "home-products-light screenshot/layout/semantics",
+        "home-rtl screenshot/layout/semantics",
+        "search-rtl screenshot/layout/semantics",
+        "search-rtl keyboard open/Escape/focus restoration",
+        "zero unexpected network, writes, CSP violations, or runtime errors"
+      ],
+      "screenshots": [
+        "chromium-narrow-home.png",
+        "chromium-narrow-home-keyboard-focus.png",
+        "chromium-narrow-home-hover.png",
+        "chromium-narrow-search.png",
+        "chromium-narrow-assistant.png",
+        "chromium-narrow-menu.png",
+        "chromium-narrow-menu-expanded.png",
+        "chromium-narrow-shop.png",
+        "chromium-narrow-shop-grid.png",
+        "chromium-narrow-shop-saved.png",
+        "chromium-narrow-shop-pressed.png",
+        "chromium-narrow-filters.png",
+        "chromium-narrow-filter-chip.png",
+        "chromium-narrow-wishlist.png",
+        "chromium-narrow-product.png",
+        "chromium-narrow-product-actions.png",
+        "chromium-narrow-cart.png",
+        "chromium-narrow-cart-disabled.png",
+        "chromium-narrow-account.png",
+        "chromium-narrow-orders.png",
+        "chromium-narrow-tracking.png",
+        "chromium-narrow-signin.png",
+        "chromium-narrow-request.png",
+        "chromium-narrow-home-products.png",
+        "chromium-narrow-home-light.png",
+        "chromium-narrow-home-products-light.png",
+        "chromium-narrow-home-rtl.png",
+        "chromium-narrow-search-rtl.png"
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-tjmaxx.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-adidas.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-sephora.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-levis.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-elf.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/preview-nike-0"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/"
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/capabilities"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/me"
+        },
+        {
+          "method": "GET",
+          "path": "/orders"
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/orders"
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/orders/preview-order"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-tjmaxx.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-adidas.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-sephora.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-levis.svg"
+        },
+        {
+          "method": "GET",
+          "path": "/preview-elf.svg"
+        }
+      ],
+      "unexpected": [],
+      "icons": []
+    }
+  ]
+}
