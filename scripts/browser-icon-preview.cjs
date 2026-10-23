@@ -23,6 +23,7 @@ async function run(name){
     await page.goto(origin+'/docs/design/preview.html');await page.locator('#atlas svg').last().waitFor();
     assert.equal(await page.locator('#atlas svg').count(),35);
     let comparisons=0;
+    for(const baseline of ['v1','before']){await page.selectOption('#baseline',baseline);
     for(const viewport of ['desktop','mobile','tablet','narrow']){
       await page.selectOption('#viewport',viewport);
       for(const screen of await page.locator('#screen option').evaluateAll(nodes=>nodes.map(n=>n.value))){
@@ -30,6 +31,9 @@ async function run(name){
         await page.waitForFunction(()=>['before','after'].every(id=>document.getElementById(id).complete&&document.getElementById(id).naturalWidth>0));comparisons++;
       }
     }
+    }
+    let focusComparisons=0;
+    for(const baseline of ['v1','before']){await page.selectOption('#baseline',baseline);for(const key of await page.locator('#focus-screen option').evaluateAll(nodes=>nodes.map(n=>n.value))){await page.selectOption('#focus-screen',key);await page.waitForFunction(()=>['focus-before','focus-after'].every(id=>document.getElementById(id).complete&&document.getElementById(id).naturalWidth>0));const dims=await page.locator('.focus-stage img').evaluateAll(nodes=>nodes.map(n=>[n.naturalWidth,n.naturalHeight]));assert.deepEqual(dims[0],dims[1],key+' uses matched crop dimensions');for(const scale of ['1','2']){await page.selectOption('#magnification',scale);assert.equal(await page.locator('#focus-after').evaluate(n=>parseFloat(n.style.width)/n.naturalWidth),Number(scale));focusComparisons++;}}}
     for(const [value,reveal] of [['100','0%'],['0','100%']]){
       await page.locator('#reveal').fill(value);assert.equal(await page.locator('#comparison').evaluate(n=>n.style.getPropertyValue('--reveal')),reveal);
     }
@@ -38,7 +42,7 @@ async function run(name){
     await page.locator('#theme').click();assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
     for(const width of [1440,768,390,320]){await page.setViewportSize({width,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'preview fits '+width);}
     assert.deepEqual(errors,[]);assert.deepEqual(bad,[]);assert.deepEqual(unexpected,[]);assert.deepEqual(await page.evaluate(()=>window.__csp),[]);
-    console.log(`${name}: ${comparisons} review comparisons, slider endpoints, 35 glyphs, saved/disabled/theme states and four viewport layouts passed`);
+    console.log(`${name}: ${comparisons} review comparisons, ${focusComparisons} matched close-up/scale checks, slider endpoints, 35 glyphs, saved/disabled/theme states and four viewport layouts passed`);
   }finally{await browser.close();}
 }
 (async()=>{for(const name of (process.env.ENGINES||'chromium').split(','))await run(name);})().catch(e=>{console.error(e);process.exitCode=1;});

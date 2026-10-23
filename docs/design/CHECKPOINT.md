@@ -1,23 +1,31 @@
-# AnoX icon review checkpoint
+# AnoX Signature 2.0 — continuation checkpoint
 
-Updated 2026-10-21. Branch: `design/anox-icon-system-20261019`. Base: `0ce6c538a333bf12028500649294580fae4e3509`. Core implementation commit: `c55e532`. No merge or deployment is authorized for this icon release.
+Updated October 21, 2026. Repository `ydrtdytfu959-cpu/anon-site`, existing branch `design/anox-icon-system-20261019`, PR https://github.com/ydrtdytfu959-cpu/anon-site/pull/27. No merge or production deployment is authorized.
 
-Complete: 35 original MIT SVG glyphs; canonical JS/CSS and CSP build integration; category/assistant/filter/compare consistency; scoped glass controls; 44px target fixes; theme, selected-state, forced-color and reduced-motion styling; safe review exports. Logo and backend/provider/authentication/commerce sources are unchanged.
+## Saved implementation
 
-Verified: clean `npm ci --ignore-scripts`, build/check, 386/386 Node tests, 72 existing Chromium/Firefox browser groups, 348 icon checks across eight engine/viewport runs, and 60 interactive review comparisons per engine. All commands passed. Node 24.18.0, npm 11.16.0, Playwright 1.63.0, Chromium 153.0.8010.12, Firefox 155.0.
+- Signature 2.0 implementation and captured evidence: local commit `07a2179`. This checkpoint and the final review report are documentation follow-ups.
+- Previous local checkpoint: `91aab415c0bdec7f1049a13a00411d9f951df2e0`. Previous published PR head: `886958738990e54b8843d287cfc7d06c339824fa`, tree `1ad120d65f5a36ee26598966e02ee034bd287049`. These represented the same first-version source bytes with different commit identities.
+- Production base remains `0ce6c538a333bf12028500649294580fae4e3509`. Preserve all local history and update the existing PR, never create a replacement branch or merge into main.
 
-Visual review: primary and independent review of the glyph atlases, desktop/mobile/narrow/RTL/light views. Corrected four CSS conflicts affecting dark hearts, selected backgrounds, theme targets and duplicate disclosure symbols. Final fixture captures use deterministic shuffling and timestamps, advancing browser clocks, settled loading states, and controls scrolled into view. No remaining substantive icon defect was found.
+## Completed and verified
 
-Deliverables: docs/design/preview.html (60 before/after combinations and actual icon renderer); docs/design/REVIEW.md (results, scope, inventory and reproduction); 142 curated PNGs and both browser reports in docs/design/evidence. Full local captures/logs remain in ../anox-icon-review. Preview can be served at http://127.0.0.1:8786/docs/design/preview.html with a local static server. No live API calls are required.
+Refined graphite perimeter/inset lighting; 38px header containers; circular floating hearts with porcelain selected state; full active mobile-navigation shape; quiet category tiles; four refined original category glyphs; bounded hover/press feedback; aligned mobile header icons. A test caught a press transform reducing 44px targets; corrected by scaling only the glyph. Production logic and data sources remain unchanged.
 
-HTML SHA-256: b31bdf9639ad0ecbdf4c4ad778d87a82cb16973c0ed30fd6edf8b3e60a31d31c. Gzip growth: 1,833 bytes.
+The review now offers both production and first-refinement baselines, 120 full comparisons, ten matched component pairs at 100%/200%, and the 35-glyph atlas. First-version evidence is preserved under `docs/design/evidence/v1`. All 246 PNGs are browser captures from offline synthetic fixtures.
 
-Published for review: https://github.com/ydrtdytfu959-cpu/anon-site/pull/27 (open, not merged). The connected GitHub app published remote commit `12ecd1b90b99fb2cd4f5c82bd1c494e3082a38c6`; its tree `fc5f3764929a89733e0d14ad8377adf2ca836960` exactly matches locally tested candidate `7cb04313b88e050f40c7055ff9b00fe7c5bfa93e`. All 162 changed blobs were checked against their local Git hashes. Local implementation history is preserved; connector publication uses a different commit identity with identical source bytes. This checkpoint update changes documentation only.
+Final local validation passed: build, check, 386/386 Node tests, 72 existing browser groups, 360 icon checks across eight Chromium/Firefox runs, and 120 full comparisons plus 40 close-up/scale checks per browser. The original 348 icon checks remain; 8 forced-color state checks and 4 Chromium reduced-transparency checks were added. Node 24.18.0, npm 11.16.0, Playwright 1.63.0, Chromium 153.0.8010.12, Firefox 155.0.
 
-Publication controls: owner explicitly approved public publication of the 142 fixture PNGs on October 21 after automatic approval review blocked them. A separate export-script rejection was resolved by verifying against the public baseline that the only change adds the two icon sources and their license; existing backend export behavior is unchanged. Both publication blockers are resolved. Shell Git has no stored GitHub credentials; its dry-run push made no changes.
+Primary visual review covered desktop/tablet/mobile/narrow, light/dark/RTL, both atlases, header alignment, categories, selected hearts, focus and pressed controls. No unresolved material visual defect was found. Independent V2 review was attempted but all subagents hit usage limits before final critique; do not claim independent V2 signoff.
 
-CI: the existing Catalog and commerce validation workflow runs on PR #27 and includes the new icon and interactive-review browser suites. Inspect the latest PR-head checks at https://github.com/ydrtdytfu959-cpu/anon-site/pull/27/checks; final publication and CI receipts are saved in `../anox-icon-review/publication-receipt.json`. The local full-suite results above remain the verified implementation baseline.
+Gzip 430,401bytes: +566 versus V1, +2,399 versus production. Sequential Chromium 100-state-change microbenchmark: median style time 0.988ms→0.924ms, zero layouts in both; no measured increase in this bounded workload. Physical-mobile GPU/frame-rate behavior is unmeasured. Minimum tested enabled icon contrast 6.51:1.
 
-Preservation: `../anox-icon-review/icon-candidate.bundle` retains the local feature history; `publication-progress.json` records exact uploaded file hashes. The preview returned HTTP 200 at publication. No production deployment, merge, paid usage, live provider query or business-data operation occurred.
+## Evidence and handoff
 
-Next action: verify the latest PR-head CI conclusion, then owner review of the interactive preview and PR. Do not repeat design implementation or historical production deployment work. Separate owner merge/deployment authorization remains required for this icon release.
+- Owner preview: http://127.0.0.1:8786/docs/design/preview.html (serve repository locally if needed; open review path directly).
+- Current report: `docs/design/REVIEW.md`; capture data: `docs/design/evidence/after-report.json`; size/CPU data: `docs/design/evidence/signature-performance.json`.
+- Raw snapshots, captures and final Node/browser logs: `../anox-icon-review/signature-v2/`.
+- Publication receipt and upload inventory: `../anox-icon-review/signature-v2/publication-receipt.json` and `publication-progress.json`. The receipt records the final remote commit, exact local/remote tree match and CI conclusion after publication. Check these before repeating uploads.
+- Git backup: `../anox-icon-review/icon-candidate.bundle`.
+
+Next action: finish publication if the receipt is absent/incomplete; otherwise inspect its final PR-head CI result and proceed to owner review. Update only PR #27 using a lease against its inspected head. Shell Git lacks push credentials; use the connected GitHub app. Previously uploaded identical blobs can be reused by hash, including archived V1 screenshots. Owner approval covers publishing refinement evidence. Merge and deployment require separate authorization.

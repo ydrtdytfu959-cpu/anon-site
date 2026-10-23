@@ -1,60 +1,69 @@
-# AnoX icon system — owner review
+# AnoX Signature 2.0 — owner review
 
-A presentation-only update from production baseline `0ce6c538a333bf12028500649294580fae4e3509`, on `design/anox-icon-system-20261019`. The 24 shared symbols and three separate assistant SVG implementations now use one original 35-glyph family. Category selectors gain distinct silhouettes; hearts, header actions and dialog controls gain restrained depth and clearer states.
+PR #27 continues the original icon branch. This second refinement makes the frequently used controls more visible through directional edge lighting, clearer selected surfaces and stronger category silhouettes. It preserves the existing storefront architecture, logo, typography, product content and business behavior.
 
-## Inspect the result
+## Inspect the change
 
-Run `python3 -m http.server 8786 --bind 127.0.0.1` from the repository, then open `http://127.0.0.1:8786/docs/design/preview.html`. Open the review path directly; the ordinary storefront root still contains its production API configuration.
+Open `http://127.0.0.1:8786/docs/design/preview.html` while serving the repository with `python3 -m http.server 8786 --bind 127.0.0.1`. Open that review path directly; the ordinary storefront root retains production API configuration. The review's CSP blocks API connections.
 
-The [interactive review](preview.html) has 60 before/after combinations (15 screens × four widths), a keyboard-operable comparison slider, the actual renderer at 16/20/24/32px, light/dark themes, and interactive saved/disabled/focus examples. It cannot connect to APIs. Its screenshots use synthetic, labeled product art and a synthetic account. They are visual fixtures, **not live-provider or commercial evidence**.
+The [interactive review](preview.html) starts with matched component crops at normal size or explicit 200% magnification. Select either **First refinement** or **Released baseline**. It also preserves the slider for 15 screens×4 viewports, the 35-glyph atlas at 16/20/24/32 px, and interactive hover/focus/saved/disabled examples. All screenshots use offline synthetic accounts, orders and labeled sample art; they are not live-provider evidence.
 
-| View | Released baseline | Icon candidate |
+| Control | First refinement | Signature 2.0 |
 | --- | --- | --- |
-| Desktop search | [Before](evidence/before/chromium-desktop-search.png) | [After](evidence/after/chromium-desktop-search.png) |
-| Mobile favorites | [Before](evidence/before/chromium-mobile-shop-saved.png) | [After](evidence/after/chromium-mobile-shop-saved.png) |
-| 320px category menu | [Before](evidence/before/chromium-narrow-menu-expanded.png) | [After](evidence/after/chromium-narrow-menu-expanded.png) |
-| Light theme | [Before](evidence/before/chromium-mobile-home-light.png) | [After](evidence/after/chromium-mobile-home-light.png) |
-| Product actions | [Before](evidence/before/chromium-mobile-product-actions.png) | [After](evidence/after/chromium-mobile-product-actions.png) |
-| Keyboard focus | [Before](evidence/before/chromium-desktop-home-keyboard-focus.png) | [After](evidence/after/chromium-desktop-home-keyboard-focus.png) |
-| Pressed state | [Before](evidence/before/chromium-mobile-shop-pressed.png) | [After](evidence/after/chromium-mobile-shop-pressed.png) |
-| Disabled controls | [Before](evidence/before/chromium-mobile-cart-disabled.png) | [After](evidence/after/chromium-mobile-cart-disabled.png) |
+| Desktop header | [Before](evidence/focus/v1/chromium-desktop-header-controls.png) | [After](evidence/focus/after/chromium-desktop-header-controls.png) |
+| Mobile header | [Before](evidence/focus/v1/chromium-mobile-header-controls.png) | [After](evidence/focus/after/chromium-mobile-header-controls.png) |
+| Active mobile navigation | [Before](evidence/focus/v1/chromium-mobile-navigation.png) | [After](evidence/focus/after/chromium-mobile-navigation.png) |
+| Search categories | [Before](evidence/focus/v1/chromium-desktop-category-controls.png) | [After](evidence/focus/after/chromium-desktop-category-controls.png) |
+| Saved heart | [Before](evidence/focus/v1/chromium-desktop-wishlist-selected.png) | [After](evidence/focus/after/chromium-desktop-wishlist-selected.png) |
+| Light mobile header | [Before](evidence/focus/v1/chromium-mobile-header-controls-light.png) | [After](evidence/focus/after/chromium-mobile-header-controls-light.png) |
 
-![Original AnoX glyphs at four sizes](evidence/after/chromium-desktop-atlas-dark-full.png)
+Full examples: [desktop search](evidence/after/firefox-desktop-search.png), [320 px expanded menu](evidence/after/firefox-narrow-menu-expanded.png), [tablet Arabic layout](evidence/after/firefox-tablet-home-rtl.png), [mobile selected heart](evidence/after/firefox-mobile-shop-saved.png). The original production evidence remains in `evidence/before`; the entire first-refinement evidence is retained in `evidence/v1`.
 
-## Design and scope
+## Substantive refinements
 
-- One 24-point grid, rounded 1.75-unit strokes, balanced interior space and `currentColor`. Original artwork and renderer/style assets have an explicit [MIT license](../../LICENSE-icons.txt). No restricted Apple assets, icon fonts, external icon requests or new runtime dependencies.
-- Glass effects apply to small controls: a restrained gradient, inset highlight, border and shallow shadow. Only the 44px product-heart overlay uses an 8px backdrop blur; opaque and reduced-transparency fallbacks remain available. Product/content surfaces retain their design.
-- The shared renderer replaces the assistant's separate grids/strokes, filter-chip ×, comparison ✓/+, and category caret/disclosure inconsistencies. Existing labels, action selectors, state attributes, routes and event behavior are preserved. Text-led account, authentication, service-request, order and tracking controls remain text-led.
-- The theme utility row grows from 30px to 44px for its touch target; mobile header action targets are at least 44px. This small spacing change is intentional. The logo, fonts, page architecture and product-card structure are unchanged.
-- Keyboard focus, selected-heart fill plus color, decorative SVG semantics, localized accessible names, forced-color and reduced-motion alternatives are retained or improved. The target-size choice exceeds the [WCAG 2.2 AA minimum](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html); contrast checks use the [3:1 non-text threshold](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html). This is focused icon/control verification, not a claim of a whole-site accessibility certification.
+- Header containers grow from 34 px to 38 px inside existing accessible controls. A directional top edge, restrained side light and recessed lower edge replace the flatter first-version surface. Assistant, account and cart remain visually grouped; the assistant has a stronger rim. Mobile icons align at the top of the action group despite different label visibility.
+- The mobile active destination gains a framed background spanning its existing tab, without increasing the navigation footprint. The selected glyph has slightly greater visual weight. Other tab symbols remain flat.
+- Floating wishlist controls become circular. Saved hearts use a light porcelain surface with a dark filled glyph, distinct from the dark resting control. Shape and fill preserve meaning without color alone. The existing 8 px blur remains limited to these 44 px overlays.
+- Category symbols gain quiet inset tiles in search and menus; primary category navigation stays flat. Four original glyphs were refined: a more open shirt collar, a taller shoe upper, an angled lipstick silhouette replacing the generic bottle, and wider negative space in the sports symbol. The other 31 glyphs were retained after atlas inspection.
+- Hover adds a small lift and stronger edge; press adds an inset response and glyph compression. A first experiment scaled the whole 44 px target below the minimum. The browser test caught this, and the implementation now preserves the full target while scaling only its glyph. Reduced-motion mode removes movement and transitions.
+- Gallery selection receives a visible outer boundary. Text-led add-to-cart, filtering, comparison and service actions retain their established labels and behavior; glass is not applied to every element.
 
-Exact glyph inventory: `home`, `search`, `bag`, `cart`, `heart`, `user`, `moon`, `sun`, `menu`, `close`, `arrow`, `check`, `plus`, `minus`, `info`, `warning`, `box`, `truck`, `shield`, `filter`, `compare`, `copy`, `external`, `refresh`, `assistant`, `send`, `chevron`, `shirt`, `shoe`, `beauty`, `device`, `watch`, `lamp`, `sport`, `leaf`. The eight category mappings and full baseline audit are in [icon-system.md](icon-system.md).
+These are original web assets, with the existing [MIT license](../../LICENSE-icons.txt). No Apple symbols, external icon services, frameworks or runtime dependencies were added. The design applies the control/content distinction described in [Apple's materials guidance](https://developer.apple.com/design/human-interface-guidelines/materials); it does not reproduce Apple's material renderer.
 
-## Visual review and corrections
+## Visual judgment and accessibility
 
-Both a primary and an independent reviewer inspected real Chromium/Firefox screenshots. Review included both 35-glyph atlases, desktop search, expanded 320px menus, mobile selected hearts, light theme, Arabic/RTL search and navigation, assistant controls, product actions and account/order presentations.
+Primary review inspected real Chromium/Firefox renders at 1440, 768, 390 and 320 px, desktop wrapping boundaries, light/dark themes, Arabic/RTL, keyboard focus, pressed/selected states, menus and both glyph atlases. The most perceptible improvements at normal scale are the saved-heart surface, active mobile tab, category tiles and header edges. This is a design judgment supported by the linked comparisons, not an objective claim of perfection.
 
-The implementation corrected four observed CSS conflicts before final evidence: a high-specificity dark-home rule obscured hearts; another dark-theme rule overrode the selected background; utility styles retained a 30px theme target; and open mobile categories displayed both the old pseudo-element minus and the new chevron. Final screenshots show distinct heart states, one disclosure indicator, aligned category symbols and visible focus rings. No remaining substantive icon geometry, contrast, spacing or responsive defect was found in the reviewed views.
+No remaining material alignment, clipping, contrast or responsive defect was identified in those views. The first version had independent visual review. Independent Signature 2.0 review was attempted, but all three subagents reached usage limits before completing their assigned refinement/critique; do not interpret the primary review as independent second-version signoff.
 
-The harness was also corrected rather than changing storefront behavior: theme selectors now target buttons; the icon atlas waits for a stable account route; source timestamps and non-cryptographic shuffle randomness are deterministic; the scheduler's browser clock continues advancing; home captures wait for loading to finish; and catalog/action captures scroll the actual controls into view. Baseline and candidate use the same fixtures, random shuffle, viewports and interaction sequence.
+Enabled heart/send contrast has a conservative tested minimum of **6.51:1**, using computed gradient stops and both black/white substrate extremes. Icon-control targets remain at least 44 px, including press captures. Keyboard dialog dismissal, restored focus, category expansion, filter removal, gallery navigation and wishlist state remain verified. Forced colors preserve a filled selected heart and control boundary. Chromium's reduced-transparency emulation verifies an opaque selected surface with blur removed; Firefox's selected/forced-color behavior is tested, but reduced-transparency emulation is not available through this harness.
+
+The glyph family remains 35 original symbols on a 24-point grid, normally 1.75 stroke. The selected mobile-nav glyph uses 2-unit visual weight. All glyphs retain decorative `aria-hidden`/`focusable` semantics. This is focused control verification, not a whole-site WCAG certification.
 
 ## Verification
 
-Node **24.18.0**, npm **11.16.0**, Playwright **1.63.0**; local Chromium **153.0.8010.12** and Firefox **155.0**.
+Local tooling: Node 24.18.0, npm 11.16.0, Playwright 1.63.0, Chromium 153.0.8010.12, Firefox 155.0.
 
-- `npm ci --ignore-scripts`: successful, zero reported dependency vulnerabilities.
-- `npm run build` and `npm run check`: successful; canonical JS/CSS and inline CSP are deterministic.
-- `npm test`: **386/386 passed**, zero failures or skips. Includes safe SVG geometry, decorative semantics, unknown/prototype names, malicious class input, canonical source drift and archive reconstruction.
-- `ENGINES=chromium,firefox npm run test:browser`: **72 existing catalog/commerce browser groups**, **348 icon checks over eight engine/viewport runs**, plus **60 review comparisons per engine** and review interactions. The icon and review suites are included in the existing CI command.
-- Icon coverage: 1440×960, 768×1024, 390×844 and 320×780; additional 1060px/1200px desktop boundary captures. All 35 glyphs render at four sizes in both themes. Targeted icon controls meet 44px targets; measured enabled heart/send icon contrast across tested surface states has a minimum of **6.74:1**. No horizontal document overflow, unexpected network requests, runtime errors, CSP violations, or authenticated/commerce writes were observed.
-- Both browsers retain keyboard dialog dismissal/focus restoration, category disclosure, wishlist state, filter removal, gallery keyboard navigation, cart persistence and disabled payment controls. Existing commerce/browser tests cover service-request behavior; the icon harness only reads fixture accounts/orders and modifies local selections.
-- [Candidate report](evidence/after-report.json): 348 checks, 258 captures; [baseline report](evidence/before-report.json): 154 checks, 113 captures. 142 curated, unmodified PNGs are checked in. Full captures are reproducible using `SCREENSHOT_DIR=/absolute/output ENGINES=chromium,firefox node scripts/browser-icons.cjs`. For the baseline, save `git show 0ce6c53:index.html` to a separate file and set `BASELINE=1 HTML_PATH=/absolute/baseline.html ENGINES=chromium` with a separate output directory.
+- `npm run build` and `npm run check`: passed; canonical CSS/JS and CSP hashes remain deterministic.
+- `npm test`: **386/386 passed**, with zero failures or skips.
+- Icon browser suite: **360 checks across eight engine/viewport runs**. The original 348 checks remain;8 selected-state forced-color checks and 4 Chromium reduced-transparency checks were added. Reduced-motion checks now cover control containers as well as SVGs. No unexpected network requests, customer writes, runtime errors, CSP violations or document overflow.
+- Review browser suite: **120 full comparisons and 40 matched close-up/scale checks per engine**, plus slider endpoints, 35 glyphs, saved/disabled/theme states and four viewport layouts. Counts increased because both production and first-refinement baselines are selectable, with ten component pairs at two scales.
+- The existing 72 catalog/commerce browser groups also passed in the final combined command. Full local validation completed successfully. PR-head CI status is recorded in the PR checks and publication receipt.
 
-Production HTML SHA-256: `b31bdf9639ad0ecbdf4c4ad778d87a82cb16973c0ed30fd6edf8b3e60a31d31c`. HTML changes from 1,081,336 to 1,090,281 bytes (**+8,945**); gzip changes from 428,002 to 429,835 bytes (**+1,833**, about 0.43%). Evidence files are review assets, not additional storefront runtime loads.
+[Final capture report](evidence/after-report.json):360 checks and 258 full captures. The committed review contains 246 PNGs:68 production, 74 first-refinement, 74 current full captures, and 30 matched crops. The [first-refinement report](evidence/v1-report.json) is retained. Reproduce final captures with `SCREENSHOT_DIR=/absolute/output ENGINES=chromium,firefox node scripts/browser-icons.cjs`. Focus crops are generated directly by the browser under `focus/`, never synthesized or retouched.
 
-The diff against the baseline is empty for `backend/`, `catalog-live.js`, `commerce-client.js`, `auth.js`, `analytics.js`, `favicon.svg` and `beta/index.html`. The wordmark constant and brand helper are byte-identical. CSP directives are identical after normalizing regenerated script hashes. The build/export changes only integrate and retain the icon source/style/license.
+## Performance and scope
 
-## Release boundary
+| Canonical HTML | Raw bytes | Gzip bytes |
+| --- | ---: | ---: |
+| Production baseline | 1,081,336 | 428,002 |
+| First refinement | 1,090,281 | 429,835 |
+| Signature 2.0 | 1,094,085 | 430,401 |
 
-No merge, deployment, production mutation, metered API test, payment activation, budget change or customer write is part of this work. The separate noindex legacy beta demo remains outside this production icon update. Fixtures do not establish current retailer stock or production availability. The candidate is ready for owner design review and independent PR examination; deployment requires separate approval.
+The second pass adds **566 gzip bytes (0.13%)** over the first refinement; total growth from production is 2,399 bytes (0.56%). Final HTML SHA-256: `a2249d95b5bba32dc42d3dba6e1819e4ecd9731f9cc01aa57a2e74d0b895bca1`. Review screenshots are not storefront runtime loads.
+
+A sequential Chromium CPU microbenchmark compared 100 selected-state changes with computed-style flush, one warmup and five measured batches. Median style recalculation was 0.988 ms before and 0.924 ms after; median task time was 1.279 ms and 1.211 ms. Both recorded zero layouts. These small differences are within ordinary lab variation; they support no observed increase in this workload, not a speedup claim. [Raw data and method](evidence/signature-performance.json) are retained. Set `PERFORMANCE=1 REPORT_PATH=/absolute/report.json ENGINES=chromium VIEWPORTS=desktop` when running the harness against each HTML version to reproduce.
+
+No persistent animation, animated filter or additional blur surface was introduced. Physical mobile-device GPU/frame-rate testing remains unmeasured. The chosen material has an opaque fallback, with reduced-transparency and forced-color alternatives.
+
+The diff remains empty for backend, provider, authentication, commerce, analytics, favicon and legacy beta sources. The index changes are the generated icon CSS/JS and corresponding CSP hash. No provider calls, AWS operations, budget changes, payment activation, customer writes, merge or deployment occurred. PR #27 remains for owner design review; production release requires separate approval.

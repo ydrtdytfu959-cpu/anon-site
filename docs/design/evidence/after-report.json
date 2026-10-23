@@ -1,6 +1,6 @@
 {
   "source": "index.html",
-  "sha256": "b31bdf9639ad0ecbdf4c4ad778d87a82cb16973c0ed30fd6edf8b3e60a31d31c",
+  "sha256": "a2249d95b5bba32dc42d3dba6e1819e4ecd9731f9cc01aa57a2e74d0b895bca1",
   "baseline": false,
   "fixture": "Offline visual preview; synthetic product art and accounts. No real products, customer data, or live services.",
   "runs": [
@@ -23,6 +23,8 @@
         "shop-saved screenshot/layout/semantics",
         "shop-pressed screenshot/layout/semantics",
         "wishlist action exposes selected state",
+        "forced-colors selected heart and control boundary",
+        "reduced-transparency opaque selected state",
         "filters screenshot/layout/semantics",
         "filter-chip screenshot/layout/semantics",
         "filter chip removal preserves filtering interaction",
@@ -281,110 +283,197 @@
       "contrast": [
         {
           "state": "home",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-1060",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-1200",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-keyboard-focus",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-hover",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "search",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "assistant",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 25
         },
         {
           "state": "categories",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-grid",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-saved",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-pressed",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "filters",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "filter-chip",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 4
         },
         {
           "state": "product",
-          "minimum": 7.39,
+          "minimum": 8.24,
           "samples": 1
         },
         {
           "state": "product-actions",
-          "minimum": 7.39,
+          "minimum": 8.24,
           "samples": 1
         },
         {
           "state": "home-products",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-light",
-          "minimum": 6.74,
+          "minimum": 8.32,
           "samples": 24
         },
         {
           "state": "home-products-light",
-          "minimum": 6.74,
+          "minimum": 8.32,
           "samples": 24
         },
         {
           "state": "home-rtl",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "search-rtl",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         }
-      ]
+      ],
+      "focusScreenshots": [
+        {
+          "file": "chromium-desktop-header-controls.png",
+          "clip": {
+            "x": 1160,
+            "y": 0,
+            "width": 280,
+            "height": 140
+          }
+        },
+        {
+          "file": "chromium-desktop-category-controls.png",
+          "clip": {
+            "x": 156,
+            "y": 315.734375,
+            "width": 360,
+            "height": 320
+          }
+        },
+        {
+          "file": "chromium-desktop-wishlist-rest.png",
+          "clip": {
+            "x": 571.328125,
+            "y": 184.234375,
+            "width": 104,
+            "height": 104
+          }
+        },
+        {
+          "file": "chromium-desktop-wishlist-selected.png",
+          "clip": {
+            "x": 571.328125,
+            "y": 180.234375,
+            "width": 104,
+            "height": 104
+          }
+        },
+        {
+          "file": "chromium-desktop-header-controls-light.png",
+          "clip": {
+            "x": 1160,
+            "y": 0,
+            "width": 280,
+            "height": 140
+          }
+        }
+      ],
+      "performance": {
+        "fixture": "100 selected-state changes with computed-style flush, 5 batches; CPU microbenchmark, not GPU or device frame-rate proof",
+        "batches": [
+          {
+            "RecalcStyleDuration": 0.0009139999999999999,
+            "LayoutDuration": 0,
+            "ScriptDuration": 0,
+            "TaskDuration": 0.001211,
+            "LayoutCount": 0
+          },
+          {
+            "RecalcStyleDuration": 0.0009430000000000003,
+            "LayoutDuration": 0,
+            "ScriptDuration": 0,
+            "TaskDuration": 0.0012230000000000001,
+            "LayoutCount": 0
+          },
+          {
+            "RecalcStyleDuration": 0.0009339999999999999,
+            "LayoutDuration": 0,
+            "ScriptDuration": 0,
+            "TaskDuration": 0.0012239999999999994,
+            "LayoutCount": 0
+          },
+          {
+            "RecalcStyleDuration": 0.0009019999999999996,
+            "LayoutDuration": 0,
+            "ScriptDuration": 0,
+            "TaskDuration": 0.0011740000000000006,
+            "LayoutCount": 0
+          },
+          {
+            "RecalcStyleDuration": 0.0009550000000000001,
+            "LayoutDuration": 0,
+            "ScriptDuration": 0,
+            "TaskDuration": 0.001253999999999999,
+            "LayoutCount": 0
+          }
+        ]
+      }
     },
     {
       "engine": "chromium",
@@ -406,6 +495,8 @@
         "shop-saved screenshot/layout/semantics",
         "shop-pressed screenshot/layout/semantics",
         "wishlist action exposes selected state",
+        "forced-colors selected heart and control boundary",
+        "reduced-transparency opaque selected state",
         "filters screenshot/layout/semantics",
         "filters keyboard open/Escape/focus restoration",
         "filter-chip screenshot/layout/semantics",
@@ -556,6 +647,10 @@
         },
         {
           "method": "GET",
+          "path": "/preview-nike.svg"
+        },
+        {
+          "method": "GET",
           "path": "/me"
         },
         {
@@ -660,105 +755,192 @@
       "contrast": [
         {
           "state": "home",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-keyboard-focus",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-hover",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "search",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "assistant",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 25
         },
         {
           "state": "menu",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "menu-expanded",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-grid",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-saved",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-pressed",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "filters",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "filter-chip",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 4
         },
         {
           "state": "product",
-          "minimum": 7.39,
+          "minimum": 8.24,
           "samples": 1
         },
         {
           "state": "product-actions",
-          "minimum": 7.39,
+          "minimum": 8.24,
           "samples": 1
         },
         {
           "state": "home-products",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-light",
-          "minimum": 6.74,
+          "minimum": 8.32,
           "samples": 24
         },
         {
           "state": "home-products-light",
-          "minimum": 6.74,
+          "minimum": 8.32,
           "samples": 24
         },
         {
           "state": "home-rtl",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "search-rtl",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         }
-      ]
+      ],
+      "focusScreenshots": [
+        {
+          "file": "chromium-mobile-header-controls.png",
+          "clip": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 200
+          }
+        },
+        {
+          "file": "chromium-mobile-navigation.png",
+          "clip": {
+            "x": 0,
+            "y": 764,
+            "width": 390,
+            "height": 80
+          }
+        },
+        {
+          "file": "chromium-mobile-category-controls.png",
+          "clip": {
+            "x": 8,
+            "y": 258.734375,
+            "width": 358,
+            "height": 320
+          }
+        },
+        {
+          "file": "chromium-mobile-product-actions.png",
+          "clip": {
+            "x": 8,
+            "y": 692,
+            "width": 358,
+            "height": 100
+          }
+        },
+        {
+          "file": "chromium-mobile-header-controls-light.png",
+          "clip": {
+            "x": 0,
+            "y": 0,
+            "width": 390,
+            "height": 200
+          }
+        }
+      ],
+      "performance": {
+        "fixture": "100 selected-state changes with computed-style flush, 5 batches; CPU microbenchmark, not GPU or device frame-rate proof",
+        "batches": [
+          {
+            "RecalcStyleDuration": 0.0010060000000000002,
+            "LayoutDuration": 0,
+            "ScriptDuration": 0,
+            "TaskDuration": 0.0013310000000000002,
+            "LayoutCount": 0
+          },
+          {
+            "RecalcStyleDuration": 0.0010009999999999997,
+            "LayoutDuration": 0,
+            "ScriptDuration": 0,
+            "TaskDuration": 0.0013189999999999999,
+            "LayoutCount": 0
+          },
+          {
+            "RecalcStyleDuration": 0.000986,
+            "LayoutDuration": 0,
+            "ScriptDuration": 0,
+            "TaskDuration": 0.0013,
+            "LayoutCount": 0
+          },
+          {
+            "RecalcStyleDuration": 0.000994,
+            "LayoutDuration": 0.000083,
+            "ScriptDuration": 0,
+            "TaskDuration": 0.0017240000000000007,
+            "LayoutCount": 1
+          },
+          {
+            "RecalcStyleDuration": 0.001019,
+            "LayoutDuration": 0,
+            "ScriptDuration": 0,
+            "TaskDuration": 0.0013499999999999996,
+            "LayoutCount": 0
+          }
+        ]
+      }
     },
     {
       "engine": "chromium",
@@ -780,6 +962,8 @@
         "shop-saved screenshot/layout/semantics",
         "shop-pressed screenshot/layout/semantics",
         "wishlist action exposes selected state",
+        "forced-colors selected heart and control boundary",
+        "reduced-transparency opaque selected state",
         "filters screenshot/layout/semantics",
         "filters keyboard open/Escape/focus restoration",
         "filter-chip screenshot/layout/semantics",
@@ -1038,105 +1222,145 @@
       "contrast": [
         {
           "state": "home",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-keyboard-focus",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-hover",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "search",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "assistant",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 25
         },
         {
           "state": "menu",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "menu-expanded",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-grid",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-saved",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-pressed",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "filters",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "filter-chip",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 4
         },
         {
           "state": "product",
-          "minimum": 7.39,
+          "minimum": 8.24,
           "samples": 1
         },
         {
           "state": "product-actions",
-          "minimum": 7.39,
+          "minimum": 8.24,
           "samples": 1
         },
         {
           "state": "home-products",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-light",
-          "minimum": 6.74,
+          "minimum": 8.32,
           "samples": 24
         },
         {
           "state": "home-products-light",
-          "minimum": 6.74,
+          "minimum": 8.32,
           "samples": 24
         },
         {
           "state": "home-rtl",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "search-rtl",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         }
-      ]
+      ],
+      "performance": {
+        "fixture": "100 selected-state changes with computed-style flush, 5 batches; CPU microbenchmark, not GPU or device frame-rate proof",
+        "batches": [
+          {
+            "RecalcStyleDuration": 0.0009620000000000002,
+            "LayoutDuration": 0,
+            "ScriptDuration": 0,
+            "TaskDuration": 0.0012799999999999999,
+            "LayoutCount": 0
+          },
+          {
+            "RecalcStyleDuration": 0.0009109999999999999,
+            "LayoutDuration": 0,
+            "ScriptDuration": 0,
+            "TaskDuration": 0.0012240000000000003,
+            "LayoutCount": 0
+          },
+          {
+            "RecalcStyleDuration": 0.0009849999999999998,
+            "LayoutDuration": 0,
+            "ScriptDuration": 0,
+            "TaskDuration": 0.0013080000000000001,
+            "LayoutCount": 0
+          },
+          {
+            "RecalcStyleDuration": 0.0009299999999999998,
+            "LayoutDuration": 0,
+            "ScriptDuration": 0,
+            "TaskDuration": 0.0012430000000000002,
+            "LayoutCount": 0
+          },
+          {
+            "RecalcStyleDuration": 0.0009989999999999999,
+            "LayoutDuration": 0,
+            "ScriptDuration": 0,
+            "TaskDuration": 0.0013050000000000006,
+            "LayoutCount": 0
+          }
+        ]
+      }
     },
     {
       "engine": "chromium",
@@ -1158,6 +1382,8 @@
         "shop-saved screenshot/layout/semantics",
         "shop-pressed screenshot/layout/semantics",
         "wishlist action exposes selected state",
+        "forced-colors selected heart and control boundary",
+        "reduced-transparency opaque selected state",
         "filters screenshot/layout/semantics",
         "filters keyboard open/Escape/focus restoration",
         "filter-chip screenshot/layout/semantics",
@@ -1416,105 +1642,145 @@
       "contrast": [
         {
           "state": "home",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-keyboard-focus",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-hover",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "search",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "assistant",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 25
         },
         {
           "state": "menu",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "menu-expanded",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-grid",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-saved",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-pressed",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "filters",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "filter-chip",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 4
         },
         {
           "state": "product",
-          "minimum": 7.39,
+          "minimum": 8.24,
           "samples": 1
         },
         {
           "state": "product-actions",
-          "minimum": 7.39,
+          "minimum": 8.24,
           "samples": 1
         },
         {
           "state": "home-products",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-light",
-          "minimum": 6.74,
+          "minimum": 8.32,
           "samples": 24
         },
         {
           "state": "home-products-light",
-          "minimum": 6.74,
+          "minimum": 8.32,
           "samples": 24
         },
         {
           "state": "home-rtl",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "search-rtl",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         }
-      ]
+      ],
+      "performance": {
+        "fixture": "100 selected-state changes with computed-style flush, 5 batches; CPU microbenchmark, not GPU or device frame-rate proof",
+        "batches": [
+          {
+            "RecalcStyleDuration": 0.0009709999999999999,
+            "LayoutDuration": 0,
+            "ScriptDuration": 0,
+            "TaskDuration": 0.0012779999999999998,
+            "LayoutCount": 0
+          },
+          {
+            "RecalcStyleDuration": 0.0009599999999999999,
+            "LayoutDuration": 0,
+            "ScriptDuration": 0,
+            "TaskDuration": 0.0012459999999999997,
+            "LayoutCount": 0
+          },
+          {
+            "RecalcStyleDuration": 0.0009810000000000005,
+            "LayoutDuration": 0,
+            "ScriptDuration": 0,
+            "TaskDuration": 0.0012820000000000002,
+            "LayoutCount": 0
+          },
+          {
+            "RecalcStyleDuration": 0.0009339999999999999,
+            "LayoutDuration": 0.000074,
+            "ScriptDuration": 0,
+            "TaskDuration": 0.0016020000000000001,
+            "LayoutCount": 1
+          },
+          {
+            "RecalcStyleDuration": 0.0009919999999999998,
+            "LayoutDuration": 0,
+            "ScriptDuration": 0,
+            "TaskDuration": 0.0012959999999999994,
+            "LayoutCount": 0
+          }
+        ]
+      }
     },
     {
       "engine": "firefox",
@@ -1535,6 +1801,7 @@
         "shop-saved screenshot/layout/semantics",
         "shop-pressed screenshot/layout/semantics",
         "wishlist action exposes selected state",
+        "forced-colors selected heart and control boundary",
         "filters screenshot/layout/semantics",
         "filter-chip screenshot/layout/semantics",
         "filter chip removal preserves filtering interaction",
@@ -1801,107 +2068,107 @@
       "contrast": [
         {
           "state": "home",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-1060",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-1200",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-keyboard-focus",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-hover",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "search",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "assistant",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 25
         },
         {
           "state": "categories",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-grid",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-saved",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-pressed",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "filters",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "filter-chip",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 4
         },
         {
           "state": "product",
-          "minimum": 7.39,
+          "minimum": 8.24,
           "samples": 1
         },
         {
           "state": "product-actions",
-          "minimum": 7.39,
+          "minimum": 8.24,
           "samples": 1
         },
         {
           "state": "home-products",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-light",
-          "minimum": 6.74,
+          "minimum": 8.32,
           "samples": 24
         },
         {
           "state": "home-products-light",
-          "minimum": 6.74,
+          "minimum": 8.32,
           "samples": 24
         },
         {
           "state": "home-rtl",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "search-rtl",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         }
       ]
@@ -1926,6 +2193,7 @@
         "shop-saved screenshot/layout/semantics",
         "shop-pressed screenshot/layout/semantics",
         "wishlist action exposes selected state",
+        "forced-colors selected heart and control boundary",
         "filters screenshot/layout/semantics",
         "filters keyboard open/Escape/focus restoration",
         "filter-chip screenshot/layout/semantics",
@@ -2188,102 +2456,102 @@
       "contrast": [
         {
           "state": "home",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-keyboard-focus",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-hover",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "search",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "assistant",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 25
         },
         {
           "state": "menu",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "menu-expanded",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-grid",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-saved",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-pressed",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "filters",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "filter-chip",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 4
         },
         {
           "state": "product",
-          "minimum": 7.39,
+          "minimum": 8.24,
           "samples": 1
         },
         {
           "state": "product-actions",
-          "minimum": 7.39,
+          "minimum": 8.24,
           "samples": 1
         },
         {
           "state": "home-products",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-light",
-          "minimum": 6.74,
+          "minimum": 8.32,
           "samples": 24
         },
         {
           "state": "home-products-light",
-          "minimum": 6.74,
+          "minimum": 8.32,
           "samples": 24
         },
         {
           "state": "home-rtl",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "search-rtl",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         }
       ]
@@ -2308,6 +2576,7 @@
         "shop-saved screenshot/layout/semantics",
         "shop-pressed screenshot/layout/semantics",
         "wishlist action exposes selected state",
+        "forced-colors selected heart and control boundary",
         "filters screenshot/layout/semantics",
         "filters keyboard open/Escape/focus restoration",
         "filter-chip screenshot/layout/semantics",
@@ -2574,102 +2843,102 @@
       "contrast": [
         {
           "state": "home",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-keyboard-focus",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-hover",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "search",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "assistant",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 25
         },
         {
           "state": "menu",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "menu-expanded",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-grid",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-saved",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-pressed",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "filters",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "filter-chip",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 4
         },
         {
           "state": "product",
-          "minimum": 7.39,
+          "minimum": 8.24,
           "samples": 1
         },
         {
           "state": "product-actions",
-          "minimum": 7.39,
+          "minimum": 8.24,
           "samples": 1
         },
         {
           "state": "home-products",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-light",
-          "minimum": 6.74,
+          "minimum": 8.32,
           "samples": 24
         },
         {
           "state": "home-products-light",
-          "minimum": 6.74,
+          "minimum": 8.32,
           "samples": 24
         },
         {
           "state": "home-rtl",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "search-rtl",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         }
       ]
@@ -2694,6 +2963,7 @@
         "shop-saved screenshot/layout/semantics",
         "shop-pressed screenshot/layout/semantics",
         "wishlist action exposes selected state",
+        "forced-colors selected heart and control boundary",
         "filters screenshot/layout/semantics",
         "filters keyboard open/Escape/focus restoration",
         "filter-chip screenshot/layout/semantics",
@@ -2956,102 +3226,102 @@
       "contrast": [
         {
           "state": "home",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-keyboard-focus",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-hover",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "search",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "assistant",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 25
         },
         {
           "state": "menu",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "menu-expanded",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-grid",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-saved",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "shop-pressed",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "filters",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "filter-chip",
-          "minimum": 9.31,
+          "minimum": 6.51,
           "samples": 4
         },
         {
           "state": "product",
-          "minimum": 7.39,
+          "minimum": 8.24,
           "samples": 1
         },
         {
           "state": "product-actions",
-          "minimum": 7.39,
+          "minimum": 8.24,
           "samples": 1
         },
         {
           "state": "home-products",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "home-light",
-          "minimum": 6.74,
+          "minimum": 8.32,
           "samples": 24
         },
         {
           "state": "home-products-light",
-          "minimum": 6.74,
+          "minimum": 8.32,
           "samples": 24
         },
         {
           "state": "home-rtl",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         },
         {
           "state": "search-rtl",
-          "minimum": 7.39,
+          "minimum": 6.51,
           "samples": 24
         }
       ]

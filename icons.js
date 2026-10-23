@@ -36,13 +36,13 @@
     assistant:'<path d="M20 11.5a8 8 0 0 1-8 8H4l1.6-4A8 8 0 1 1 20 11.5Z"/><path d="M8.5 10h7m-7 4h4"/>',
     send:'<path d="M12 19.5v-15m-6 6 6-6 6 6"/>',
     chevron:'<path d="m7 9.5 5 5 5-5"/>',
-    shirt:'<path d="m8.5 4-5 3.5L6 12l2-1v9h8v-9l2 1 2.5-4.5-5-3.5a3.5 3.5 0 0 1-7 0Z"/>',
-    shoe:'<path d="M4 11c2.5.5 4.5-.5 5-3l3 3 5.5 2c2 .7 3 1.5 3 3V19h-17v-5.5L4 11Zm-.5 5h17M11 11l-1 2m3.5-1-1 2"/>',
-    beauty:'<rect x="7" y="8" width="10" height="12.5" rx="2.5"/><path d="M9 8V3.5h6V8M10 12h4m-4 5h4"/>',
+    shirt:'<path d="m8 4.5-5 3.5 2.5 4L8 10.5V20h8v-9.5l2.5 1.5L21 8l-5-3.5c-.5 1.8-2 2.75-4 2.75S8.5 6.3 8 4.5Z"/>',
+    shoe:'<path d="m3.5 11.5 1.5-4L8 9l1.5-3.5 3 4.5 5.5 2.5c2 .9 2.5 1.8 2.5 3.5v3h-17v-7.5ZM3.5 16h17M10.5 10l-1 2m3.5-.5-1 2"/>',
+    beauty:'<rect x="7.5" y="11" width="9" height="9.5" rx="1.5"/><path d="M9.5 11V6l5-2.5V11m-7 5.5h9"/>',
     device:'<rect x="3.5" y="4.5" width="17" height="12" rx="2"/><path d="M12 16.5v4m-4 0h8"/>',
     watch:'<rect x="6.5" y="6.5" width="11" height="11" rx="3.5"/><path d="m8.5 6.5.75-3h5.5l.75 3m-7 11 .75 3h5.5l.75-3M12 9.5v3l2 1"/>',
     lamp:'<path d="M8 4h8l3.5 9h-15L8 4Zm4 9v7m-4 0h8M17 13v3"/>',
-    sport:'<rect x="5" y="5.5" width="4" height="13" rx="1.5"/><rect x="15" y="5.5" width="4" height="13" rx="1.5"/><path d="M9 12h6M2.5 9v6m19-6v6"/>',
+    sport:'<rect x="5" y="5.5" width="3.5" height="13" rx="1.5"/><rect x="15.5" y="5.5" width="3.5" height="13" rx="1.5"/><path d="M8.5 12h7M2.5 9v6m19-6v6"/>',
     leaf:'<path d="M19.5 4.5c-7-1-14 1-14 7.5a6.5 6.5 0 0 0 6.5 6.5c6.5 0 8.5-7 7.5-14ZM4.5 20l10-10"/>'
   });
   const categories = Object.freeze({Fashion:'shirt',Shoes:'shoe',Electronics:'device',Beauty:'beauty',Accessories:'watch',Home:'lamp',Sports:'sport',Lifestyle:'leaf'});

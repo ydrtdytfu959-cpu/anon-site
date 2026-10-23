@@ -11,14 +11,28 @@
 <body>
   <main>
     <header class="intro">
-      <p class="eyebrow">ANOX / DESIGN REVIEW / 01</p>
-      <h1>Quiet detail.<br>Clear intention.</h1>
-      <div class="intro-row"><p>One original family of 35 icons. Refined geometry, a subtle glass edge, and controls that feel considered at every size.</p><button id="theme" class="review-button" type="button">Switch to light</button></div>
+      <p class="eyebrow">ANOX / DESIGN REVIEW / 02</p>
+      <h1>Precision.<br>With presence.</h1>
+      <div class="intro-row"><p>Graphite edges. Porcelain selected states. More expressive category silhouettes. The same AnoX storefront, with controls you can see and feel.</p><button id="theme" class="review-button" type="button">Switch to light</button></div>
       <div class="principles"><span>24-point grid</span><span>1.75 stroke</span><span>44px touch targets</span><span>Original · MIT licensed</span></div>
     </header>
+    <section aria-labelledby="focus-title">
+      <div class="section-heading"><div><p class="eyebrow">01 / THE DIFFERENCE, UP CLOSE</p><h2 id="focus-title">Small controls. A visible difference.</h2></div><span class="review-tag">Actual browser captures · offline fixtures</span></div>
+      <p class="description">Matched crops from the real storefront. Start with the first refinement to judge this second pass, or switch to the released baseline. At 100%, one image pixel equals one CSS pixel when space permits.</p>
+      <div class="toolbar">
+        <label>Compare from<select id="baseline"><option value="v1" selected>First refinement · PR #27</option><option value="before">Released baseline</option></select></label>
+        <label>Control<select id="focus-screen"><option value="desktop-header-controls">Desktop header</option><option value="mobile-header-controls">Mobile header</option><option value="mobile-navigation">Active mobile navigation</option><option value="desktop-category-controls">Search categories</option><option value="mobile-category-controls">Mobile categories</option><option value="desktop-wishlist-rest">Wishlist · resting</option><option value="desktop-wishlist-selected">Wishlist · saved</option><option value="mobile-product-actions">Product actions</option><option value="desktop-header-controls-light">Desktop · light</option><option value="mobile-header-controls-light">Mobile · light</option></select></label>
+        <label>Magnification<select id="magnification"><option value="1" selected>100% · normal size</option><option value="2">200% · detail</option></select></label>
+      </div>
+      <div class="focus-pair">
+        <figure><figcaption id="focus-before-label">First refinement</figcaption><div class="focus-stage"><img id="focus-before" alt="" width="280" height="140"></div></figure>
+        <figure><figcaption>Signature 2.0</figcaption><div class="focus-stage"><img id="focus-after" alt="" width="280" height="140"></div></figure>
+      </div>
+      <p class="caption" id="focus-caption"></p>
+    </section>
     <section aria-labelledby="comparison-title">
-      <div class="section-heading"><div><p class="eyebrow">01 / IN CONTEXT</p><h2 id="comparison-title">The same storefront. A clearer visual language.</h2></div><span class="review-tag">Local fixtures · not deployed</span></div>
-      <p class="description">Drag the divider to compare the released baseline with the candidate. Both use identical offline sample products and accounts; no live provider, payment, or customer service is contacted.</p>
+      <div class="section-heading"><div><p class="eyebrow">02 / IN CONTEXT</p><h2 id="comparison-title">The same storefront. A clearer visual language.</h2></div><span class="review-tag">Local fixtures · not deployed</span></div>
+      <p class="description">Drag the divider to compare your selected baseline with Signature 2.0. Both use identical offline sample products and accounts; no live provider, payment, or customer service is contacted.</p>
       <div class="toolbar">
         <label>Screen<select id="screen"><option value="home">Home</option><option value="search">Search</option><option value="shop">Catalog</option><option value="shop-saved">Saved state</option><option value="assistant">Assistant</option><option value="menu">Category menu</option><option value="product-actions">Product controls</option><option value="cart">Cart</option><option value="account">Account</option><option value="orders">Orders</option><option value="tracking">Tracking</option><option value="signin">Sign in</option><option value="request">Product inquiry</option><option value="home-light">Light theme</option><option value="home-rtl">Arabic layout</option></select></label>
         <label>Viewport<select id="viewport"><option value="desktop">Desktop · 1440px</option><option value="mobile">Mobile · 390px</option><option value="tablet">Tablet · 768px</option><option value="narrow">Narrow · 320px</option></select></label>
@@ -27,23 +41,23 @@
       <div class="comparison" id="comparison">
         <img id="before" src="evidence/before/chromium-desktop-home.png" alt="Released AnoX home before icon refinement" width="1440" height="960">
         <img id="after" src="evidence/after/chromium-desktop-home.png" alt="Candidate AnoX home with refined original icons" width="1440" height="960">
-        <span class="image-label before-label">BEFORE</span><span class="image-label after-label">AFTER</span><span class="divider" aria-hidden="true"></span>
+        <span class="image-label before-label" id="before-label">FIRST REFINEMENT</span><span class="image-label after-label">AFTER</span><span class="divider" aria-hidden="true"></span>
       </div>
       <label class="range-label" for="reveal"><span>Before</span><input id="reveal" type="range" min="0" max="100" value="50" aria-label="Amount of candidate screenshot revealed"><span>After</span></label>
-      <p class="caption">The logo, typography, content layer and business flows are preserved. The utility row gains height for the 44px theme-control target.</p>
+      <p class="caption">The logo, typography, content layer and business flows are preserved. Compare the first refinement or the released baseline using the selector above.</p>
     </section>
     <section aria-labelledby="glyph-title">
-      <div class="section-heading"><div><p class="eyebrow">02 / THE FAMILY</p><h2 id="glyph-title">Balanced at the size you use.</h2></div><label class="size-label">Icon size<select id="size"><option>16</option><option>20</option><option selected>24</option><option>32</option></select></label></div>
+      <div class="section-heading"><div><p class="eyebrow">03 / THE FAMILY</p><h2 id="glyph-title">Balanced at the size you use.</h2></div><label class="size-label">Icon size<select id="size"><option>16</option><option>20</option><option selected>24</option><option>32</option></select></label></div>
       <p class="description">These are the actual production-renderer glyphs, not a separate illustration. Category silhouettes are distinct; every stroke belongs to the same family.</p>
       <div id="atlas" class="atlas"></div>
     </section>
     <section aria-labelledby="states-title">
-      <div class="section-heading"><div><p class="eyebrow">03 / FEEL & FEEDBACK</p><h2 id="states-title">Small surfaces. Deliberate feedback.</h2></div></div>
+      <div class="section-heading"><div><p class="eyebrow">04 / FEEL & FEEDBACK</p><h2 id="states-title">Small surfaces. Deliberate feedback.</h2></div></div>
       <div class="state-grid">
         <div class="state-card"><button class="icon-btn" type="button" aria-label="Preview search control" id="sample-search"></button><p>Rest / hover / focus</p><small>Use Tab to inspect the focus ring.</small></div>
         <div class="state-card"><button class="v2-product-wishlist" type="button" aria-label="Toggle saved preview" aria-pressed="false" id="sample-heart"></button><p>Saved state</p><small>Click to toggle; shape and color both respond.</small></div>
         <div class="state-card"><button class="icon-btn" type="button" disabled aria-label="Unavailable preview action" id="sample-disabled"></button><p>Unavailable</p><small>Native disabled semantics remain intact.</small></div>
-        <div class="state-card"><span class="v2-action-icon" id="sample-account"></span><p>Quiet depth</p><small>A soft rim, one highlight, a restrained shadow.</small></div>
+        <div class="state-card"><span class="v2-action-icon" id="sample-account"></span><p>Quiet depth</p><small>Directional edge light, a recessed lower edge, and a stable press response.</small></div>
       </div>
       <p class="caption" id="state-feedback" role="status">This review page has no connection to commerce or customer services.</p>
     </section>
