@@ -16,7 +16,7 @@ jobs:
       - run: npm run check
       - run: npm ci --ignore-scripts
       - run: npm test
-      - run: npx playwright install --with-deps chromium firefox
+      - run: npx playwright install --with-deps chromium firefox webkit
       - run: npm run test:browser
         env:
-          ENGINES: chromium,firefox
+          ENGINES: chromium,firefox,webkit

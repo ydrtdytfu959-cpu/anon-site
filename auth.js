@@ -29,7 +29,7 @@
     function refresh(){
       if(refreshing)return refreshing;
       const session=state.session,epoch=generation;if(!session?.refreshToken)return Promise.reject(fail('UNAUTHORIZED'));
-      const pending=(async()=>{const result=await cognito('InitiateAuth',{AuthFlow:'REFRESH_TOKEN_AUTH',ClientId:config.clientId,AuthParameters:{REFRESH_TOKEN:session.refreshToken}});if(epoch!==generation||state.session!==session)throw fail('STALE_SESSION');const next=from(result,session.refreshToken);write(next);return next;})();
+      const pending=(async()=>{try{const result=await cognito('InitiateAuth',{AuthFlow:'REFRESH_TOKEN_AUTH',ClientId:config.clientId,AuthParameters:{REFRESH_TOKEN:session.refreshToken}});if(epoch!==generation||state.session!==session)throw fail('STALE_SESSION');const next=from(result,session.refreshToken);write(next);return next;}catch(error){if(epoch===generation&&state.session===session&&error.code==='NotAuthorizedException')clear();throw error;}})();
       refreshing=pending;const done=()=>{if(refreshing===pending)refreshing=null;};pending.then(done,done);return pending;
     }
     async function validSession(){if(!state.session)return null;if(state.session.expiresAt>Date.now()+15000)return state.session;const epoch=generation;try{return await refresh();}catch(e){if(epoch===generation&&['NotAuthorizedException','UNAUTHORIZED'].includes(e.code))clear();throw e;}}

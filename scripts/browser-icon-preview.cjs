@@ -40,9 +40,21 @@ async function run(name){
     await page.locator('#sample-heart').click();assert.equal(await page.locator('#sample-heart').getAttribute('aria-pressed'),'true');
     assert.equal(await page.locator('#sample-disabled').isDisabled(),true);
     await page.locator('#theme').click();assert.equal(await page.locator('html').getAttribute('data-theme'),'light');
-    for(const width of [1440,768,390,320]){await page.setViewportSize({width,height:844});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'preview fits '+width);}
+    async function assertFits(label){
+      const layout=await page.evaluate(()=>({width:innerWidth,scrollWidth:document.documentElement.scrollWidth,
+        overflowing:[...document.querySelectorAll('main,.toolbar,.toolbar label')].filter(n=>n.scrollWidth>n.clientWidth).map(n=>({tag:n.tagName,className:n.className,client:n.clientWidth,scroll:n.scrollWidth}))}));
+      assert.ok(layout.scrollWidth<=layout.width,`${label}: ${JSON.stringify(layout)}`);
+    }
+    for(const width of [1440,768,390,320]){await page.setViewportSize({width,height:844});await assertFits('preview fits '+width);}
+    // Native select metrics vary across platforms. Exercise larger control text
+    // at the narrowest width so macOS also catches the Linux WebKit failure.
+    const largerControls=await page.addStyleTag({content:'.toolbar select{font-size:16px}'});
+    await assertFits('preview fits 320 with larger native control text');
+    await largerControls.evaluate(n=>n.remove());
+    const undersized=await page.locator('select').evaluateAll(nodes=>nodes.map(n=>({id:n.id,height:n.getBoundingClientRect().height})).filter(n=>n.height<44));
+    assert.deepEqual(undersized,[],'native select touch targets remain at least 44px high');
     assert.deepEqual(errors,[]);assert.deepEqual(bad,[]);assert.deepEqual(unexpected,[]);assert.deepEqual(await page.evaluate(()=>window.__csp),[]);
-    console.log(`${name}: ${comparisons} review comparisons, ${focusComparisons} matched close-up/scale checks, slider endpoints, 35 glyphs, saved/disabled/theme states and four viewport layouts passed`);
+    console.log(`${name}: ${comparisons} review comparisons, ${focusComparisons} matched close-up/scale checks, slider endpoints, 35 glyphs, saved/disabled/theme states, four viewport layouts and larger native-control text passed`);
   }finally{await browser.close();}
 }
 (async()=>{for(const name of (process.env.ENGINES||'chromium').split(','))await run(name);})().catch(e=>{console.error(e);process.exitCode=1;});
