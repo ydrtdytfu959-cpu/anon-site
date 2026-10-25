@@ -86,3 +86,34 @@ test('quote admission rejects duplicate selections regardless of quantity or opt
  await send([first,{...duplicate,merchantDomain:'other.example'}]);
  await send([first,{...duplicate,condition:'used'}]);assert.equal(count,2,'distinct merchant and condition selections remain valid');
 });
+
+test('an expired refresh session clears account state after an authenticated request is rejected',async()=>{
+ const actions=[],auth=client(async(url,options)=>{
+  actions.push(url===config.cognitoEndpoint?'refresh':'account');
+  return url===config.cognitoEndpoint?Response.json({__type:'NotAuthorizedException'},{status:400}):Response.json({message:'Unauthorized'},{status:401});
+ });
+ auth.state.user={displayName:'Fixture user'};auth.state.orders=[{orderId:'fixture-order'}];auth.state.loadStatus='ready';
+ await assert.rejects(auth.api('/me'),{code:'NotAuthorizedException'});
+ assert.deepEqual(actions,['account','refresh']);
+ assert.equal(auth.state.session,null);assert.equal(auth.state.user,null);assert.deepEqual(auth.state.orders,[]);assert.equal(auth.state.loadStatus,'idle');
+});
+
+test('transient refresh failure preserves the current account for a later retry',async()=>{
+ const auth=client(async(url)=>url===config.cognitoEndpoint?Response.json({__type:'TooManyRequestsException'},{status:429}):Response.json({message:'Unauthorized'},{status:401}));
+ await assert.rejects(auth.api('/me'),{code:'TooManyRequestsException'});
+ assert.equal(auth.state.session.idToken,'id-token');
+});
+
+test('a rejected earlier refresh cannot clear a newly signed-in account',async()=>{
+ let rejectRefresh,started;const begun=new Promise(resolve=>started=resolve);
+ const auth=client(async(url,options)=>{
+  if(url!==config.cognitoEndpoint)return Response.json({message:'Unauthorized'},{status:401});
+  const input=JSON.parse(options.body);
+  if(input.AuthFlow==='REFRESH_TOKEN_AUTH'){started();return new Promise(resolve=>rejectRefresh=resolve);}
+  return Response.json({AuthenticationResult:{IdToken:'next-id',AccessToken:'next-access',RefreshToken:'next-refresh',ExpiresIn:3600}});
+ });
+ const pending=auth.api('/me');await begun;await auth.signIn('next@example.test','fixture-password');
+ rejectRefresh(Response.json({__type:'NotAuthorizedException'},{status:400}));
+ await assert.rejects(pending,{code:'NotAuthorizedException'});
+ assert.equal(auth.state.session.idToken,'next-id');
+});

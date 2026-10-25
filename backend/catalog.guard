@@ -32,10 +32,19 @@ rule detail_route_scope {
 
 rule explicit_spending_policy {
   Parameters.BudgetMonth.Default == ''
+  Parameters.NextBudgetMonth.Default == ''
   Parameters.FreeSearchMonthlyCredits.Default == 0
   Parameters.PaidUsageEnabled.Default == 'false'
   Parameters.PaidSearchMonthlyCredits.Default == 0
   Parameters.SearchDailyLimit.Default == 0
   Parameters.DetailMonthlyLimit.Default == 0
   Parameters.DetailDailyLimit.Default == 0
+}
+
+rule private_budget_monitor {
+  Resources.BudgetMonitorPermission.Properties.Principal == 'events.amazonaws.com'
+  Resources.BudgetMonitorPermission.Properties.SourceAccount is_struct
+  Resources.BudgetMonitorPermission.Properties.SourceArn is_struct
+  Resources.BudgetMonitorSchedule.Properties.ScheduleExpression == 'rate(1 hour)'
+  Resources.BudgetMonitorMissingAlarm.Properties.TreatMissingData == 'breaching'
 }

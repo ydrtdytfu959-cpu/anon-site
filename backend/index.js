@@ -481,9 +481,22 @@ function createHandler({store, upstream, upstreamDetail = upstream?.detail, now 
     }
   };
 }
-function createBudget({store, now = Date.now, budgetMonth = '', freeSearchMonthlyCredits = 0, paidSearchMonthlyCredits = 0, paidUsageEnabled = false,
+function budgetMonthStatus({budgetMonth = '', nextBudgetMonth = '', now = Date.now} = {}) {
+  const valid = value => typeof value === 'string' && (value === '' || /^20[0-9]{2}-(?:0[1-9]|1[0-2])$/.test(value));
+  const endOf = month => Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5)), 1);
+  if (!valid(budgetMonth) || !valid(nextBudgetMonth) || (nextBudgetMonth && (!budgetMonth || new Date(endOf(budgetMonth)).toISOString().slice(0, 7) !== nextBudgetMonth))) throw Error('INVALID_BUDGET_CONFIG');
+  const time = now();
+  if (!Number.isFinite(time)) throw Error('INVALID_BUDGET_CONFIG');
+  const currentMonth = new Date(time).toISOString().slice(0, 7), lastMonth = nextBudgetMonth || budgetMonth;
+  const allowed = !!budgetMonth && [budgetMonth, nextBudgetMonth].includes(currentMonth);
+  const expiresAt = lastMonth ? endOf(lastMonth) : null;
+  const status = !budgetMonth ? 'unconfigured' : currentMonth < budgetMonth ? 'not_started' : !allowed ? 'expired' : expiresAt - time <= 7 * 86400000 ? 'expiring' : 'active';
+  return {status, allowed, currentMonth, budgetMonth, nextBudgetMonth, expiresAt:expiresAt === null ? null : new Date(expiresAt).toISOString()};
+}
+function createBudget({store, now = Date.now, budgetMonth = '', nextBudgetMonth = '', metric = () => {}, freeSearchMonthlyCredits = 0, paidSearchMonthlyCredits = 0, paidUsageEnabled = false,
   searchDailyLimit = 0, detailMonthlyLimit = 0, detailDailyLimit = 0, totalDailyLimit = 1000, perSecondLimit = 5}) {
   const bounded = (value, max) => Number.isSafeInteger(value) && value >= 0 && value <= max;
+  budgetMonthStatus({budgetMonth, nextBudgetMonth, now});
   if (typeof budgetMonth !== 'string' || (budgetMonth !== '' && !/^20[0-9]{2}-(?:0[1-9]|1[0-2])$/.test(budgetMonth)) ||
     !bounded(freeSearchMonthlyCredits, 1000) || !bounded(paidSearchMonthlyCredits, 1000000) || typeof paidUsageEnabled !== 'boolean' ||
     (paidSearchMonthlyCredits > 0 && !paidUsageEnabled) || !bounded(detailMonthlyLimit, 310000) ||
@@ -494,7 +507,11 @@ function createBudget({store, now = Date.now, budgetMonth = '', freeSearchMonthl
     const time = now(), day = new Date(time).toISOString().slice(0, 10), month = day.slice(0, 7), second = Math.floor(time / 1000);
     // Allocation is a reviewed application budget, never an inferred provider balance.
     // Requiring renewal prevents silently assuming a new free allowance at rollover.
-    if (!budgetMonth || budgetMonth !== month) fail(503, 'UPSTREAM_BUDGET_UNAVAILABLE');
+    const status = budgetMonthStatus({budgetMonth, nextBudgetMonth, now:() => time});
+    if (!status.allowed) {
+      try {metric('budget_month_unavailable', 1);} catch {}
+      fail(503, 'UPSTREAM_BUDGET_UNAVAILABLE');
+    }
     const monthlyLimit = kind === 'search' ? freeSearchMonthlyCredits + paidSearchMonthlyCredits : detailMonthlyLimit;
     const dailyLimit = kind === 'search' ? searchDailyLimit : detailDailyLimit;
     if (!monthlyLimit || !dailyLimit || !totalDailyLimit) fail(429, 'UPSTREAM_BUDGET_EXCEEDED');
@@ -645,14 +662,25 @@ function createUpstream({fetch: transport = globalThis.fetch, getSecret, reserve
 }
 function createMetric({log = line => console.log(line), now = Date.now, namespace = 'AnoX/Catalog'} = {}) {
   if (!['AnoX/Catalog','AnoX/Staging/Catalog'].includes(namespace)) throw Error('INVALID_METRIC_CONFIG');
-  const names = new Set(['cache_hit', 'cache_miss', 'upstream_request', 'upstream_failure', 'cache_contention', 'cache_error', 'search_credit_request', 'product_detail_request', 'detail_fresh', 'detail_coalesced', 'presentation_fallback', 'catalog_presentation_fallback', 'budget_exceeded', 'rate_limited', 'budget_error']);
-  return name => {
-    if (!names.has(name)) return;
-    log(JSON.stringify({_aws: {Timestamp: now(), CloudWatchMetrics: [{Namespace: namespace, Dimensions: [['Service']], Metrics: [{Name: name, Unit: 'Count'}]}]}, Service: 'Channel3Catalog', event: name, [name]: 1}));
+  const names = new Set(['cache_hit', 'cache_miss', 'upstream_request', 'upstream_failure', 'cache_contention', 'cache_error', 'search_credit_request', 'product_detail_request', 'detail_fresh', 'detail_coalesced', 'presentation_fallback', 'catalog_presentation_fallback', 'budget_exceeded', 'rate_limited', 'budget_error', 'budget_month_unavailable', 'budget_month_expiring', 'budget_monitor_check']);
+  return (name, value = 1) => {
+    if (!names.has(name) || ![0, 1].includes(value)) return;
+    log(JSON.stringify({_aws: {Timestamp: now(), CloudWatchMetrics: [{Namespace: namespace, Dimensions: [['Service']], Metrics: [{Name: name, Unit: 'Count'}]}]}, Service: 'Channel3Catalog', event: name, [name]: value}));
   };
 }
 let runtimeHandler;
 async function handler(event) {
+  // Private EventBridge target payload; HTTP proxy events never enter diagnostics.
+  if (event && Object.keys(event).length === 1 && event.operation === 'budget-status') {
+    const metric = createMetric({namespace:process.env.METRIC_NAMESPACE ?? 'AnoX/Catalog'});
+    let status;
+    try {status = budgetMonthStatus({budgetMonth:process.env.BUDGET_MONTH ?? '', nextBudgetMonth:process.env.NEXT_BUDGET_MONTH ?? ''});}
+    catch {status = {status:'invalid', allowed:false};}
+    metric('budget_month_unavailable', status.allowed ? 0 : 1);
+    metric('budget_month_expiring', status.status === 'expiring' ? 1 : 0);
+    metric('budget_monitor_check');
+    return status;
+  }
   if (!runtimeHandler) {
     // SDK clients are reused by the warm runtime. Secret values are resolved only
     // inside this deployed application and never included in source or responses.
@@ -675,7 +703,7 @@ async function handler(event) {
         if (!/^(?:0|[1-9][0-9]*)$/.test(raw)) throw Error('INVALID_BUDGET_CONFIG');
         return Number(raw);
       };
-      reserve = createBudget({store, budgetMonth:process.env.BUDGET_MONTH ?? '', freeSearchMonthlyCredits:number('FREE_SEARCH_MONTHLY_CREDITS'),
+      reserve = createBudget({store, metric, budgetMonth:process.env.BUDGET_MONTH ?? '', nextBudgetMonth:process.env.NEXT_BUDGET_MONTH ?? '', freeSearchMonthlyCredits:number('FREE_SEARCH_MONTHLY_CREDITS'),
         paidSearchMonthlyCredits:number('PAID_SEARCH_MONTHLY_CREDITS'), paidUsageEnabled:process.env.PAID_USAGE_ENABLED === 'true', searchDailyLimit:number('SEARCH_DAILY_LIMIT'),
         detailMonthlyLimit:number('DETAIL_MONTHLY_LIMIT'), detailDailyLimit:number('DETAIL_DAILY_LIMIT'), totalDailyLimit:number('TOTAL_DAILY_LIMIT', 1000), perSecondLimit:number('UPSTREAM_PER_SECOND_LIMIT', 5)});
     }
@@ -685,4 +713,4 @@ async function handler(event) {
   }
   return runtimeHandler(event);
 }
-module.exports = {handler, createHandler, createUpstream, createDynamoStore, createMetric, createBudget};
+module.exports = {handler, createHandler, createUpstream, createDynamoStore, createMetric, createBudget, budgetMonthStatus};

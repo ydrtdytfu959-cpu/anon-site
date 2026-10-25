@@ -9,7 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3">
   <meta name="robots" content="index,follow">
   <meta name="description" content="AnoX — اكتشف المنتجات، وقارن التفاصيل وتكلفة وصولها التقديرية إلى الجزائر.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-Lyfp6JQ/K+BjXoqQ/5VdcIrvoAzMMtLFrL+8tfpLxJQ=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — U.S. products for Algeria">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-J37E7d/yDB4ZZz+OzAFCtHGI+CYLxqlvXALQqnMW2dU=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — U.S. products for Algeria">
   <meta property="og:description" content="AnoX LLC — discover U.S. products and discuss purchasing and fulfillment to Algeria.">
   <meta property="og:url" content="https://anox.app/">
   <title>AnoX — اختيارات أبعد. تكلفة أوضح.</title>
@@ -2386,7 +2386,7 @@ html[data-theme="dark"]{
     function refresh(){
       if(refreshing)return refreshing;
       const session=state.session,epoch=generation;if(!session?.refreshToken)return Promise.reject(fail('UNAUTHORIZED'));
-      const pending=(async()=>{const result=await cognito('InitiateAuth',{AuthFlow:'REFRESH_TOKEN_AUTH',ClientId:config.clientId,AuthParameters:{REFRESH_TOKEN:session.refreshToken}});if(epoch!==generation||state.session!==session)throw fail('STALE_SESSION');const next=from(result,session.refreshToken);write(next);return next;})();
+      const pending=(async()=>{try{const result=await cognito('InitiateAuth',{AuthFlow:'REFRESH_TOKEN_AUTH',ClientId:config.clientId,AuthParameters:{REFRESH_TOKEN:session.refreshToken}});if(epoch!==generation||state.session!==session)throw fail('STALE_SESSION');const next=from(result,session.refreshToken);write(next);return next;}catch(error){if(epoch===generation&&state.session===session&&error.code==='NotAuthorizedException')clear();throw error;}})();
       refreshing=pending;const done=()=>{if(refreshing===pending)refreshing=null;};pending.then(done,done);return pending;
     }
     async function validSession(){if(!state.session)return null;if(state.session.expiresAt>Date.now()+15000)return state.session;const epoch=generation;try{return await refresh();}catch(e){if(epoch===generation&&['NotAuthorizedException','UNAUTHORIZED'].includes(e.code))clear();throw e;}}
@@ -6748,12 +6748,12 @@ function renderChannel3Product(force=false){
   if(!id){$('main').innerHTML=pageShell(tx('رابط المنتج غير صالح','Invalid product link'),'',routeLink('shop',navLabel('shop'),'btn secondary'));return;}
   if(force||key!==detailView.key){
     detailView.controller?.abort();const controller=new AbortController();let options;
-    try{options=detailOptions(route.params);}catch{$('main').innerHTML=pageShell(tx('خيارات غير صالحة','Invalid product options'),'',routeLink('product/channel3/'+id,tx('إعادة فتح المنتج','Reopen product'),'btn secondary'));return;}
+    try{options=detailOptions(route.params);}catch{leaveProductDetail();$('main').innerHTML=pageShell(tx('خيارات غير صالحة','Invalid product options'),'',routeLink('product/channel3/'+id,tx('إعادة فتح المنتج','Reopen product'),'btn secondary'));return;}
     let editing=detailView.id===id?detailView.editing:null;
     if(route.params.has('edit')&&route.params.has('line')){
       const index=Number(route.params.get('line'));const line=selectionCart.state.lines[index];
       if(route.params.get('edit')===selectionCart.state.revision&&Number.isSafeInteger(index)&&line)editing={key:window.AnoXCommerce.lineKey(line),expected:clone(line)};
-      else if(!editing){$('main').innerHTML=pageShell(tx('تغيّرت السلة','Cart changed'),tx('راجع الاختيار المحفوظ قبل تعديله.','Review the saved selection before editing it.'),routeLink('cart',navLabel('cart'),'btn primary'));return;}
+      else if(!editing){leaveProductDetail();$('main').innerHTML=pageShell(tx('تغيّرت السلة','Cart changed'),tx('راجع الاختيار المحفوظ قبل تعديله.','Review the saved selection before editing it.'),routeLink('cart',navLabel('cart'),'btn primary'));return;}
     }
     const same=detailView.id===id;
     detailView={key,id,status:'loading',detail:null,options,quantity:editing?.expected.quantity||(same?detailView.quantity:1),view:0,merchant:route.params.get('merchant')||'',condition:route.params.get('condition')||null,editing,controller,error:'',busy:false};
@@ -6880,7 +6880,7 @@ document.addEventListener('click',event=>{
 });
 document.addEventListener('change',event=>{
   const node=event.target;
-  if(node.matches('[data-commerce-option]')){if(!node.value)return;const value=detailView.detail?.variants.options.find(option=>option.name===node.dataset.commerceOption)?.values.find(value=>value.label===node.value);if(!value)return;if(value.productId&&value.productId!==detailView.id)detailNavigateOptions({...effectiveDetailOptions(),[node.dataset.commerceOption]:node.value},value.productId);else detailNavigateOptions({...effectiveDetailOptions(),[node.dataset.commerceOption]:node.value});}
+  if(node.matches('[data-commerce-option]')){if(!node.value){renderDetailContent('#'+node.id);return;}const value=detailView.detail?.variants.options.find(option=>option.name===node.dataset.commerceOption)?.values.find(value=>value.label===node.value);if(!value)return;if(value.productId&&value.productId!==detailView.id)detailNavigateOptions({...effectiveDetailOptions(),[node.dataset.commerceOption]:node.value},value.productId);else detailNavigateOptions({...effectiveDetailOptions(),[node.dataset.commerceOption]:node.value});}
   if(node.matches('[data-commerce-merchant]')&&node.value!==''){const offer=detailView.detail?.offers[Number(node.value)];if(offer){detailView.merchant=offer.merchantDomain;detailView.condition=offer.condition;const route=currentRoute(),params=new URLSearchParams(route.params);params.set('merchant',offer.merchantDomain);if(offer.condition===null)params.delete('condition');else params.set('condition',offer.condition);detailView.key=route.path+'?'+params.toString();history.replaceState(history.state,'','#'+detailView.key);renderDetailContent('#commerce-merchant');}}
   if(node.matches('[data-commerce-quantity]')){const quantity=Number(node.value);if(whole(quantity,1,20))detailView.quantity=quantity;else {node.value=detailView.quantity;toast(commerceErrorMessage('invalid_selection'),'warning');}}
   if(node.matches('[data-commerce-cart-quantity]')){const line=selectionCart.state.lines[Number(node.dataset.commerceCartQuantity)];if(line)void selectionCart.update(window.AnoXCommerce.lineKey(line),{quantity:Number(node.value)},line).catch(error=>{selectionCart.reload();toast(commerceErrorMessage(error.code),'warning');});}

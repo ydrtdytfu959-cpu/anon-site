@@ -27,6 +27,63 @@ test('daily rollover preserves the monthly counter and month rollover requires r
   assert.equal(seen[0].counters[0].key,seen[1].counters[0].key);assert.notEqual(seen[0].counters[1].key,seen[1].counters[1].key);
   time=Date.parse('2026-11-01');await assert.rejects(reserve('search'),e=>e.code==='UPSTREAM_BUDGET_UNAVAILABLE');assert.equal(seen.length,2);await assert.rejects(reserve('unknown'));
 });
+
+test('explicit next-month approval preserves October and permits only November without changing caps',async()=>{
+  let time=Date.parse('2026-10-31T23:59:59.999Z');const seen=[];
+  const reserve=budget({nextBudgetMonth:'2026-11',now:()=>time,freeSearchMonthlyCredits:500,searchDailyLimit:60,detailMonthlyLimit:200,store:{reserve:async value=>seen.push(value)}});
+  await reserve('search');time++;await reserve('search');await reserve('detail');
+  assert.deepEqual(seen.map(row=>row.counters[0].key),['budget#month#2026-10#search','budget#month#2026-11#search','budget#month#2026-11#detail']);
+  assert.deepEqual(seen.map(row=>row.counters[0].limit),[500,500,200]);assert.deepEqual(seen.slice(0,2).map(row=>row.counters[1].limit),[60,60]);
+  time=Date.parse('2026-12-01T00:00:00.000Z');await assert.rejects(reserve('search'),e=>e.code==='UPSTREAM_BUDGET_UNAVAILABLE');assert.equal(seen.length,3);
+});
+
+test('next month is optional but must be the exact approved successor',()=>{
+  for(const patch of [{nextBudgetMonth:'2026-12'},{nextBudgetMonth:'2026-10'},{nextBudgetMonth:'2026-09'},{nextBudgetMonth:'2026-13'},{nextBudgetMonth:'2026-11 '},{nextBudgetMonth:null},{budgetMonth:'',nextBudgetMonth:'2026-11'}])assert.throws(()=>budget(patch),/INVALID_BUDGET_CONFIG/);
+});
+
+test('renewal uses UTC year and leap-year boundaries without replacing historical counters',async()=>{
+  for(const [current,next,last] of [['2026-12','2027-01','2026-12-31'],['2028-02','2028-03','2028-02-29'],['2027-02','2027-03','2027-02-28']]){
+    let time=Date.parse(last+'T23:59:59.999Z');const seen=[],reserve=budget({budgetMonth:current,nextBudgetMonth:next,now:()=>time,store:{reserve:async row=>seen.push(row)}});
+    await reserve('search');time++;await reserve('search');
+    assert.equal(seen[0].counters[0].key,'budget#month#'+current+'#search');assert.equal(seen[1].counters[0].key,'budget#month#'+next+'#search');
+    assert.equal(seen[0].counters[1].key,'budget#'+last+'#search');assert.equal(seen[1].counters[1].key,'budget#'+next+'-01#search');
+    assert.equal(seen[0].counters[0].expiresAt,Date.parse(next+'-01T00:00:00.000Z')/1000+90*86400);
+  }
+});
+
+test('month status warns seven UTC days before the last approved month expires',()=>{
+  assert.equal(typeof api.budgetMonthStatus,'function');
+  const status=(at,patch={})=>api.budgetMonthStatus({budgetMonth:'2026-10',now:()=>Date.parse(at),...patch});
+  assert.equal(status('2026-10-24T23:59:59.999Z').status,'active');
+  assert.equal(status('2026-10-25T00:00:00.000Z').status,'expiring');
+  assert.equal(status('2026-10-31T23:59:59.999Z').status,'expiring');
+  assert.equal(status('2026-11-01T00:00:00.000Z').status,'expired');
+  assert.equal(status('2026-10-31T23:59:59.999Z',{nextBudgetMonth:'2026-11'}).status,'active');
+  assert.equal(status('2026-11-24T00:00:00.000Z',{nextBudgetMonth:'2026-11'}).status,'expiring');
+  assert.equal(status('2026-09-30T23:59:59.999Z').status,'not_started');
+  assert.equal(status('2026-10-01T00:00:00.000Z',{budgetMonth:''}).status,'unconfigured');
+});
+
+test('expired month emits a dedicated metric while preventing both upstream operation classes',async()=>{
+  const metrics=[];let calls=0;const reserve=budget({now:()=>Date.parse('2026-11-01T00:00:00.000Z'),metric:(name,value)=>metrics.push([name,value]),store:{reserve:async()=>calls++}});
+  for(const kind of ['search','detail'])await assert.rejects(reserve(kind),e=>e.code==='UPSTREAM_BUDGET_UNAVAILABLE');
+  assert.equal(calls,0);assert.ok(metrics.some(([name,value])=>name==='budget_month_unavailable'&&value===1));
+});
+
+test('private scheduled month check needs no AWS clients, provider credentials or counter access',async()=>{
+  const fs=require('node:fs'),vm=require('node:vm'),source=fs.readFileSync(require.resolve('../backend/index.js'),'utf8');
+  const logs=[],context={module:{exports:{}},console:{log:line=>logs.push(JSON.parse(line))},process:{env:{BUDGET_MONTH:'2026-10',NEXT_BUDGET_MONTH:'2026-11'}},Date:class extends Date{static now(){return Date.parse('2026-11-01T00:00:00.000Z');}},require:name=>{assert.ok(!name.startsWith('@aws-sdk/'),'monitor must not construct AWS clients');return require(name);}};
+  vm.runInNewContext(source,context);const result=await context.module.exports.handler({operation:'budget-status'});
+  assert.equal(result.status,'active');assert.equal(logs.find(row=>row.event==='budget_month_unavailable')?.budget_month_unavailable,0);
+  assert.equal(logs.find(row=>row.event==='budget_monitor_check')?.budget_monitor_check,1);assert.ok(!JSON.stringify(result).includes('secret'));
+});
+
+test('public HTTP requests cannot invoke private month diagnostics',async()=>{
+  const fs=require('node:fs'),vm=require('node:vm'),source=fs.readFileSync(require.resolve('../backend/index.js'),'utf8');
+  const logs=[];class Client{}const context={module:{exports:{}},console:{log:line=>logs.push(JSON.parse(line))},process:{env:{}},require:name=>name.startsWith('@aws-sdk/')?{DynamoDBClient:Client,SecretsManagerClient:Client}:require(name)};
+  vm.runInNewContext(source,context);const result=await context.module.exports.handler({operation:'budget-status',requestContext:{http:{method:'GET'}},rawPath:'/catalog/search'});
+  assert.equal(result.status,undefined);assert.ok(!logs.some(row=>row.event==='budget_monitor_check'));
+});
 test('Dynamo reserves all four counters atomically with one idempotent transaction',async()=>{
   class Command{constructor(input){this.input=input;}}const calls=[],store=api.createDynamoStore({table:'T',commands:{TransactWriteItemsCommand:Command},client:{send:async command=>{calls.push(command.input);return {};}}});
   await budget({store})('search');assert.equal(calls.length,1);assert.equal(calls[0].TransactItems.length,4);assert.ok(calls[0].ClientRequestToken);
