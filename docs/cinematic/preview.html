@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="referrer" content="no-referrer">
+  <title>AnoX · Cinematic Commerce 3.0 review</title>
+  <link rel="stylesheet" href="preview.css">
+  <script src="preview.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#comparison">Skip to comparison</a>
+  <div class="review-shell">
+    <header class="masthead">
+      <a class="wordmark" href="#" aria-label="AnoX design review home">AnoX<span>Design review</span></a>
+      <span class="edition">Cinematic Commerce <b>3.0</b></span>
+    </header>
+    <main>
+      <section class="introduction" aria-labelledby="review-title">
+        <div>
+          <p class="eyebrow"><span></span> Working interface · owner review</p>
+          <h1 id="review-title">Cinematic commerce.<br><span>Built around the product.</span></h1>
+          <p class="lead">Explore the same AnoX journeys before and after the visual transformation. These are screenshots of the functioning storefront, captured at matching viewport sizes.</p>
+        </div>
+        <aside class="disclosure" aria-label="Evidence context">
+          <span class="disclosure-label">About this evidence</span>
+          <p>Original synthetic product art, sample offers and a preview account. <strong>No real inventory or customer data.</strong></p>
+          <p>Browser rendering verifies presentation. These captures do not establish production API readiness or authorize deployment.</p>
+          <a id="interactive-preview" href="/preview/" hidden>Open interactive offline preview <span aria-hidden="true">↗</span></a>
+          <p id="local-preview-note">For interactive exploration, start <code>node scripts/serve-cinematic.cjs</code> and open this review on localhost.</p>
+        </aside>
+      </section>
+
+      <section id="comparison" class="comparison" aria-labelledby="comparison-title" tabindex="-1">
+        <div class="comparison-heading">
+          <div><p class="eyebrow">01 / Compare</p><h2 id="comparison-title">Product detail</h2></div>
+          <p id="scene-description">The flagship product composition, with supplied merchant information and real selection controls.</p>
+        </div>
+        <form class="toolbar" aria-label="Comparison settings">
+          <label class="scene-select" for="scene"><span>Screen &amp; state</span><select id="scene" name="scene">
+            <optgroup label="Product detail">
+              <option value="pdp">Product detail · dark</option>
+              <option value="pdp-actions">Product detail · controls</option>
+              <option value="pdp-light">Product detail · light</option>
+              <option value="pdp-rtl">Product detail · Arabic RTL</option>
+              <option value="pdp-long">Product detail · long title</option>
+              <option value="pdp-missing">Product detail · missing image</option>
+              <option value="pdp-stale">Product detail · expired evidence</option>
+              <option value="pdp-footwear">Product detail · footwear</option>
+              <option value="pdp-beauty">Product detail · beauty</option>
+            </optgroup>
+            <optgroup label="Customer journeys">
+              <option value="home">Homepage · dark</option>
+              <option value="home-light">Homepage · light</option>
+              <option value="home-rtl">Homepage · Arabic RTL</option>
+              <option value="shop">Discovery</option>
+              <option value="search">Search</option>
+              <option value="wishlist">Wishlist</option>
+              <option value="cart">Cart</option>
+              <option value="account">Account</option>
+              <option value="signin">Sign in</option>
+              <option value="request">Service inquiry</option>
+              <option value="orders">Orders</option>
+              <option value="assistant">Assistant</option>
+            </optgroup>
+          </select></label>
+          <fieldset><legend>Viewport</legend><div class="segmented" id="viewport-controls">
+            <button type="button" data-viewport="mobile" aria-pressed="true">Mobile <span>390</span></button>
+            <button type="button" data-viewport="desktop" aria-pressed="false">Desktop <span>1440</span></button>
+          </div></fieldset>
+          <fieldset><legend>Compare</legend><div class="segmented" id="mode-controls">
+            <button type="button" data-mode="both" aria-pressed="true">Both</button>
+            <button type="button" data-mode="before" aria-pressed="false">Before</button>
+            <button type="button" data-mode="after" aria-pressed="false">After</button>
+          </div></fieldset>
+          <button type="button" id="actual-size" class="size-toggle" aria-pressed="false">Actual size <span aria-hidden="true">↔</span></button>
+        </form>
+        <p id="comparison-status" class="comparison-status" role="status" aria-live="polite">Loading the paired captures…</p>
+        <div id="comparison-images" class="comparison-images" data-viewport="mobile" data-mode="both">
+          <figure id="before-figure" class="capture-panel">
+            <figcaption><span class="capture-version"><i aria-hidden="true"></i>Before<span>Signature 2.0</span></span><a id="before-link" href="evidence/baseline/chromium-mobile-pdp.png" target="_blank" rel="noopener">Open PNG <span aria-hidden="true">↗</span></a></figcaption>
+            <div class="image-scroll"><img id="before-image" src="evidence/baseline/chromium-mobile-pdp.png" alt="Before: AnoX product detail at 390 pixels wide, using synthetic fixtures" width="390" height="844" decoding="async"><p class="image-error" id="before-error" hidden>This baseline capture is not available yet. Select another screen; a missing capture is not a verified comparison.</p></div>
+            <p class="capture-detail" id="before-detail">390 × 844 · Chromium · synthetic fixtures</p>
+          </figure>
+          <figure id="after-figure" class="capture-panel">
+            <figcaption><span class="capture-version"><i aria-hidden="true"></i>After<span>Cinematic 3.0</span></span><a id="after-link" href="evidence/candidate/chromium-mobile-pdp.png" target="_blank" rel="noopener">Open PNG <span aria-hidden="true">↗</span></a></figcaption>
+            <div class="image-scroll"><img id="after-image" src="evidence/candidate/chromium-mobile-pdp.png" alt="After: AnoX product detail at 390 pixels wide, using synthetic fixtures" width="390" height="844" decoding="async"><p class="image-error" id="after-error" hidden>This candidate capture is not available yet. Select another screen; a missing capture is not a verified comparison.</p></div>
+            <p class="capture-detail" id="after-detail">390 × 844 · Chromium · synthetic fixtures</p>
+          </figure>
+        </div>
+        <div class="comparison-footnote"><p>Images preserve their original proportions. “Actual size” provides a scrollable 1:1 view; it does not enlarge the underlying capture.</p><div id="full-captures"><a id="before-full" href="evidence/baseline/chromium-mobile-pdp-full.png" target="_blank" rel="noopener">Before · full page ↗</a><a id="after-full" href="evidence/candidate/chromium-mobile-pdp-full.png" target="_blank" rel="noopener">After · full page ↗</a></div></div>
+      </section>
+
+      <section class="review-notes" aria-labelledby="review-notes-title">
+        <div><p class="eyebrow">02 / Review context</p><h2 id="review-notes-title">Presentation changes.<br>Existing trust boundaries.</h2></div>
+        <div class="notes-grid">
+          <article><span>01</span><h3>Inspect the real interface</h3><p>Every image comes from the actual application HTML and its content-security policy, with local fixture responses. No decorative concept mockups stand in for application screens.</p></article>
+          <article><span>02</span><h3>Test imperfect content</h3><p>Compare long titles, ordinary packshots, absent images and expired evidence. The design must remain useful when the source does not provide a perfect photograph or current offer.</p></article>
+          <article><span>03</span><h3>Keep commerce honest</h3><p>Saving a selection does not reserve stock. Unknown costs remain unknown. Payment collection and merchant purchasing remain unavailable in this review.</p></article>
+        </div>
+      </section>
+      <nav class="evidence-links" aria-label="Supporting design evidence">
+        <a href="DESIGN.md"><span>Design direction</span><b aria-hidden="true">↗</b></a>
+        <a href="INDEPENDENT-REVIEW.md"><span>Independent critique</span><b aria-hidden="true">↗</b></a>
+        <a href="evidence/baseline/report.json"><span>Baseline capture report</span><b aria-hidden="true">↗</b></a>
+        <a href="evidence/candidate/report.json"><span>Candidate capture report</span><b aria-hidden="true">↗</b></a>
+        <a href="../../tests/fixtures/cinematic/PROVENANCE.md"><span>Original fixture provenance</span><b aria-hidden="true">↗</b></a>
+        <a href="../design/CINEMATIC-3-CONTINUATION.md"><span>Current verification status</span><b aria-hidden="true">↗</b></a>
+      </nav>
+    </main>
+    <footer><span>AnoX · Cinematic Commerce 3.0</span><span>Review candidate. Separate approval required to merge or deploy.</span></footer>
+  </div>
+</body>
+</html>

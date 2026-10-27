@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1125" viewBox="0 0 900 1125">
+  <defs>
+    <radialGradient id="back"><stop stop-color="#41464a"/><stop offset="1" stop-color="#23272b"/></radialGradient>
+    <linearGradient id="fabric" x2="1" y2=".5"><stop stop-color="#15191d"/><stop offset=".28" stop-color="#343a40"/><stop offset=".6" stop-color="#171d22"/><stop offset=".9" stop-color="#30363d"/><stop offset="1" stop-color="#13181d"/></linearGradient>
+    <linearGradient id="sleeve"><stop stop-color="#15191d"/><stop offset=".5" stop-color="#353c42"/><stop offset="1" stop-color="#1c2227"/></linearGradient>
+    <linearGradient id="hood" x2="0" y2="1"><stop stop-color="#3a4147"/><stop offset=".45" stop-color="#171b20"/><stop offset="1" stop-color="#090c0f"/></linearGradient>
+    <filter id="shadow"><feGaussianBlur stdDeviation="22"/></filter>
+  </defs>
+  <rect width="900" height="1125" fill="url(#back)"/>
+  <ellipse cx="450" cy="933" rx="280" ry="39" fill="#090c0f" opacity=".7" filter="url(#shadow)"/>
+  <g stroke-linejoin="round">
+    <path d="M310 299 206 351 127 823 216 850 298 542Z" fill="url(#sleeve)" stroke="#464d54" stroke-width="2"/>
+    <path d="m590 299 104 52 79 472-89 27-82-308Z" fill="url(#sleeve)" stroke="#464d54" stroke-width="2"/>
+    <path d="M317 288 274 349 284 899Q450 940 616 899L626 349 583 288Z" fill="url(#fabric)" stroke="#545b61" stroke-width="2"/>
+    <path d="M333 315Q276 187 360 153Q450 115 540 153Q624 187 567 315L498 359 402 359Z" fill="url(#hood)" stroke="#555d65" stroke-width="3"/>
+    <path d="M353 210Q450 164 547 210L519 298 450 342 381 298Z" fill="#080b0e" stroke="#4b535b" stroke-width="2"/>
+    <path d="M336 269 428 328 450 426 472 328 564 269 550 370 486 421 450 454 414 421 350 370Z" fill="url(#fabric)" stroke="#5d656b" stroke-width="2"/>
+    <path d="M450 355V913" stroke="#080b0e" stroke-width="14"/><path d="M450 355V913" stroke="#687078" stroke-width="2"/>
+    <path d="M444 417h13v29h-13Z" fill="#747b81" stroke="#171c20" stroke-width="2"/>
+    <path d="m314 427 99 10v178l-99 4Z" fill="#252c32" stroke="#555e66" stroke-width="2"/>
+    <path d="m487 437 99-10v192l-99-4Z" fill="#20272d" stroke="#555e66" stroke-width="2"/>
+    <path d="m311 422 105 7-3 39-100 2Z" fill="#30383e" stroke="#6a7279" stroke-width="2"/>
+    <path d="m484 429 105-7-2 48-100-2Z" fill="#2b3339" stroke="#6a7279" stroke-width="2"/>
+    <path d="m315 681 99 14-13 164-91-14Z" fill="#20272c" stroke="#444e55" stroke-width="2"/>
+    <path d="m486 695 99-14 5 164-91 14Z" fill="#252d33" stroke="#444e55" stroke-width="2"/>
+    <path d="m313 678 104 13-2 25-103-13Zm170 13 104-13 1 25-103 13Z" fill="#39424a" stroke="#59636c" stroke-width="2"/>
+    <path d="M278 365 301 380M622 365 599 380M296 875Q450 906 604 875M228 390l-59 379M672 390l59 379" fill="none" stroke="#6b747b" stroke-opacity=".48" stroke-width="2"/>
+    <path d="m135 784 89 19-8 47-89-27Zm541 19 89-19 8 39-89 27Z" fill="#10161b" stroke="#4a545d" stroke-width="2"/>
+    <path d="m292 656 29-14m258 0 29 14M297 811l17-12m272 0 17 12M238 469l25 18m-39 68 24 18m414-104-25 18m39 68-24 18" fill="none" stroke="#10161b" stroke-width="5"/>
+    <path d="m368 261 10 127m154-127-10 127" stroke="#747c83" stroke-width="3"/><path d="m373 376 10 0v28h-10Zm144 0h10v28h-10Z" fill="#080c10" stroke="#747c83"/>
+  </g>
+  <text x="450" y="1040" text-anchor="middle" fill="#a0a8ae" font-family="Arial,sans-serif" font-size="15" letter-spacing="3">ORIGINAL SYNTHETIC ART · INTERFACE FIXTURE</text>
+</svg>

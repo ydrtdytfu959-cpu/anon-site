@@ -1,0 +1,3800 @@
+{
+  "generatedAt": "2026-10-26T12:29:42.778Z",
+  "scope": "Isolated Chromium laboratory comparison using actual HTML/CSP, original synthetic artwork and identical local fixture responses. No fake clock. Not production, real-user Core Web Vitals, Safari performance or a real mobile device.",
+  "environment": {
+    "node": "v24.18.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "deviceScaleFactor": 1,
+    "iterations": 3,
+    "profiles": {
+      "standard": {
+        "cpuRate": 1,
+        "responseDelayMs": 0
+      },
+      "constrained": {
+        "cpuRate": 4,
+        "responseDelayMs": 150
+      }
+    },
+    "browser": "153.0.8010.12"
+  },
+  "source": {
+    "baseline": {
+      "sha256": "7c1a1aa928517a179948c58b284b81cc65869247ad33edb6377bfaeb3aa6a02d",
+      "htmlBytes": 1094287,
+      "gzipBytes": 431452,
+      "inlineCssBytes": 130598,
+      "inlineScriptBytes": 685047
+    },
+    "candidate": {
+      "sha256": "eb054d8216f98ec9a4a8bf0a235270e370e76875fea0b54fa33b1d0b2bdd8a82",
+      "htmlBytes": 1122397,
+      "gzipBytes": 436856,
+      "inlineCssBytes": 156487,
+      "inlineScriptBytes": 687268
+    }
+  },
+  "runs": [
+    {
+      "variant": "baseline",
+      "profile": "standard",
+      "iteration": 1,
+      "startup": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 85.8999999910593,
+          "navigationId": 7072,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0.09999999403953552,
+          "domainLookupStart": 0.09999999403953552,
+          "domainLookupEnd": 0.09999999403953552,
+          "connectStart": 0.09999999403953552,
+          "secureConnectionStart": 0.09999999403953552,
+          "connectEnd": 0.09999999403953552,
+          "requestStart": 0.09999999403953552,
+          "responseStart": 16,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 16.099999994039536,
+          "transferSize": 1094587,
+          "encodedBodySize": 1094287,
+          "decodedBodySize": 1094287,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 77.19999998807907,
+          "domContentLoadedEventStart": 77.19999998807907,
+          "domContentLoadedEventEnd": 84.5,
+          "domComplete": 85.8999999910593,
+          "loadEventStart": 85.8999999910593,
+          "loadEventEnd": 85.8999999910593,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "lcpMs": 180,
+        "cls": 0,
+        "longTasks": [],
+        "events": [],
+        "csp": [],
+        "domNodes": 420,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 4
+      },
+      "startupRequests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1094287
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        }
+      ],
+      "wishlistCommitMs": 80.6000000089407,
+      "repeatRoutes": {
+        "beforeBytes": 2632936,
+        "cycles": 5,
+        "firstDomNodes": 420,
+        "afterBytes": 2861024,
+        "finalDomNodes": 420
+      },
+      "final": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 85.8999999910593,
+          "navigationId": 7072,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0.09999999403953552,
+          "domainLookupStart": 0.09999999403953552,
+          "domainLookupEnd": 0.09999999403953552,
+          "connectStart": 0.09999999403953552,
+          "secureConnectionStart": 0.09999999403953552,
+          "connectEnd": 0.09999999403953552,
+          "requestStart": 0.09999999403953552,
+          "responseStart": 16,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 16.099999994039536,
+          "transferSize": 1094587,
+          "encodedBodySize": 1094287,
+          "decodedBodySize": 1094287,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 77.19999998807907,
+          "domContentLoadedEventStart": 77.19999998807907,
+          "domContentLoadedEventEnd": 84.5,
+          "domComplete": 85.8999999910593,
+          "loadEventStart": 85.8999999910593,
+          "loadEventEnd": 85.8999999910593,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "lcpMs": 180,
+        "cls": 0,
+        "longTasks": [],
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 40,
+            "interactionId": 6659
+          },
+          {
+            "name": "pointerup",
+            "duration": 40,
+            "interactionId": 6659
+          },
+          {
+            "name": "click",
+            "duration": 40,
+            "interactionId": 6659
+          }
+        ],
+        "csp": [],
+        "domNodes": 420,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 14
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1094287
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/me",
+          "query": "",
+          "responseBytes": 73
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/orders",
+          "query": "",
+          "responseBytes": 13
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        }
+      ],
+      "syntheticResponseBytes": 11659935,
+      "detailRequests": 6,
+      "unexpected": [],
+      "errors": []
+    },
+    {
+      "variant": "candidate",
+      "profile": "standard",
+      "iteration": 1,
+      "startup": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 30,
+          "navigationId": 1603,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0,
+          "domainLookupStart": 0,
+          "domainLookupEnd": 0,
+          "connectStart": 0,
+          "secureConnectionStart": 0,
+          "connectEnd": 0,
+          "requestStart": 0,
+          "responseStart": 11.799999997019768,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 11.799999997019768,
+          "transferSize": 1122697,
+          "encodedBodySize": 1122397,
+          "decodedBodySize": 1122397,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 27.299999997019768,
+          "domContentLoadedEventStart": 27.299999997019768,
+          "domContentLoadedEventEnd": 28.799999997019768,
+          "domComplete": 30,
+          "loadEventStart": 30,
+          "loadEventEnd": 30,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "lcpMs": 88,
+        "cls": 0,
+        "longTasks": [],
+        "events": [],
+        "csp": [],
+        "domNodes": 425,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 4
+      },
+      "startupRequests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1122397
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        }
+      ],
+      "wishlistCommitMs": 82.1000000089407,
+      "repeatRoutes": {
+        "beforeBytes": 2631152,
+        "cycles": 5,
+        "firstDomNodes": 425,
+        "afterBytes": 2863164,
+        "finalDomNodes": 425
+      },
+      "final": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 30,
+          "navigationId": 1603,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0,
+          "domainLookupStart": 0,
+          "domainLookupEnd": 0,
+          "connectStart": 0,
+          "secureConnectionStart": 0,
+          "connectEnd": 0,
+          "requestStart": 0,
+          "responseStart": 11.799999997019768,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 11.799999997019768,
+          "transferSize": 1122697,
+          "encodedBodySize": 1122397,
+          "decodedBodySize": 1122397,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 27.299999997019768,
+          "domContentLoadedEventStart": 27.299999997019768,
+          "domContentLoadedEventEnd": 28.799999997019768,
+          "domComplete": 30,
+          "loadEventStart": 30,
+          "loadEventEnd": 30,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "lcpMs": 88,
+        "cls": 0,
+        "longTasks": [],
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 56,
+            "interactionId": 5170
+          },
+          {
+            "name": "pointerup",
+            "duration": 56,
+            "interactionId": 5170
+          },
+          {
+            "name": "click",
+            "duration": 56,
+            "interactionId": 5170
+          }
+        ],
+        "csp": [],
+        "domNodes": 425,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 11
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1122397
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/me",
+          "query": "",
+          "responseBytes": 73
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/orders",
+          "query": "",
+          "responseBytes": 13
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        }
+      ],
+      "syntheticResponseBytes": 6411381,
+      "detailRequests": 6,
+      "unexpected": [],
+      "errors": []
+    },
+    {
+      "variant": "baseline",
+      "profile": "standard",
+      "iteration": 2,
+      "startup": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 30.799999997019768,
+          "navigationId": 2618,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0,
+          "domainLookupStart": 0,
+          "domainLookupEnd": 0,
+          "connectStart": 0,
+          "secureConnectionStart": 0,
+          "connectEnd": 0,
+          "requestStart": 0,
+          "responseStart": 12.5,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 12.5,
+          "transferSize": 1094587,
+          "encodedBodySize": 1094287,
+          "decodedBodySize": 1094287,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 28,
+          "domContentLoadedEventStart": 28,
+          "domContentLoadedEventEnd": 29.599999994039536,
+          "domComplete": 30.799999997019768,
+          "loadEventStart": 30.799999997019768,
+          "loadEventEnd": 30.799999997019768,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "lcpMs": 84,
+        "cls": 0,
+        "longTasks": [],
+        "events": [],
+        "csp": [],
+        "domNodes": 420,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 4
+      },
+      "startupRequests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1094287
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        }
+      ],
+      "wishlistCommitMs": 84.29999999701977,
+      "repeatRoutes": {
+        "beforeBytes": 2629280,
+        "cycles": 5,
+        "firstDomNodes": 420,
+        "afterBytes": 2864288,
+        "finalDomNodes": 420
+      },
+      "final": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 30.799999997019768,
+          "navigationId": 2618,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0,
+          "domainLookupStart": 0,
+          "domainLookupEnd": 0,
+          "connectStart": 0,
+          "secureConnectionStart": 0,
+          "connectEnd": 0,
+          "requestStart": 0,
+          "responseStart": 12.5,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 12.5,
+          "transferSize": 1094587,
+          "encodedBodySize": 1094287,
+          "decodedBodySize": 1094287,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 28,
+          "domContentLoadedEventStart": 28,
+          "domContentLoadedEventEnd": 29.599999994039536,
+          "domComplete": 30.799999997019768,
+          "loadEventStart": 30.799999997019768,
+          "loadEventEnd": 30.799999997019768,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "lcpMs": 84,
+        "cls": 0,
+        "longTasks": [],
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 48,
+            "interactionId": 6964
+          },
+          {
+            "name": "pointerup",
+            "duration": 48,
+            "interactionId": 6964
+          },
+          {
+            "name": "click",
+            "duration": 48,
+            "interactionId": 6964
+          }
+        ],
+        "csp": [],
+        "domNodes": 420,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 14
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1094287
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/me",
+          "query": "",
+          "responseBytes": 73
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/orders",
+          "query": "",
+          "responseBytes": 13
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        }
+      ],
+      "syntheticResponseBytes": 11659935,
+      "detailRequests": 6,
+      "unexpected": [],
+      "errors": []
+    },
+    {
+      "variant": "candidate",
+      "profile": "standard",
+      "iteration": 2,
+      "startup": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 31.600000008940697,
+          "navigationId": 3672,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0,
+          "domainLookupStart": 0,
+          "domainLookupEnd": 0,
+          "connectStart": 0,
+          "secureConnectionStart": 0,
+          "connectEnd": 0,
+          "requestStart": 0,
+          "responseStart": 11.700000002980232,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 11.700000002980232,
+          "transferSize": 1122697,
+          "encodedBodySize": 1122397,
+          "decodedBodySize": 1122397,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 28.700000002980232,
+          "domContentLoadedEventStart": 28.700000002980232,
+          "domContentLoadedEventEnd": 30.200000002980232,
+          "domComplete": 31.5,
+          "loadEventStart": 31.600000008940697,
+          "loadEventEnd": 31.600000008940697,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "lcpMs": 88,
+        "cls": 0,
+        "longTasks": [],
+        "events": [],
+        "csp": [],
+        "domNodes": 425,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 4
+      },
+      "startupRequests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1122397
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        }
+      ],
+      "wishlistCommitMs": 82.20000000298023,
+      "repeatRoutes": {
+        "beforeBytes": 2631068,
+        "cycles": 5,
+        "firstDomNodes": 425,
+        "afterBytes": 2863140,
+        "finalDomNodes": 425
+      },
+      "final": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 31.600000008940697,
+          "navigationId": 3672,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0,
+          "domainLookupStart": 0,
+          "domainLookupEnd": 0,
+          "connectStart": 0,
+          "secureConnectionStart": 0,
+          "connectEnd": 0,
+          "requestStart": 0,
+          "responseStart": 11.700000002980232,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 11.700000002980232,
+          "transferSize": 1122697,
+          "encodedBodySize": 1122397,
+          "decodedBodySize": 1122397,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 28.700000002980232,
+          "domContentLoadedEventStart": 28.700000002980232,
+          "domContentLoadedEventEnd": 30.200000002980232,
+          "domComplete": 31.5,
+          "loadEventStart": 31.600000008940697,
+          "loadEventEnd": 31.600000008940697,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "lcpMs": 88,
+        "cls": 0,
+        "longTasks": [],
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 56,
+            "interactionId": 9956
+          },
+          {
+            "name": "pointerup",
+            "duration": 56,
+            "interactionId": 9956
+          },
+          {
+            "name": "click",
+            "duration": 56,
+            "interactionId": 9956
+          }
+        ],
+        "csp": [],
+        "domNodes": 425,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 11
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1122397
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/me",
+          "query": "",
+          "responseBytes": 73
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/orders",
+          "query": "",
+          "responseBytes": 13
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        }
+      ],
+      "syntheticResponseBytes": 6411381,
+      "detailRequests": 6,
+      "unexpected": [],
+      "errors": []
+    },
+    {
+      "variant": "baseline",
+      "profile": "standard",
+      "iteration": 3,
+      "startup": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 31.5,
+          "navigationId": 6372,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0,
+          "domainLookupStart": 0,
+          "domainLookupEnd": 0,
+          "connectStart": 0,
+          "secureConnectionStart": 0,
+          "connectEnd": 0,
+          "requestStart": 0,
+          "responseStart": 12.399999991059303,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 12.399999991059303,
+          "transferSize": 1094587,
+          "encodedBodySize": 1094287,
+          "decodedBodySize": 1094287,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 28.69999998807907,
+          "domContentLoadedEventStart": 28.69999998807907,
+          "domContentLoadedEventEnd": 30.299999997019768,
+          "domComplete": 31.5,
+          "loadEventStart": 31.5,
+          "loadEventEnd": 31.5,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "lcpMs": 84,
+        "cls": 0,
+        "longTasks": [],
+        "events": [],
+        "csp": [],
+        "domNodes": 420,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 4
+      },
+      "startupRequests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1094287
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        }
+      ],
+      "wishlistCommitMs": 84.09999999403954,
+      "repeatRoutes": {
+        "beforeBytes": 2628976,
+        "cycles": 5,
+        "firstDomNodes": 420,
+        "afterBytes": 2860948,
+        "finalDomNodes": 420
+      },
+      "final": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 31.5,
+          "navigationId": 6372,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0,
+          "domainLookupStart": 0,
+          "domainLookupEnd": 0,
+          "connectStart": 0,
+          "secureConnectionStart": 0,
+          "connectEnd": 0,
+          "requestStart": 0,
+          "responseStart": 12.399999991059303,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 12.399999991059303,
+          "transferSize": 1094587,
+          "encodedBodySize": 1094287,
+          "decodedBodySize": 1094287,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 28.69999998807907,
+          "domContentLoadedEventStart": 28.69999998807907,
+          "domContentLoadedEventEnd": 30.299999997019768,
+          "domComplete": 31.5,
+          "loadEventStart": 31.5,
+          "loadEventEnd": 31.5,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "lcpMs": 84,
+        "cls": 0,
+        "longTasks": [],
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 56,
+            "interactionId": 7371
+          },
+          {
+            "name": "pointerup",
+            "duration": 56,
+            "interactionId": 7371
+          },
+          {
+            "name": "click",
+            "duration": 56,
+            "interactionId": 7371
+          }
+        ],
+        "csp": [],
+        "domNodes": 420,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 14
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1094287
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/me",
+          "query": "",
+          "responseBytes": 73
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/orders",
+          "query": "",
+          "responseBytes": 13
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        }
+      ],
+      "syntheticResponseBytes": 11659935,
+      "detailRequests": 6,
+      "unexpected": [],
+      "errors": []
+    },
+    {
+      "variant": "candidate",
+      "profile": "standard",
+      "iteration": 3,
+      "startup": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 29.799999997019768,
+          "navigationId": 5457,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0,
+          "domainLookupStart": 0,
+          "domainLookupEnd": 0,
+          "connectStart": 0,
+          "secureConnectionStart": 0,
+          "connectEnd": 0,
+          "requestStart": 0,
+          "responseStart": 11.599999994039536,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 11.599999994039536,
+          "transferSize": 1122697,
+          "encodedBodySize": 1122397,
+          "decodedBodySize": 1122397,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 27,
+          "domContentLoadedEventStart": 27,
+          "domContentLoadedEventEnd": 28.599999994039536,
+          "domComplete": 29.799999997019768,
+          "loadEventStart": 29.799999997019768,
+          "loadEventEnd": 29.799999997019768,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "lcpMs": 88,
+        "cls": 0,
+        "longTasks": [],
+        "events": [],
+        "csp": [],
+        "domNodes": 425,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 4
+      },
+      "startupRequests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1122397
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        }
+      ],
+      "wishlistCommitMs": 83.40000000596046,
+      "repeatRoutes": {
+        "beforeBytes": 2631152,
+        "cycles": 5,
+        "firstDomNodes": 425,
+        "afterBytes": 2863164,
+        "finalDomNodes": 425
+      },
+      "final": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 29.799999997019768,
+          "navigationId": 5457,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0,
+          "domainLookupStart": 0,
+          "domainLookupEnd": 0,
+          "connectStart": 0,
+          "secureConnectionStart": 0,
+          "connectEnd": 0,
+          "requestStart": 0,
+          "responseStart": 11.599999994039536,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 11.599999994039536,
+          "transferSize": 1122697,
+          "encodedBodySize": 1122397,
+          "decodedBodySize": 1122397,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 27,
+          "domContentLoadedEventStart": 27,
+          "domContentLoadedEventEnd": 28.599999994039536,
+          "domComplete": 29.799999997019768,
+          "loadEventStart": 29.799999997019768,
+          "loadEventEnd": 29.799999997019768,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "lcpMs": 88,
+        "cls": 0,
+        "longTasks": [],
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 56,
+            "interactionId": 643
+          },
+          {
+            "name": "pointerup",
+            "duration": 56,
+            "interactionId": 643
+          },
+          {
+            "name": "click",
+            "duration": 56,
+            "interactionId": 643
+          }
+        ],
+        "csp": [],
+        "domNodes": 425,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 11
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1122397
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/me",
+          "query": "",
+          "responseBytes": 73
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/orders",
+          "query": "",
+          "responseBytes": 13
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        }
+      ],
+      "syntheticResponseBytes": 6411381,
+      "detailRequests": 6,
+      "unexpected": [],
+      "errors": []
+    },
+    {
+      "variant": "baseline",
+      "profile": "constrained",
+      "iteration": 1,
+      "startup": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 261.5,
+          "navigationId": 4230,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0.09999999403953552,
+          "domainLookupStart": 0.09999999403953552,
+          "domainLookupEnd": 0.09999999403953552,
+          "connectStart": 0.09999999403953552,
+          "secureConnectionStart": 0.09999999403953552,
+          "connectEnd": 0.09999999403953552,
+          "requestStart": 0.09999999403953552,
+          "responseStart": 163.59999999403954,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 163.59999999403954,
+          "transferSize": 1094587,
+          "encodedBodySize": 1094287,
+          "decodedBodySize": 1094287,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 252.59999999403954,
+          "domContentLoadedEventStart": 252.59999999403954,
+          "domContentLoadedEventEnd": 259.20000000298023,
+          "domComplete": 261.5,
+          "loadEventStart": 261.5,
+          "loadEventEnd": 261.5,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "lcpMs": 676,
+        "cls": 0,
+        "longTasks": [],
+        "events": [],
+        "csp": [],
+        "domNodes": 420,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 4
+      },
+      "startupRequests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1094287
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        }
+      ],
+      "wishlistCommitMs": 99.09999999403954,
+      "repeatRoutes": {
+        "beforeBytes": 2632572,
+        "cycles": 5,
+        "firstDomNodes": 420,
+        "afterBytes": 2861076,
+        "finalDomNodes": 420
+      },
+      "final": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 261.5,
+          "navigationId": 4230,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0.09999999403953552,
+          "domainLookupStart": 0.09999999403953552,
+          "domainLookupEnd": 0.09999999403953552,
+          "connectStart": 0.09999999403953552,
+          "secureConnectionStart": 0.09999999403953552,
+          "connectEnd": 0.09999999403953552,
+          "requestStart": 0.09999999403953552,
+          "responseStart": 163.59999999403954,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 163.59999999403954,
+          "transferSize": 1094587,
+          "encodedBodySize": 1094287,
+          "decodedBodySize": 1094287,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 252.59999999403954,
+          "domContentLoadedEventStart": 252.59999999403954,
+          "domContentLoadedEventEnd": 259.20000000298023,
+          "domComplete": 261.5,
+          "loadEventStart": 261.5,
+          "loadEventEnd": 261.5,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "lcpMs": 676,
+        "cls": 1.0248872196547696,
+        "longTasks": [],
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 56,
+            "interactionId": 1639
+          },
+          {
+            "name": "pointerup",
+            "duration": 56,
+            "interactionId": 1639
+          },
+          {
+            "name": "click",
+            "duration": 56,
+            "interactionId": 1639
+          }
+        ],
+        "csp": [],
+        "domNodes": 420,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 14
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1094287
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/me",
+          "query": "",
+          "responseBytes": 73
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/orders",
+          "query": "",
+          "responseBytes": 13
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        }
+      ],
+      "syntheticResponseBytes": 11659935,
+      "detailRequests": 6,
+      "unexpected": [],
+      "errors": []
+    },
+    {
+      "variant": "candidate",
+      "profile": "constrained",
+      "iteration": 1,
+      "startup": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 260.5,
+          "navigationId": 2924,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0,
+          "domainLookupStart": 0,
+          "domainLookupEnd": 0,
+          "connectStart": 0,
+          "secureConnectionStart": 0,
+          "connectEnd": 0,
+          "requestStart": 0,
+          "responseStart": 163.69999998807907,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 163.69999998807907,
+          "transferSize": 1122697,
+          "encodedBodySize": 1122397,
+          "decodedBodySize": 1122397,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 251.8999999910593,
+          "domContentLoadedEventStart": 251.8999999910593,
+          "domContentLoadedEventEnd": 258,
+          "domComplete": 260.5,
+          "loadEventStart": 260.5,
+          "loadEventEnd": 260.5,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "low"
+          }
+        },
+        "lcpMs": 664,
+        "cls": 0,
+        "longTasks": [],
+        "events": [],
+        "csp": [],
+        "domNodes": 425,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 4
+      },
+      "startupRequests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1122397
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        }
+      ],
+      "wishlistCommitMs": 115.70000000298023,
+      "repeatRoutes": {
+        "beforeBytes": 2634664,
+        "cycles": 5,
+        "firstDomNodes": 425,
+        "afterBytes": 2863408,
+        "finalDomNodes": 425
+      },
+      "final": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 260.5,
+          "navigationId": 2924,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0,
+          "domainLookupStart": 0,
+          "domainLookupEnd": 0,
+          "connectStart": 0,
+          "secureConnectionStart": 0,
+          "connectEnd": 0,
+          "requestStart": 0,
+          "responseStart": 163.69999998807907,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 163.69999998807907,
+          "transferSize": 1122697,
+          "encodedBodySize": 1122397,
+          "decodedBodySize": 1122397,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 251.8999999910593,
+          "domContentLoadedEventStart": 251.8999999910593,
+          "domContentLoadedEventEnd": 258,
+          "domComplete": 260.5,
+          "loadEventStart": 260.5,
+          "loadEventEnd": 260.5,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "low"
+          }
+        },
+        "lcpMs": 664,
+        "cls": 4.104606424320826,
+        "longTasks": [],
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 64,
+            "interactionId": 4312
+          },
+          {
+            "name": "pointerup",
+            "duration": 64,
+            "interactionId": 4312
+          },
+          {
+            "name": "click",
+            "duration": 64,
+            "interactionId": 4312
+          }
+        ],
+        "csp": [],
+        "domNodes": 425,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 14
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1122397
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/me",
+          "query": "",
+          "responseBytes": 73
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/orders",
+          "query": "",
+          "responseBytes": 13
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        }
+      ],
+      "syntheticResponseBytes": 11688045,
+      "detailRequests": 6,
+      "unexpected": [],
+      "errors": []
+    },
+    {
+      "variant": "baseline",
+      "profile": "constrained",
+      "iteration": 2,
+      "startup": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 260.70000000298023,
+          "navigationId": 5802,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0,
+          "domainLookupStart": 0,
+          "domainLookupEnd": 0,
+          "connectStart": 0,
+          "secureConnectionStart": 0,
+          "connectEnd": 0,
+          "requestStart": 0,
+          "responseStart": 163.29999999701977,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 163.29999999701977,
+          "transferSize": 1094587,
+          "encodedBodySize": 1094287,
+          "decodedBodySize": 1094287,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 252.09999999403954,
+          "domContentLoadedEventStart": 252.09999999403954,
+          "domContentLoadedEventEnd": 258.29999999701977,
+          "domComplete": 260.70000000298023,
+          "loadEventStart": 260.70000000298023,
+          "loadEventEnd": 260.70000000298023,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "lcpMs": 660,
+        "cls": 0,
+        "longTasks": [],
+        "events": [],
+        "csp": [],
+        "domNodes": 420,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 4
+      },
+      "startupRequests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1094287
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        }
+      ],
+      "wishlistCommitMs": 99.79999999701977,
+      "repeatRoutes": {
+        "beforeBytes": 2632560,
+        "cycles": 5,
+        "firstDomNodes": 420,
+        "afterBytes": 2861064,
+        "finalDomNodes": 420
+      },
+      "final": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 260.70000000298023,
+          "navigationId": 5802,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0,
+          "domainLookupStart": 0,
+          "domainLookupEnd": 0,
+          "connectStart": 0,
+          "secureConnectionStart": 0,
+          "connectEnd": 0,
+          "requestStart": 0,
+          "responseStart": 163.29999999701977,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 163.29999999701977,
+          "transferSize": 1094587,
+          "encodedBodySize": 1094287,
+          "decodedBodySize": 1094287,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 252.09999999403954,
+          "domContentLoadedEventStart": 252.09999999403954,
+          "domContentLoadedEventEnd": 258.29999999701977,
+          "domComplete": 260.70000000298023,
+          "loadEventStart": 260.70000000298023,
+          "loadEventEnd": 260.70000000298023,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "lcpMs": 660,
+        "cls": 1.0248872196547696,
+        "longTasks": [],
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 56,
+            "interactionId": 1399
+          },
+          {
+            "name": "pointerup",
+            "duration": 56,
+            "interactionId": 1399
+          },
+          {
+            "name": "click",
+            "duration": 56,
+            "interactionId": 1399
+          }
+        ],
+        "csp": [],
+        "domNodes": 420,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 14
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1094287
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/me",
+          "query": "",
+          "responseBytes": 73
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/orders",
+          "query": "",
+          "responseBytes": 13
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        }
+      ],
+      "syntheticResponseBytes": 11659935,
+      "detailRequests": 6,
+      "unexpected": [],
+      "errors": []
+    },
+    {
+      "variant": "candidate",
+      "profile": "constrained",
+      "iteration": 2,
+      "startup": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 265.1000000089407,
+          "navigationId": 5006,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0,
+          "domainLookupStart": 0,
+          "domainLookupEnd": 0,
+          "connectStart": 0,
+          "secureConnectionStart": 0,
+          "connectEnd": 0,
+          "requestStart": 0,
+          "responseStart": 163.70000000298023,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 163.70000000298023,
+          "transferSize": 1122697,
+          "encodedBodySize": 1122397,
+          "decodedBodySize": 1122397,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 255.30000001192093,
+          "domContentLoadedEventStart": 255.30000001192093,
+          "domContentLoadedEventEnd": 262.20000000298023,
+          "domComplete": 265.1000000089407,
+          "loadEventStart": 265.1000000089407,
+          "loadEventEnd": 265.1000000089407,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "lcpMs": 676,
+        "cls": 0,
+        "longTasks": [],
+        "events": [],
+        "csp": [],
+        "domNodes": 425,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 4
+      },
+      "startupRequests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1122397
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        }
+      ],
+      "wishlistCommitMs": 99.40000000596046,
+      "repeatRoutes": {
+        "beforeBytes": 2634664,
+        "cycles": 5,
+        "firstDomNodes": 425,
+        "afterBytes": 2863408,
+        "finalDomNodes": 425
+      },
+      "final": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 265.1000000089407,
+          "navigationId": 5006,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0,
+          "domainLookupStart": 0,
+          "domainLookupEnd": 0,
+          "connectStart": 0,
+          "secureConnectionStart": 0,
+          "connectEnd": 0,
+          "requestStart": 0,
+          "responseStart": 163.70000000298023,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 163.70000000298023,
+          "transferSize": 1122697,
+          "encodedBodySize": 1122397,
+          "decodedBodySize": 1122397,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 255.30000001192093,
+          "domContentLoadedEventStart": 255.30000001192093,
+          "domContentLoadedEventEnd": 262.20000000298023,
+          "domComplete": 265.1000000089407,
+          "loadEventStart": 265.1000000089407,
+          "loadEventEnd": 265.1000000089407,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "lcpMs": 676,
+        "cls": 4.104606424320826,
+        "longTasks": [],
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 56,
+            "interactionId": 9614
+          },
+          {
+            "name": "pointerup",
+            "duration": 56,
+            "interactionId": 9614
+          },
+          {
+            "name": "click",
+            "duration": 56,
+            "interactionId": 9614
+          }
+        ],
+        "csp": [],
+        "domNodes": 425,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 14
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1122397
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/me",
+          "query": "",
+          "responseBytes": 73
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/orders",
+          "query": "",
+          "responseBytes": 13
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        }
+      ],
+      "syntheticResponseBytes": 11688045,
+      "detailRequests": 6,
+      "unexpected": [],
+      "errors": []
+    },
+    {
+      "variant": "baseline",
+      "profile": "constrained",
+      "iteration": 3,
+      "startup": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 259.69999998807907,
+          "navigationId": 769,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0,
+          "domainLookupStart": 0,
+          "domainLookupEnd": 0,
+          "connectStart": 0,
+          "secureConnectionStart": 0,
+          "connectEnd": 0,
+          "requestStart": 0,
+          "responseStart": 162.59999999403954,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 162.59999999403954,
+          "transferSize": 1094587,
+          "encodedBodySize": 1094287,
+          "decodedBodySize": 1094287,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 249.29999999701977,
+          "domContentLoadedEventStart": 249.29999999701977,
+          "domContentLoadedEventEnd": 256.79999999701977,
+          "domComplete": 259.69999998807907,
+          "loadEventStart": 259.69999998807907,
+          "loadEventEnd": 259.69999998807907,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "lcpMs": 660,
+        "cls": 0,
+        "longTasks": [],
+        "events": [],
+        "csp": [],
+        "domNodes": 420,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 4
+      },
+      "startupRequests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1094287
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        }
+      ],
+      "wishlistCommitMs": 98.80000001192093,
+      "repeatRoutes": {
+        "beforeBytes": 2632572,
+        "cycles": 5,
+        "firstDomNodes": 420,
+        "afterBytes": 2861076,
+        "finalDomNodes": 420
+      },
+      "final": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 259.69999998807907,
+          "navigationId": 769,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0,
+          "domainLookupStart": 0,
+          "domainLookupEnd": 0,
+          "connectStart": 0,
+          "secureConnectionStart": 0,
+          "connectEnd": 0,
+          "requestStart": 0,
+          "responseStart": 162.59999999403954,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 162.59999999403954,
+          "transferSize": 1094587,
+          "encodedBodySize": 1094287,
+          "decodedBodySize": 1094287,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 249.29999999701977,
+          "domContentLoadedEventStart": 249.29999999701977,
+          "domContentLoadedEventEnd": 256.79999999701977,
+          "domComplete": 259.69999998807907,
+          "loadEventStart": 259.69999998807907,
+          "loadEventEnd": 259.69999998807907,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "high"
+          }
+        },
+        "lcpMs": 660,
+        "cls": 1.0248872196547696,
+        "longTasks": [],
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 48,
+            "interactionId": 4631
+          },
+          {
+            "name": "pointerup",
+            "duration": 48,
+            "interactionId": 4631
+          },
+          {
+            "name": "click",
+            "duration": 48,
+            "interactionId": 4631
+          }
+        ],
+        "csp": [],
+        "domNodes": 420,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 14
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1094287
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/me",
+          "query": "",
+          "responseBytes": 73
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/orders",
+          "query": "",
+          "responseBytes": 13
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        }
+      ],
+      "syntheticResponseBytes": 11659935,
+      "detailRequests": 6,
+      "unexpected": [],
+      "errors": []
+    },
+    {
+      "variant": "candidate",
+      "profile": "constrained",
+      "iteration": 3,
+      "startup": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 260.69999998807907,
+          "navigationId": 7722,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0,
+          "domainLookupStart": 0,
+          "domainLookupEnd": 0,
+          "connectStart": 0,
+          "secureConnectionStart": 0,
+          "connectEnd": 0,
+          "requestStart": 0,
+          "responseStart": 162.59999999403954,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 162.59999999403954,
+          "transferSize": 1122697,
+          "encodedBodySize": 1122397,
+          "decodedBodySize": 1122397,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 250.29999999701977,
+          "domContentLoadedEventStart": 250.29999999701977,
+          "domContentLoadedEventEnd": 258.09999999403954,
+          "domComplete": 260.69999998807907,
+          "loadEventStart": 260.69999998807907,
+          "loadEventEnd": 260.69999998807907,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "low"
+          }
+        },
+        "lcpMs": 660,
+        "cls": 0,
+        "longTasks": [],
+        "events": [],
+        "csp": [],
+        "domNodes": 425,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 4
+      },
+      "startupRequests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1122397
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        }
+      ],
+      "wishlistCommitMs": 99.1000000089407,
+      "repeatRoutes": {
+        "beforeBytes": 2634664,
+        "cycles": 5,
+        "firstDomNodes": 425,
+        "afterBytes": 2863408,
+        "finalDomNodes": 425
+      },
+      "final": {
+        "navigation": {
+          "name": "https://anox.app/#product/channel3/cinematic-jacket",
+          "entryType": "navigation",
+          "startTime": 0,
+          "duration": 260.69999998807907,
+          "navigationId": 7722,
+          "initiatorType": "navigation",
+          "deliveryType": "",
+          "nextHopProtocol": "",
+          "renderBlockingStatus": "non-blocking",
+          "contentType": "text/html",
+          "contentEncoding": "",
+          "workerStart": 0,
+          "workerRouterEvaluationStart": 0,
+          "workerCacheLookupStart": 0,
+          "workerMatchedSourceType": "",
+          "workerFinalSourceType": "",
+          "redirectStart": 0,
+          "redirectEnd": 0,
+          "fetchStart": 0,
+          "domainLookupStart": 0,
+          "domainLookupEnd": 0,
+          "connectStart": 0,
+          "secureConnectionStart": 0,
+          "connectEnd": 0,
+          "requestStart": 0,
+          "responseStart": 162.59999999403954,
+          "firstInterimResponseStart": 0,
+          "finalResponseHeadersStart": 0,
+          "responseEnd": 162.59999999403954,
+          "transferSize": 1122697,
+          "encodedBodySize": 1122397,
+          "decodedBodySize": 1122397,
+          "responseStatus": 200,
+          "serverTiming": [],
+          "unloadEventStart": 0,
+          "unloadEventEnd": 0,
+          "domInteractive": 250.29999999701977,
+          "domContentLoadedEventStart": 250.29999999701977,
+          "domContentLoadedEventEnd": 258.09999999403954,
+          "domComplete": 260.69999998807907,
+          "loadEventStart": 260.69999998807907,
+          "loadEventEnd": 260.69999998807907,
+          "type": "navigate",
+          "redirectCount": 0,
+          "activationStart": 0,
+          "criticalCHRestart": 0,
+          "notRestoredReasons": null,
+          "confidence": {
+            "randomizedTriggerRate": 0.4994798,
+            "value": "low"
+          }
+        },
+        "lcpMs": 660,
+        "cls": 4.104606424320826,
+        "longTasks": [],
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 56,
+            "interactionId": 5269
+          },
+          {
+            "name": "pointerup",
+            "duration": 56,
+            "interactionId": 5269
+          },
+          {
+            "name": "click",
+            "duration": 56,
+            "interactionId": 5269
+          }
+        ],
+        "csp": [],
+        "domNodes": 425,
+        "documentWidth": 390,
+        "viewportWidth": 390,
+        "resourceCount": 14
+      },
+      "requests": [
+        {
+          "method": "GET",
+          "host": "anox.app",
+          "path": "/",
+          "query": "",
+          "responseBytes": 1122397
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/me",
+          "query": "",
+          "responseBytes": 73
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/orders",
+          "query": "",
+          "responseBytes": 13
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "cdn.trychannel3.com",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2",
+          "responseBytes": 1758888
+        },
+        {
+          "method": "GET",
+          "host": "zmumi2wruk.execute-api.us-east-2.amazonaws.com",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "",
+          "responseBytes": 2039
+        }
+      ],
+      "syntheticResponseBytes": 11688045,
+      "detailRequests": 6,
+      "unexpected": [],
+      "errors": []
+    }
+  ],
+  "fallbacks": [
+    {
+      "name": "reduced-motion-and-transparency",
+      "width": 390,
+      "scrollWidth": 390,
+      "mainScroll": 390,
+      "panel": {
+        "background": "rgb(18, 22, 28)",
+        "filter": "none",
+        "color": "rgb(243, 244, 246)",
+        "border": "1px"
+      },
+      "imageAnimation": "0s",
+      "navFilter": "none",
+      "media": {
+        "motion": true,
+        "transparency": true,
+        "forced": false
+      },
+      "overflow": []
+    },
+    {
+      "name": "forced-colors",
+      "width": 390,
+      "scrollWidth": 390,
+      "mainScroll": 390,
+      "panel": {
+        "background": "rgb(255, 255, 255)",
+        "filter": "none",
+        "color": "rgb(0, 0, 0)",
+        "border": "1px"
+      },
+      "imageAnimation": "0.18s",
+      "navFilter": "none",
+      "media": {
+        "motion": false,
+        "transparency": false,
+        "forced": true
+      },
+      "overflow": []
+    },
+    {
+      "name": "200-percent-root-text",
+      "width": 390,
+      "scrollWidth": 390,
+      "mainScroll": 390,
+      "panel": {
+        "background": "rgba(21, 26, 34, 0.93)",
+        "filter": "blur(16px)",
+        "color": "rgb(243, 244, 246)",
+        "border": "1px"
+      },
+      "imageAnimation": "0.18s",
+      "navFilter": "none",
+      "media": {
+        "motion": false,
+        "transparency": false,
+        "forced": false
+      },
+      "overflow": []
+    },
+    {
+      "name": "narrow-320",
+      "width": 320,
+      "scrollWidth": 320,
+      "mainScroll": 320,
+      "panel": {
+        "background": "rgba(21, 26, 34, 0.93)",
+        "filter": "blur(16px)",
+        "color": "rgb(243, 244, 246)",
+        "border": "1px"
+      },
+      "imageAnimation": "0.18s",
+      "navFilter": "none",
+      "media": {
+        "motion": false,
+        "transparency": false,
+        "forced": false
+      },
+      "overflow": []
+    },
+    {
+      "name": "reduced-height-search-keyboard-proxy",
+      "focused": true,
+      "top": 182.8125,
+      "bottom": 236.8125,
+      "width": 320,
+      "height": 360,
+      "scrollWidth": 320
+    }
+  ],
+  "failures": [],
+  "warnings": [],
+  "summary": {
+    "standard": {
+      "baseline": {
+        "medianLcpMs": 84,
+        "medianCls": 0,
+        "medianDOMContentLoadedMs": 30.299999997019768,
+        "medianStartupLongTaskMs": 0,
+        "medianWishlistCommitMs": 84.09999999403954,
+        "maxEventTimingMs": 56,
+        "medianHeapGrowthBytes": 231972,
+        "medianStartupResponseBytes": 6372990,
+        "detailRequests": [
+          6,
+          6,
+          6
+        ]
+      },
+      "candidate": {
+        "medianLcpMs": 88,
+        "medianCls": 0,
+        "medianDOMContentLoadedMs": 28.799999997019768,
+        "medianStartupLongTaskMs": 0,
+        "medianWishlistCommitMs": 82.20000000298023,
+        "maxEventTimingMs": 56,
+        "medianHeapGrowthBytes": 232012,
+        "medianStartupResponseBytes": 6401100,
+        "detailRequests": [
+          6,
+          6,
+          6
+        ]
+      }
+    },
+    "constrained": {
+      "baseline": {
+        "medianLcpMs": 660,
+        "medianCls": 0,
+        "medianDOMContentLoadedMs": 258.29999999701977,
+        "medianStartupLongTaskMs": 0,
+        "medianWishlistCommitMs": 99.09999999403954,
+        "maxEventTimingMs": 56,
+        "medianHeapGrowthBytes": 228504,
+        "medianStartupResponseBytes": 6372990,
+        "detailRequests": [
+          6,
+          6,
+          6
+        ]
+      },
+      "candidate": {
+        "medianLcpMs": 664,
+        "medianCls": 0,
+        "medianDOMContentLoadedMs": 258.09999999403954,
+        "medianStartupLongTaskMs": 0,
+        "medianWishlistCommitMs": 99.40000000596046,
+        "maxEventTimingMs": 64,
+        "medianHeapGrowthBytes": 228744,
+        "medianStartupResponseBytes": 6401100,
+        "detailRequests": [
+          6,
+          6,
+          6
+        ]
+      }
+    }
+  }
+}
