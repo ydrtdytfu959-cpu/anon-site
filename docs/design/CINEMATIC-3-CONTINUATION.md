@@ -1,5 +1,15 @@
 # Cinematic Commerce 3.0 — continuation
 
+## October 27 release continuation (supersedes publication-only status below)
+
+PR #29 is published: https://github.com/ydrtdytfu959-cpu/anon-site/pull/29. Initial head `a5924383949929c6819bff8757d62ec5bfa49286` exactly matches local candidate `e1011b7` tree `81968d225ba4b73f18898356b334ebe1b44bba51`; all 181 changed entries are uploaded. No screenshots need reuploading.
+
+The owner has now authorized this specific PR and necessary corrective commits to merge and deploy through existing GitHub Pages after all release gates pass. CI run `40572810430` exposed a background catalog refresh dismissing Search. That real application race has been corrected with 24 deterministic browser regression cases; complete final local gates passed. Read `docs/cinematic/RELEASE.md` for cause, correction, final HTML hash and validation. The existing design is preserved.
+
+Next action: commit/publish the correction to this same PR, verify exact remote tree and successful latest-head CI, confirm branch protections, merge once, verify Pages and bounded live production behavior. The authoritative evolving release receipt is `../anox-cinematic-publication/CONTINUATION.md`; inspect it first to avoid repeating a completed publish, merge or deployment. No AWS/backend, quota, payment or customer-data changes.
+
+## Earlier design checkpoint (historical)
+
 Updated 2026-10-26. Branch: `design/anox-cinematic-commerce-20261025`.
 Baseline: merged hardening PR #28, `4c019a69d3771e60b3632497092fa987d91f6309`.
 First implementation milestone: `36ef76d`. Use `git log -1` for the latest evidence/integration commit; the current document cannot embed its own commit hash.

@@ -9,7 +9,7 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3">
   <meta name="robots" content="index,follow">
   <meta name="description" content="AnoX — اكتشف المنتجات، وقارن التفاصيل وتكلفة وصولها التقديرية إلى الجزائر.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-31eHf+/PkOPvwfXW4Z8pCYyuDp5kodeAGc3vZbITKCE=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — U.S. products for Algeria">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-5QFfkvgRsbPxdHoKN1MUImnG7X7KZDiyBqtRQC4zoac=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — U.S. products for Algeria">
   <meta property="og:description" content="AnoX LLC — discover U.S. products and discuss purchasing and fulfillment to Algeria.">
   <meta property="og:url" content="https://anox.app/">
   <title>AnoX — اختيارات أبعد. تكلفة أوضح.</title>
@@ -4567,7 +4567,7 @@ html[data-theme="dark"] .v2-live-product-meta .is-available{color:#a3c5b4}
     function closeDialog(restoreFocus=true){
       if(!ui.dialog)return;
       if(ui.dialog==="assistant")anoxCaptureDraft();
-      const opener=ui.dialog==="assistant"?(document.querySelector('#site-header [data-open="assistant"]')||ui.opener):ui.opener;
+      const opener=ui.opener?.isConnected?ui.opener:document.querySelector('[data-open="'+ui.dialog+'"]');
       updateSuggestionsSoon.cancel();ui.searchItems=[];ui.searchIndex=-1;$("search-query")?.setAttribute("aria-expanded","false");
       ui.dialog=null;ui.opener=null;
       $("dialog").hidden=true;$("scrim").hidden=true;
@@ -4731,7 +4731,7 @@ html[data-theme="dark"] .v2-live-product-meta .is-available{color:#a3c5b4}
       const q=normalizeLiveQuery(query),selected=q?'':section;
       const pending=Catalog.loadLivePage({query:q,section:selected,limit:24,append,restart}),key=Catalog.activeLiveKey;
       await pending;SearchService.rebuild();const route=currentRoute(),routeQuery=route.name==='search'?normalizeLiveQuery(route.params.get('q')||''):'';
-      if(['home','shop','search','new','brands'].includes(route.name)&&Catalog.activeLiveKey===key&&routeQuery===q&&(q||liveSectionForRoute(route)===selected))renderRoute({focus:false});
+      if(['home','shop','search','new','brands'].includes(route.name)&&Catalog.activeLiveKey===key&&routeQuery===q&&(q||liveSectionForRoute(route)===selected))renderRoute({focus:false,preserveDialog:true});
     }
     function prepareLiveCatalog(query=''){
       const section=query?'':liveSectionForRoute();if(!Catalog.usingLive(query,section)||Catalog.liveStatus==='idle')void ensureLiveCatalog(query,false,{section});
@@ -6514,7 +6514,7 @@ function updateShell(){
   $("mobile-nav").setAttribute("aria-label",tx("التنقل على الهاتف","Mobile navigation"));
   $("mobile-nav").innerHTML=[["home","home"],["shop","bag"],["account","user"],["cart","cart"]].map(([name,iconName])=>'<a href="#'+name+'" data-nav '+(route.name===name?'aria-current="page"':"")+'>'+icon(iconName)+'<span>'+esc(navLabel(name))+'</span>'+(name==="cart"&&count?'<span class="badge">'+count+'</span>':"")+'</a>').join("");
   v2BindNavigation();renderFooter();updateCompareBar();updateStorageBanner();
-  if(ui.dialog)setBackgroundInert(true);
+  if(ui.dialog){setBackgroundInert(true);document.querySelectorAll('[data-open]').forEach(node=>node.setAttribute('aria-expanded',String(node.dataset.open===ui.dialog)));}
 }
 function menuMarkup(){
   const route=currentRoute();
@@ -6578,14 +6578,16 @@ document.addEventListener('click',async event=>{
 
 
 /* Component: routing.js */
-function renderRoute({focus=true}={}){
+function renderRoute({focus=true,preserveDialog=false}={}){
       if(ui.rendering)return;
       ui.rendering=true;
       try{
         const route=currentRoute();
         if(route.name!=="product"||!channel3Id(route))leaveProductDetail();
         if(!authRoute())authReset();
-        if(ui.dialog)closeDialog(false);
+        // Passive catalog completion must not dismiss a customer's active dialog.
+        // Navigation and explicit refreshes retain the default dismissal behavior.
+        if(ui.dialog&&!preserveDialog)closeDialog(false);
         if(route.name!=="product"){ui.editKey="";ui.moveWishlist="";}
         if(["shop","search"].includes(route.name))readFilterParams(route.params);
         switch(route.name){
