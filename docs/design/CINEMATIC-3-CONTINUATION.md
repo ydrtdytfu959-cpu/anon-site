@@ -1,3 +1,9 @@
+# Latest release checkpoint — October 28, 2026
+
+PR #29 remains the only release target. The owner authorized normal protected merge and existing Pages deployment after green final CI. Published `76ea234fd34d6f201d08ee9b913cfc560a1b119b` contains the verified dialog fix. CI40611676705 then exposed a test-only timestamp defect: two clock reads could exceed the catalog TTL by1ms. Shared fixture envelopes now use one timestamp; all six retailer/parser boundaries have regression coverage. Production HTML remains SHA256 `827f819a68920f3ac5fd354f4573607b7730d6bc6518a5de89dfa38fc98abd53`. Build/check and421Node tests pass; full browser results and exact publication/merge/deployment receipts belong in `../anox-cinematic-publication/CONTINUATION.md`.
+
+Next executable action: publish this fixture correction on the existing PR, verify exact tree and green latest-head catalog CI, then merge normally, verify existing Pages deployment and bounded read-only production smoke. Do not repeat screenshot uploads, redesign, or touch AWS/business settings.
+
 # Cinematic Commerce 3.0 — continuation
 
 ## October 27 release continuation (supersedes publication-only status below)

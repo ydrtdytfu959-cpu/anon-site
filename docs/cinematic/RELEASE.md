@@ -11,12 +11,18 @@ The new `scripts/browser-dialog-refresh.cjs` deliberately holds catalog response
 
 The regression covers search and assistant, mobile touch and desktop keyboard, English and Arabic, Chromium/Firefox/WebKit: **24 cases passed**. Each verifies retained draft, dialog DOM and focus, Tab/Shift+Tab containment, Escape focus restoration and dismissal on actual route navigation. The test waits for the existing initial animation-frame focus before entering text; it never waits for the catalog before opening the dialog. No assertions or browser engines were removed. Independent read-only review found no blocking flaw in the correction.
 
+## Second CI recovery — October 28
+
+Run `40611676705` passed the corrected Search dialog and reached WebKit desktop retailer discovery. Its timeout at `browser-cinematic.cjs:97` came from a malformed test fixture: separate clock reads produced a 300001ms search TTL when a millisecond elapsed between them. The production parser correctly permits at most 300000ms. The exact harness with a deterministic one-millisecond clock step reproduced the same line97 timeout at Nike; it passed all six retailer checks after the correction.
+
+Both catalog-response fixtures now use one observation timestamp. A new Node regression validates all six official retailer envelopes through the real parser and explicitly requires rejection at 300001ms. Production HTML, catalog parsing and freshness safeguards are unchanged. The browser harness now prints its synthetic route/request diagnostics if a future failure occurs. Independent review found no blocking issue in this test-only correction.
+
 ## Final local gates
 
 Final HTML SHA-256: `827f819a68920f3ac5fd354f4573607b7730d6bc6518a5de89dfa38fc98abd53`.
 
 - `npm run build` and `npm run check`: passed.
-- `npm test`: 420 passed, zero failures/skips.
+- `npm test`: 421 passed, zero failures/skips.
 - `ENGINES=chromium,firefox,webkit npm run test:browser`: passed, including the existing catalog, commerce, security and icon suites, 264 Cinematic checks, isolated preview/comparison checks and 24 new dialog cases.
 - Additional responsive matrix: 156 checks at 320, 375, 430, 768, 1920 and 844×390.
 - Fresh Search/Assistant screenshots: 12 images across mobile/desktop and all three engines; inspected representative search and assistant compositions in every engine. Saved locally under ignored `test-results/cinematic-release-dialogs`.

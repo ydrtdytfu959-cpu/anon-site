@@ -18,7 +18,7 @@ async function run(browser,engine,kind,mobile,lang){
    if(req.method()==='GET'&&(url.hostname==='cdn.trychannel3.com'||url.hostname==='anox.app'&&url.pathname==='/favicon.svg'))return route.fulfill({contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"/>'});
    if(req.method()==='GET'&&url.pathname==='/catalog/search'){
     requested();await gate;
-    return route.fulfill({headers,body:JSON.stringify({provider:'channel3',data:{products:[fixture.searchProduct(url.searchParams.get('q'),0)],next_page_token:null},fetchedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+300000).toISOString()})});
+    return route.fulfill({headers,body:JSON.stringify(fixture.searchPage(url.searchParams.get('q'),Date.now(),1))});
    }
    if(req.method()==='GET'&&url.pathname==='/catalog/products')return route.fulfill({headers,body:'{"products":[],"total":0,"nextOffset":null}'});
    unexpected.push(req.method()+' '+url.origin+url.pathname);return route.abort();
