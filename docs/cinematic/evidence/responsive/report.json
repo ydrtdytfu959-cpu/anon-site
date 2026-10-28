@@ -1,0 +1,1211 @@
+{
+  "source": "index.html",
+  "sha256": "eb054d8216f98ec9a4a8bf0a235270e370e76875fea0b54fa33b1d0b2bdd8a82",
+  "baseline": false,
+  "fixture": "Offline synthetic account, product, merchant offer and artwork. Actual rendered AnoX HTML/CSP; no real merchant inventory or production API readiness is represented.",
+  "art": {
+    "path": "tests/fixtures/cinematic/jacket-preview.png",
+    "bytes": 1758888,
+    "sha256": "9cf438a067a79b31be767f772a9305278ce9b80360b294d757181a6a4f49c726"
+  },
+  "document": {
+    "bytes": 1122397,
+    "gzipBytes": 436856,
+    "inlineCssBytes": 156487,
+    "inlineScriptBytes": 687268
+  },
+  "runs": [
+    {
+      "engine": "chromium",
+      "viewport": {
+        "name": "narrow",
+        "width": 320,
+        "height": 780
+      },
+      "checks": [
+        "pdp rendered layout and accessible control names",
+        "pdp-full rendered layout and accessible control names",
+        "pdp-actions rendered layout and accessible control names",
+        "pdp-selected rendered layout and accessible control names",
+        "gallery keyboard, source option refresh, disabled stock option and selected wishlist",
+        "pdp-light rendered layout and accessible control names",
+        "pdp-rtl rendered layout and accessible control names",
+        "pdp-rtl-full rendered layout and accessible control names",
+        "pdp-long rendered layout and accessible control names",
+        "pdp-long-actions rendered layout and accessible control names",
+        "pdp-missing rendered layout and accessible control names",
+        "missing image and unknown price retain truthful disabled state",
+        "pdp-footwear rendered layout and accessible control names",
+        "pdp-footwear-actions rendered layout and accessible control names",
+        "pdp-beauty rendered layout and accessible control names",
+        "pdp-beauty-actions rendered layout and accessible control names",
+        "home rendered layout and accessible control names",
+        "home-full rendered layout and accessible control names",
+        "shop rendered layout and accessible control names",
+        "shop-grid rendered layout and accessible control names",
+        "catalog cards render without detail hydration",
+        "cart rendered layout and accessible control names",
+        "cart-full rendered layout and accessible control names",
+        "cart persists while payment collection remains disabled",
+        "assistant rendered layout and accessible control names",
+        "zero live requests, mutations, runtime errors or CSP violations"
+      ],
+      "screenshots": [
+        {
+          "state": "pdp",
+          "file": "chromium-narrow-pdp.png",
+          "fullPage": false
+        },
+        {
+          "state": "home",
+          "file": "chromium-narrow-home.png",
+          "fullPage": false
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0"
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1"
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "?option_Color=Graphite&option_Size=L"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "?option_Color=Graphite&option_Size=M"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-long",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-missing",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-footwear",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/footwear.svg",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-beauty",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/beauty.svg",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Nike&limit=24&filters=%7B%22website_ids%22%3A%5B%22nike.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=adidas&limit=24&filters=%7B%22website_ids%22%3A%5B%22adidas.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Levi%27s&limit=24&filters=%7B%22website_ids%22%3A%5B%22levi.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=e.l.f.+cosmetics&limit=24&filters=%7B%22website_ids%22%3A%5B%22elfcosmetics.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Sephora&limit=24&filters=%7B%22website_ids%22%3A%5B%22sephora.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=TJ+Maxx&limit=24&filters=%7B%22website_ids%22%3A%5B%22tjmaxx.tjx.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/capabilities",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/capabilities",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Nike&limit=24&filters=%7B%22website_ids%22%3A%5B%22nike.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=adidas&limit=24&filters=%7B%22website_ids%22%3A%5B%22adidas.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Levi%27s&limit=24&filters=%7B%22website_ids%22%3A%5B%22levi.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=e.l.f.+cosmetics&limit=24&filters=%7B%22website_ids%22%3A%5B%22elfcosmetics.com%22%5D%7D"
+        }
+      ],
+      "unexpected": []
+    },
+    {
+      "engine": "chromium",
+      "viewport": {
+        "name": "small",
+        "width": 375,
+        "height": 812
+      },
+      "checks": [
+        "pdp rendered layout and accessible control names",
+        "pdp-full rendered layout and accessible control names",
+        "pdp-actions rendered layout and accessible control names",
+        "pdp-selected rendered layout and accessible control names",
+        "gallery keyboard, source option refresh, disabled stock option and selected wishlist",
+        "pdp-light rendered layout and accessible control names",
+        "pdp-rtl rendered layout and accessible control names",
+        "pdp-rtl-full rendered layout and accessible control names",
+        "pdp-long rendered layout and accessible control names",
+        "pdp-long-actions rendered layout and accessible control names",
+        "pdp-missing rendered layout and accessible control names",
+        "missing image and unknown price retain truthful disabled state",
+        "pdp-footwear rendered layout and accessible control names",
+        "pdp-footwear-actions rendered layout and accessible control names",
+        "pdp-beauty rendered layout and accessible control names",
+        "pdp-beauty-actions rendered layout and accessible control names",
+        "home rendered layout and accessible control names",
+        "home-full rendered layout and accessible control names",
+        "shop rendered layout and accessible control names",
+        "shop-grid rendered layout and accessible control names",
+        "catalog cards render without detail hydration",
+        "cart rendered layout and accessible control names",
+        "cart-full rendered layout and accessible control names",
+        "cart persists while payment collection remains disabled",
+        "assistant rendered layout and accessible control names",
+        "zero live requests, mutations, runtime errors or CSP violations"
+      ],
+      "screenshots": [
+        {
+          "state": "pdp",
+          "file": "chromium-small-pdp.png",
+          "fullPage": false
+        },
+        {
+          "state": "home",
+          "file": "chromium-small-home.png",
+          "fullPage": false
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0"
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1"
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "?option_Color=Graphite&option_Size=L"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "?option_Color=Graphite&option_Size=M"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-long",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-missing",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-footwear",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/footwear.svg",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-beauty",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/beauty.svg",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Nike&limit=24&filters=%7B%22website_ids%22%3A%5B%22nike.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=adidas&limit=24&filters=%7B%22website_ids%22%3A%5B%22adidas.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Levi%27s&limit=24&filters=%7B%22website_ids%22%3A%5B%22levi.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=e.l.f.+cosmetics&limit=24&filters=%7B%22website_ids%22%3A%5B%22elfcosmetics.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Sephora&limit=24&filters=%7B%22website_ids%22%3A%5B%22sephora.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=TJ+Maxx&limit=24&filters=%7B%22website_ids%22%3A%5B%22tjmaxx.tjx.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/capabilities",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/capabilities",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Nike&limit=24&filters=%7B%22website_ids%22%3A%5B%22nike.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=adidas&limit=24&filters=%7B%22website_ids%22%3A%5B%22adidas.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Levi%27s&limit=24&filters=%7B%22website_ids%22%3A%5B%22levi.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=e.l.f.+cosmetics&limit=24&filters=%7B%22website_ids%22%3A%5B%22elfcosmetics.com%22%5D%7D"
+        }
+      ],
+      "unexpected": []
+    },
+    {
+      "engine": "chromium",
+      "viewport": {
+        "name": "large",
+        "width": 430,
+        "height": 932
+      },
+      "checks": [
+        "pdp rendered layout and accessible control names",
+        "pdp-full rendered layout and accessible control names",
+        "pdp-actions rendered layout and accessible control names",
+        "pdp-selected rendered layout and accessible control names",
+        "gallery keyboard, source option refresh, disabled stock option and selected wishlist",
+        "pdp-light rendered layout and accessible control names",
+        "pdp-rtl rendered layout and accessible control names",
+        "pdp-rtl-full rendered layout and accessible control names",
+        "pdp-long rendered layout and accessible control names",
+        "pdp-long-actions rendered layout and accessible control names",
+        "pdp-missing rendered layout and accessible control names",
+        "missing image and unknown price retain truthful disabled state",
+        "pdp-footwear rendered layout and accessible control names",
+        "pdp-footwear-actions rendered layout and accessible control names",
+        "pdp-beauty rendered layout and accessible control names",
+        "pdp-beauty-actions rendered layout and accessible control names",
+        "home rendered layout and accessible control names",
+        "home-full rendered layout and accessible control names",
+        "shop rendered layout and accessible control names",
+        "shop-grid rendered layout and accessible control names",
+        "catalog cards render without detail hydration",
+        "cart rendered layout and accessible control names",
+        "cart-full rendered layout and accessible control names",
+        "cart persists while payment collection remains disabled",
+        "assistant rendered layout and accessible control names",
+        "zero live requests, mutations, runtime errors or CSP violations"
+      ],
+      "screenshots": [
+        {
+          "state": "pdp",
+          "file": "chromium-large-pdp.png",
+          "fullPage": false
+        },
+        {
+          "state": "home",
+          "file": "chromium-large-home.png",
+          "fullPage": false
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0"
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1"
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "?option_Color=Graphite&option_Size=L"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "?option_Color=Graphite&option_Size=M"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-long",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-missing",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-footwear",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/footwear.svg",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-beauty",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/beauty.svg",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Nike&limit=24&filters=%7B%22website_ids%22%3A%5B%22nike.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=adidas&limit=24&filters=%7B%22website_ids%22%3A%5B%22adidas.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Levi%27s&limit=24&filters=%7B%22website_ids%22%3A%5B%22levi.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=e.l.f.+cosmetics&limit=24&filters=%7B%22website_ids%22%3A%5B%22elfcosmetics.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Sephora&limit=24&filters=%7B%22website_ids%22%3A%5B%22sephora.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=TJ+Maxx&limit=24&filters=%7B%22website_ids%22%3A%5B%22tjmaxx.tjx.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/capabilities",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/capabilities",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Nike&limit=24&filters=%7B%22website_ids%22%3A%5B%22nike.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=adidas&limit=24&filters=%7B%22website_ids%22%3A%5B%22adidas.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Levi%27s&limit=24&filters=%7B%22website_ids%22%3A%5B%22levi.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=e.l.f.+cosmetics&limit=24&filters=%7B%22website_ids%22%3A%5B%22elfcosmetics.com%22%5D%7D"
+        }
+      ],
+      "unexpected": []
+    },
+    {
+      "engine": "chromium",
+      "viewport": {
+        "name": "tablet",
+        "width": 768,
+        "height": 1024
+      },
+      "checks": [
+        "pdp rendered layout and accessible control names",
+        "pdp-full rendered layout and accessible control names",
+        "pdp-actions rendered layout and accessible control names",
+        "pdp-selected rendered layout and accessible control names",
+        "gallery keyboard, source option refresh, disabled stock option and selected wishlist",
+        "pdp-light rendered layout and accessible control names",
+        "pdp-rtl rendered layout and accessible control names",
+        "pdp-rtl-full rendered layout and accessible control names",
+        "pdp-long rendered layout and accessible control names",
+        "pdp-long-actions rendered layout and accessible control names",
+        "pdp-missing rendered layout and accessible control names",
+        "missing image and unknown price retain truthful disabled state",
+        "pdp-footwear rendered layout and accessible control names",
+        "pdp-footwear-actions rendered layout and accessible control names",
+        "pdp-beauty rendered layout and accessible control names",
+        "pdp-beauty-actions rendered layout and accessible control names",
+        "home rendered layout and accessible control names",
+        "home-full rendered layout and accessible control names",
+        "shop rendered layout and accessible control names",
+        "shop-grid rendered layout and accessible control names",
+        "catalog cards render without detail hydration",
+        "cart rendered layout and accessible control names",
+        "cart-full rendered layout and accessible control names",
+        "cart persists while payment collection remains disabled",
+        "assistant rendered layout and accessible control names",
+        "zero live requests, mutations, runtime errors or CSP violations"
+      ],
+      "screenshots": [
+        {
+          "state": "pdp",
+          "file": "chromium-tablet-pdp.png",
+          "fullPage": false
+        },
+        {
+          "state": "home",
+          "file": "chromium-tablet-home.png",
+          "fullPage": false
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0"
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1"
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "?option_Color=Graphite&option_Size=L"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "?option_Color=Graphite&option_Size=M"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-long",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-missing",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-footwear",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/footwear.svg",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-beauty",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/beauty.svg",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Nike&limit=24&filters=%7B%22website_ids%22%3A%5B%22nike.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=adidas&limit=24&filters=%7B%22website_ids%22%3A%5B%22adidas.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Levi%27s&limit=24&filters=%7B%22website_ids%22%3A%5B%22levi.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=e.l.f.+cosmetics&limit=24&filters=%7B%22website_ids%22%3A%5B%22elfcosmetics.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Sephora&limit=24&filters=%7B%22website_ids%22%3A%5B%22sephora.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=TJ+Maxx&limit=24&filters=%7B%22website_ids%22%3A%5B%22tjmaxx.tjx.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/capabilities",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/capabilities",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Nike&limit=24&filters=%7B%22website_ids%22%3A%5B%22nike.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=adidas&limit=24&filters=%7B%22website_ids%22%3A%5B%22adidas.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Levi%27s&limit=24&filters=%7B%22website_ids%22%3A%5B%22levi.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=e.l.f.+cosmetics&limit=24&filters=%7B%22website_ids%22%3A%5B%22elfcosmetics.com%22%5D%7D"
+        }
+      ],
+      "unexpected": []
+    },
+    {
+      "engine": "chromium",
+      "viewport": {
+        "name": "wide",
+        "width": 1920,
+        "height": 1080
+      },
+      "checks": [
+        "pdp rendered layout and accessible control names",
+        "pdp-full rendered layout and accessible control names",
+        "pdp-actions rendered layout and accessible control names",
+        "pdp-selected rendered layout and accessible control names",
+        "gallery keyboard, source option refresh, disabled stock option and selected wishlist",
+        "pdp-light rendered layout and accessible control names",
+        "pdp-rtl rendered layout and accessible control names",
+        "pdp-rtl-full rendered layout and accessible control names",
+        "pdp-long rendered layout and accessible control names",
+        "pdp-long-actions rendered layout and accessible control names",
+        "pdp-missing rendered layout and accessible control names",
+        "missing image and unknown price retain truthful disabled state",
+        "pdp-footwear rendered layout and accessible control names",
+        "pdp-footwear-actions rendered layout and accessible control names",
+        "pdp-beauty rendered layout and accessible control names",
+        "pdp-beauty-actions rendered layout and accessible control names",
+        "home rendered layout and accessible control names",
+        "home-full rendered layout and accessible control names",
+        "shop rendered layout and accessible control names",
+        "shop-grid rendered layout and accessible control names",
+        "catalog cards render without detail hydration",
+        "cart rendered layout and accessible control names",
+        "cart-full rendered layout and accessible control names",
+        "cart persists while payment collection remains disabled",
+        "assistant rendered layout and accessible control names",
+        "zero live requests, mutations, runtime errors or CSP violations"
+      ],
+      "screenshots": [
+        {
+          "state": "pdp",
+          "file": "chromium-wide-pdp.png",
+          "fullPage": false
+        },
+        {
+          "state": "home",
+          "file": "chromium-wide-home.png",
+          "fullPage": false
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0"
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1"
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "?option_Color=Graphite&option_Size=L"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "?option_Color=Graphite&option_Size=M"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-long",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-missing",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-footwear",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/footwear.svg",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-beauty",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/beauty.svg",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Nike&limit=24&filters=%7B%22website_ids%22%3A%5B%22nike.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=adidas&limit=24&filters=%7B%22website_ids%22%3A%5B%22adidas.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Levi%27s&limit=24&filters=%7B%22website_ids%22%3A%5B%22levi.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=e.l.f.+cosmetics&limit=24&filters=%7B%22website_ids%22%3A%5B%22elfcosmetics.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Sephora&limit=24&filters=%7B%22website_ids%22%3A%5B%22sephora.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=TJ+Maxx&limit=24&filters=%7B%22website_ids%22%3A%5B%22tjmaxx.tjx.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0"
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1"
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2"
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/capabilities",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/capabilities",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Nike&limit=24&filters=%7B%22website_ids%22%3A%5B%22nike.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=adidas&limit=24&filters=%7B%22website_ids%22%3A%5B%22adidas.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Levi%27s&limit=24&filters=%7B%22website_ids%22%3A%5B%22levi.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=e.l.f.+cosmetics&limit=24&filters=%7B%22website_ids%22%3A%5B%22elfcosmetics.com%22%5D%7D"
+        }
+      ],
+      "unexpected": []
+    },
+    {
+      "engine": "chromium",
+      "viewport": {
+        "name": "landscape",
+        "width": 844,
+        "height": 390
+      },
+      "checks": [
+        "pdp rendered layout and accessible control names",
+        "pdp-full rendered layout and accessible control names",
+        "pdp-actions rendered layout and accessible control names",
+        "pdp-selected rendered layout and accessible control names",
+        "gallery keyboard, source option refresh, disabled stock option and selected wishlist",
+        "pdp-light rendered layout and accessible control names",
+        "pdp-rtl rendered layout and accessible control names",
+        "pdp-rtl-full rendered layout and accessible control names",
+        "pdp-long rendered layout and accessible control names",
+        "pdp-long-actions rendered layout and accessible control names",
+        "pdp-missing rendered layout and accessible control names",
+        "missing image and unknown price retain truthful disabled state",
+        "pdp-footwear rendered layout and accessible control names",
+        "pdp-footwear-actions rendered layout and accessible control names",
+        "pdp-beauty rendered layout and accessible control names",
+        "pdp-beauty-actions rendered layout and accessible control names",
+        "home rendered layout and accessible control names",
+        "home-full rendered layout and accessible control names",
+        "shop rendered layout and accessible control names",
+        "shop-grid rendered layout and accessible control names",
+        "catalog cards render without detail hydration",
+        "cart rendered layout and accessible control names",
+        "cart-full rendered layout and accessible control names",
+        "cart persists while payment collection remains disabled",
+        "assistant rendered layout and accessible control names",
+        "zero live requests, mutations, runtime errors or CSP violations"
+      ],
+      "screenshots": [
+        {
+          "state": "pdp",
+          "file": "chromium-landscape-pdp.png",
+          "fullPage": false
+        },
+        {
+          "state": "home",
+          "file": "chromium-landscape-home.png",
+          "fullPage": false
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "path": "/",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0"
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=1"
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=2"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "?option_Color=Graphite&option_Size=L"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": "?option_Color=Graphite&option_Size=M"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-long",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-missing",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-footwear",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/footwear.svg",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-beauty",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/beauty.svg",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Nike&limit=24&filters=%7B%22website_ids%22%3A%5B%22nike.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=adidas&limit=24&filters=%7B%22website_ids%22%3A%5B%22adidas.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Levi%27s&limit=24&filters=%7B%22website_ids%22%3A%5B%22levi.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=e.l.f.+cosmetics&limit=24&filters=%7B%22website_ids%22%3A%5B%22elfcosmetics.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Sephora&limit=24&filters=%7B%22website_ids%22%3A%5B%22sephora.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=TJ+Maxx&limit=24&filters=%7B%22website_ids%22%3A%5B%22tjmaxx.tjx.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/channel3/products/cinematic-jacket",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/capabilities",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/commerce/capabilities",
+          "query": ""
+        },
+        {
+          "method": "GET",
+          "path": "/cinematic-fixture/jacket.svg",
+          "query": "?view=0"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Nike&limit=24&filters=%7B%22website_ids%22%3A%5B%22nike.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=adidas&limit=24&filters=%7B%22website_ids%22%3A%5B%22adidas.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=Levi%27s&limit=24&filters=%7B%22website_ids%22%3A%5B%22levi.com%22%5D%7D"
+        },
+        {
+          "method": "GET",
+          "path": "/catalog/search",
+          "query": "?q=e.l.f.+cosmetics&limit=24&filters=%7B%22website_ids%22%3A%5B%22elfcosmetics.com%22%5D%7D"
+        }
+      ],
+      "unexpected": []
+    }
+  ],
+  "captureNote": "Published screenshots are a curated subset of the successful capture run; all behavioral checks remain listed. Clock-based capture navigation metrics are intentionally omitted. See ../performance.json for separately measured real-clock laboratory results."
+}

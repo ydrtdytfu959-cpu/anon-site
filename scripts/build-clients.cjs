@@ -11,6 +11,7 @@ const MODULES = Object.freeze({
   commerce:{name:'commerce-client.js',start:'(function exposeAnoXCommerce(root, factory) {',end:'/* ANOX_COMMERCE_CLIENT_END */'}
 });
 const ICON_STYLES = Object.freeze({name:'icons.css',start:'/* ANOX_ICON_STYLES_START */',end:'/* ANOX_ICON_STYLES_END */'});
+const STYLES = Object.freeze({iconStyles:ICON_STYLES,cinematicStyles:{name:'cinematic.css',start:'/* ANOX_CINEMATIC_STYLES_START */',end:'/* ANOX_CINEMATIC_STYLES_END */'}});
 function bounds(html,spec) {
   const start=html.indexOf(spec.start),end=html.indexOf(spec.end,start);
   if(start<0||end<start)throw Error(spec.name+' module boundary missing');
@@ -23,13 +24,15 @@ function replaceModule(html,source,spec) {
   return html.slice(0,start)+source.trim()+'\n'+html.slice(end);
 }
 function readSources(root) {
-  return {catalog:fs.readFileSync(path.join(root,'catalog-live.js'),'utf8'),auth:fs.readFileSync(path.join(root,'auth.js'),'utf8'),commerce:fs.readFileSync(path.join(root,'commerce-client.js'),'utf8'),icons:fs.readFileSync(path.join(root,'icons.js'),'utf8'),iconStyles:fs.readFileSync(path.join(root,'icons.css'),'utf8')};
+  return {catalog:fs.readFileSync(path.join(root,'catalog-live.js'),'utf8'),auth:fs.readFileSync(path.join(root,'auth.js'),'utf8'),commerce:fs.readFileSync(path.join(root,'commerce-client.js'),'utf8'),icons:fs.readFileSync(path.join(root,'icons.js'),'utf8'),...Object.fromEntries(Object.entries(STYLES).map(([key,spec])=>[key,fs.readFileSync(path.join(root,spec.name),'utf8')]))};
 }
 function build(html,sources) {
   for(const [key,spec] of Object.entries(MODULES))html=replaceModule(html,sources[key],spec);
-  const {start,end}=bounds(html,ICON_STYLES);
-  if(typeof sources.iconStyles!=='string'||!sources.iconStyles.trim()||/<\/style/i.test(sources.iconStyles)||sources.iconStyles.includes(ICON_STYLES.start)||sources.iconStyles.includes(ICON_STYLES.end))throw Error('Invalid icons.css canonical source');
-  html=html.slice(0,start)+ICON_STYLES.start+'\n'+sources.iconStyles.trim()+'\n'+html.slice(end);
+  for(const [key,spec] of Object.entries(STYLES)){
+    const {start,end}=bounds(html,spec),source=sources[key];
+    if(typeof source!=='string'||!source.trim()||/<\/style/i.test(source)||source.includes(spec.start)||source.includes(spec.end))throw Error('Invalid '+spec.name+' canonical source');
+    html=html.slice(0,start)+spec.start+'\n'+source.trim()+'\n'+html.slice(end);
+  }
   return catalog.build(html,sources.catalog);
 }
 function check(html,sources) {
@@ -38,8 +41,10 @@ function check(html,sources) {
     const {start,end}=bounds(html,spec);
     if(html.slice(start,end).trim()!==sources[key].trim())issues.push(spec.name+' differs from its canonical source');
   }
-  const {start,end}=bounds(html,ICON_STYLES);
-  if(html.slice(start+ICON_STYLES.start.length,end).trim()!==sources.iconStyles.trim())issues.push('icons.css differs from its canonical source');
+  for(const [key,spec] of Object.entries(STYLES)){
+    const {start,end}=bounds(html,spec);
+    if(html.slice(start+spec.start.length,end).trim()!==sources[key].trim())issues.push(spec.name+' differs from its canonical source');
+  }
   return issues;
 }
 module.exports={MODULES,replaceModule,readSources,build,check};
@@ -49,7 +54,7 @@ if(require.main===module){
   if(process.argv.includes('--check')){
     const issues=check(html,sources);
     if(issues.length){console.error(issues.join('\n'));process.exitCode=1;}
-    else console.log('Catalog, auth, commerce and icon sources and inline CSP verified');
+    else console.log('Catalog, auth, commerce, icon and cinematic sources and inline CSP verified');
   }else{
     const result=build(html,sources);
     if(result!==html)fs.writeFileSync(file,result);

@@ -115,7 +115,7 @@ test('tracked private files or symlinks in the selected release inventory fail c
 test('archive plus separate HTML retains every source needed by the real canonical build checks',t=>{
   const f=fixture(t);
   for(const name of ['backend','scripts'])fs.cpSync(path.join(sourceRoot,name),path.join(f.root,name),{recursive:true});
-  for(const name of ['index.html','catalog-live.js','auth.js','commerce-client.js','icons.js','icons.css','LICENSE-icons.txt','favicon.svg','package.json','package-lock.json'])fs.copyFileSync(path.join(sourceRoot,name),path.join(f.root,name));
+  for(const name of ['index.html','catalog-live.js','auth.js','commerce-client.js','icons.js','icons.css','cinematic.css','LICENSE-icons.txt','favicon.svg','package.json','package-lock.json'])fs.copyFileSync(path.join(sourceRoot,name),path.join(f.root,name));
   f.commit();const destination=path.join(f.temporary,'buildable release');successful(f.run(destination));
   const restored=path.join(f.temporary,'restored');fs.mkdirSync(restored);
   execFileSync('python3',['-c',"import sys,zipfile\nwith zipfile.ZipFile(sys.argv[1]) as z:z.extractall(sys.argv[2])",path.join(destination,'backend-infrastructure.zip'),restored]);

@@ -28,5 +28,8 @@ test('full client bundle is deterministic, canonical and protected by the actual
   assert.ok(check(built,{...sources,commerce:sources.commerce+'\n// drift'}).some(x=>x.includes('commerce-client.js')));
   assert.ok(check(built,{...sources,icons:sources.icons+'\n// drift'}).some(x=>x.includes('icons.js')));
   assert.ok(check(built,{...sources,iconStyles:sources.iconStyles+'\n/* drift */'}).some(x=>x.includes('icons.css')));
+  assert.ok(check(built,{...sources,cinematicStyles:sources.cinematicStyles+'\n/* drift */'}).some(x=>x.includes('cinematic.css')));
+  assert.throws(()=>build(html,{...sources,cinematicStyles:'</style><script>escape</script>'}),/Invalid cinematic.css/);
+  assert.throws(()=>build(html.replace('/* ANOX_CINEMATIC_STYLES_END */',''),sources),/cinematic.css module boundary missing/);
   for (const script of scripts(built)) new vm.Script(script,{filename:'generated index.html'});
 });
