@@ -7,9 +7,12 @@
   <meta name="theme-color" content="#121212">
   <meta name="color-scheme" content="light dark">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=3">
+  <link rel="preconnect" href="https://cdn.trychannel3.com" crossorigin>
+  <link rel="preconnect" href="https://static.nike.com" crossorigin>
+  <link rel="preconnect" href="https://zmumi2wruk.execute-api.us-east-2.amazonaws.com" crossorigin>
   <meta name="robots" content="index,follow">
   <meta name="description" content="AnoX — اكتشف المنتجات، وقارن التفاصيل وتكاليف إيصالها التقديرية.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-PxDq8OtZGGPd1b+y8tf1MojkQ81ebiQBPRqKe3aUFEA=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — Discover U.S. products">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-Stopud+cuKrex5CO1uotoahssYhGN0T0ULuozBQQrr0=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — Discover U.S. products">
   <meta property="og:description" content="AnoX LLC — discover U.S. products and request information about purchasing and cross-border fulfillment.">
   <meta property="og:url" content="https://anox.app/">
   <title>AnoX — اختيارات أبعد. تكلفة أوضح.</title>
@@ -1730,6 +1733,13 @@ html[data-theme="dark"] .v2-live-product-meta .is-available{color:#a3c5b4}
   .btn.primary,.anox-auth-primary,.v2-primary-link{background:ButtonFace;color:ButtonText;border:1px solid ButtonText}
 }
 /* ANOX_CINEMATIC_STYLES_END */
+
+/* Loading cards show layout without pretending that upstream listings exist. */
+.anox-catalog-loading{padding-block:20px 28px}
+.anox-product-placeholder{min-width:0;padding:12px;border:1px solid rgba(144,154,177,.13);border-radius:20px;pointer-events:none}
+.anox-placeholder-media{width:100%;aspect-ratio:4 / 5;border-radius:14px;background:linear-gradient(130deg,rgba(145,151,164,.12),rgba(145,151,164,.06))}
+.anox-placeholder-line{height:12px;margin-top:16px;border-radius:8px;background:rgba(145,151,164,.12);width:78%}
+.anox-placeholder-line.short{width:48%;margin-top:10px}
 </style>
 </head>
 <body>
@@ -2450,31 +2460,37 @@ html[data-theme="dark"] .v2-live-product-meta .is-available{color:#a3c5b4}
     const sourceDiagnostics=FEATURED_SOURCES.map(([retailer])=>({retailer,status:'exhausted',received:0,accepted:0,rejected:0}));
     // First display reads at most six sources; subsequent mixed pages reuse
     // validated unexpired source pages without any additional provider calls.
-    for(let start=0;start<6;start+=3){
-      const results=await Promise.allSettled(FEATURED_SOURCES.slice(start,start+3).map(async([,query],offset)=>{
-        const i=start+offset;
-        if(cursors[i]==="")return null;
-        const page=await featuredSourcePage(query,cursors[i],{...normalized.filters,website_ids:[WEBSITE_IDS[i]]},signal);
-        if(offsets[i]>page.items.length)throw catalogError("catalog_cursor_invalid",400);
-        return page;
-      }));
-      const cursorError=results.find(res=>res.status==="rejected"&&
-        ["catalog_cursor_invalid","catalog_cursor_expired"].includes(res.reason?.code));
-      if(cursorError)throw cursorError.reason;
-      results.forEach((res,k)=>{
-        const i=start+k;
-        if(res.status==="rejected"){errors++;sourceDiagnostics[i]={...sourceDiagnostics[i],status:'unavailable',error:res.reason?.code||'catalog_provider_unavailable'};return;}
-        if(!res.value){next[i]="";nextOffsets[i]=0;return;}
-        const page=res.value;
-        invalidCount+=page.invalidCount;degraded=degraded||page.degraded;
-        sourceDiagnostics[i]={retailer:FEATURED_SOURCES[i][0],status:page.degraded?'presentation_only':page.items.length?'ready':page.invalidCount?'rejected':'empty',...page.diagnostics};
-        totals[i]=page.items.length;groups[i]=page.items.slice(offsets[i]);
-        sourceNext[i]=page.nextCursor??"";
-        const fetched=Date.parse(page.fetchedAt),expiry=Date.parse(page.expiresAt);
-        earliestFetched=earliestFetched===null?fetched:Math.min(earliestFetched,fetched);
-        earliestExpiry=Math.min(earliestExpiry,expiry);
-      });
-    }
+    // Keep at most three provider reads in flight, but start the next as soon
+    // as one finishes instead of waiting for a whole three-request wave.
+    // The existing shared rate limiter still caps this tab at four/UTC-second.
+    const results=Array(FEATURED_SOURCES.length);
+    let nextSource=0;
+    await Promise.all(Array.from({length:3},async()=>{
+      while(nextSource<FEATURED_SOURCES.length){
+        const i=nextSource++;
+        try {
+          if(cursors[i]===""){results[i]={status:"fulfilled",value:null};continue;}
+          const page=await featuredSourcePage(FEATURED_SOURCES[i][1],cursors[i],{...normalized.filters,website_ids:[WEBSITE_IDS[i]]},signal);
+          if(offsets[i]>page.items.length)throw catalogError("catalog_cursor_invalid",400);
+          results[i]={status:"fulfilled",value:page};
+        }catch(reason){results[i]={status:"rejected",reason};}
+      }
+    }));
+    const cursorError=results.find(res=>res.status==="rejected"&&
+      ["catalog_cursor_invalid","catalog_cursor_expired"].includes(res.reason?.code));
+    if(cursorError)throw cursorError.reason;
+    results.forEach((res,i)=>{
+      if(res.status==="rejected"){errors++;sourceDiagnostics[i]={...sourceDiagnostics[i],status:'unavailable',error:res.reason?.code||'catalog_provider_unavailable'};return;}
+      if(!res.value){next[i]="";nextOffsets[i]=0;return;}
+      const page=res.value;
+      invalidCount+=page.invalidCount;degraded=degraded||page.degraded;
+      sourceDiagnostics[i]={retailer:FEATURED_SOURCES[i][0],status:page.degraded?'presentation_only':page.items.length?'ready':page.invalidCount?'rejected':'empty',...page.diagnostics};
+      totals[i]=page.items.length;groups[i]=page.items.slice(offsets[i]);
+      sourceNext[i]=page.nextCursor??"";
+      const fetched=Date.parse(page.fetchedAt),expiry=Date.parse(page.expiresAt);
+      earliestFetched=earliestFetched===null?fetched:Math.min(earliestFetched,fetched);
+      earliestExpiry=Math.min(earliestExpiry,expiry);
+    });
     if(signal?.aborted){const aborted=new Error("catalog_aborted");aborted.name="AbortError";throw aborted;}
     // The existing CJ Nike merchant feed is a free-to-Channel3 source, and
     // is consulted only for sparse mixed pages or while its cursor is active.
@@ -4175,7 +4191,7 @@ html[data-theme="dark"] .v2-live-product-meta .is-available{color:#a3c5b4}
        ================================================================ */
 
     let artSequence=0;
-    function productArt(product,color=product.colors[0],view=0,transparent=false){if(!product.demo&&(!product.media?.length||transparent))return '<span class="anox-media-unavailable">'+esc(tx("الصورة غير متاحة","Image unavailable"))+'</span>';const media=product.media?.filter(m=>m.trusted&&(m.data||m.url));if(media?.length&&!transparent){const image=media[view%media.length],src=image.data||image.url;return '<img class="provider-art" src="'+esc(src)+'" width="'+image.width+'" height="'+image.height+'" alt="'+esc(localized(image.alt))+'" loading="lazy" decoding="async" data-media-fallback="'+esc(product.id)+'">';}return generatedArtwork(product,color,view,transparent);}
+    function productArt(product,color=product.colors[0],view=0,transparent=false,highPriority=false){if(!product.demo&&(!product.media?.length||transparent))return '<span class="anox-media-unavailable">'+esc(tx("الصورة غير متاحة","Image unavailable"))+'</span>';const media=product.media?.filter(m=>m.trusted&&(m.data||m.url));if(media?.length&&!transparent){const image=media[view%media.length],src=image.data||image.url;return '<img class="provider-art" src="'+esc(src)+'" width="'+image.width+'" height="'+image.height+'" alt="'+esc(localized(image.alt))+'" loading="'+(highPriority?'eager':'lazy')+'" '+(highPriority?'fetchpriority="high" ':'')+'decoding="async" data-media-fallback="'+esc(product.id)+'">';}return generatedArtwork(product,color,view,transparent);}
     function generatedArtwork(product,color=product.colors[0],view=0,transparent=false){
       const id="anox-art-"+(++artSequence),c=colorHex(color),ink="#243449",light="#f8fafc";
       let shape="";
@@ -4685,9 +4701,14 @@ html[data-theme="dark"] .v2-live-product-meta .is-available{color:#a3c5b4}
     }
     
 
-    const productGrid=(products,context)=>'<div class="product-grid">'+products.filter(Boolean).map(product=>productCard(product,context)).join("")+'</div>';
+    const productGrid=(products,context)=>'<div class="product-grid">'+products.filter(Boolean).map((product,index)=>productCard(product,index<4&&(!context||context==='catalog')?'priority':context)).join("")+'</div>';
 
-    function liveCatalogStateMessage(kind,query=''){
+    function liveCatalogLoadingPreview(){
+  const label=tx('جارٍ تحميل المنتجات…','Loading products…');
+  const card='<div class="anox-product-placeholder"><div class="anox-placeholder-media"></div><div class="anox-placeholder-line"></div><div class="anox-placeholder-line short"></div></div>';
+  return '<div class="anox-catalog-loading" role="status" aria-label="'+esc(label)+'"><div class="product-grid" aria-hidden="true">'+card.repeat(6)+'</div><span class="sr-only">'+esc(label)+'</span></div>';
+}
+function liveCatalogStateMessage(kind,query=''){
   const messages={loading:tx('جارٍ تحميل المنتجات…','Loading products…'),unavailable:tx('تعذر تحميل المنتجات حاليًا.','Products could not be loaded right now.'),empty:tx('لا توجد نتائج متاحة لهذا الاختيار.','No listings are available for this selection.')};
   const errors=Catalog.liveError.split(',');
   if(kind!=='loading'&&errors.includes('catalog_budget_exhausted'))messages[kind]=tx('بلغ المصدر حد البحث المسموح حاليًا. المنتجات غير مفقودة من المتاجر؛ حاول لاحقًا.','The source search allowance has been reached. This does not mean retailers have no products; try later.');
@@ -6267,7 +6288,7 @@ function catalogResults(products,query=''){
   const sorts=(!DEVELOPER_MODE&&catalogPresentationSource().every(p=>p.presentationOnly))?[['featured',tx('مختاراتنا','Featured')]]:[['featured',tx('مختاراتنا','Featured')],['low',DEVELOPER_MODE?tx('تكلفة الوصول: الأقل','Landed cost: low first'):tx('السعر: الأقل','Price: low first')],['high',DEVELOPER_MODE?tx('تكلفة الوصول: الأعلى','Landed cost: high first'):tx('السعر: الأعلى','Price: high first')],['newest',tx('الأحدث','Newest')]];
   const toolbar=`<div class="v2-catalog-toolbar"><div><button type="button" class="btn secondary small v2-filter-trigger" data-open="filters">${icon('filter')}${esc(tx('الفلاتر','Filters'))}</button><span id="results-count" class="v2-results-count" role="status" tabindex="-1">${esc(resultLabel)}</span></div><label class="v2-sort"><span>${esc(tx('الترتيب','Sort'))}</span><select class="select" data-sort>${sorts.map(([v,l])=>`<option value="${v}"${ui.sort===v?' selected':''}>${esc(l)}</option>`).join('')}</select></label></div>`;
   const liveMore=liveLoadMoreMarkup(query);
-  const content=products.length?`<div class="product-grid v2-catalog-grid">${pagination.items.map(p=>productCard(p)).join('')}</div>${live?'':catalogPaginationMarkup(pagination,route.name==='search'?'search':'shop',pageParams)}`:emptyMarkup(tx('مساحة لاختيار مختلف','Room for a different choice'),tx('وسّع الفلاتر أو أرسل رابط المنتج الذي تبحث عنه.','Try fewer filters, or send the link to what you want.'),tx('طلب منتج','Request a product'),'request','search');
+  const content=products.length?`<div class="product-grid v2-catalog-grid">${pagination.items.map((p,index)=>productCard(p,index<4?'priority':'catalog')).join('')}</div>${live?'':catalogPaginationMarkup(pagination,route.name==='search'?'search':'shop',pageParams)}`:emptyMarkup(tx('مساحة لاختيار مختلف','Room for a different choice'),tx('وسّع الفلاتر أو أرسل رابط المنتج الذي تبحث عنه.','Try fewer filters, or send the link to what you want.'),tx('طلب منتج','Request a product'),'request','search');
   const unsupported=!DEVELOPER_MODE&&catalogPresentationSource().some(p=>p.presentationOnly)&&(ui.filters.maxPrice||ui.filters.available||V2CatalogChoices().size||V2CatalogChoices().color||['low','high'].includes(ui.sort));
   const notice=unsupported?'<p class="notice warning" role="status" data-catalog-filter-unavailable>'+esc(tx('لا يمكن تطبيق فلاتر السعر أو التوفر أو الخيارات على نتائج الاكتشاف المحفوظة. امسح الفلاتر وافتح المنتج للتحقق من بياناته الحالية.','Price, availability and option filters cannot be applied to cached discovery results. Clear filters and open a product to check its current details.'))+'</p>':'';
   return `${toolbar}${notice}<div class="v2-selected-filters">${filterChips()}</div>${!products.length?button(tx('مسح الفلاتر','Clear filters'),'data-clear-filters','text-btn'):''}${live?liveContextNotice():''}${content}${liveMore}`;
@@ -6286,7 +6307,7 @@ function renderShop(){
   pageTitle(ui.filters.category?v2CategoryLabel(ui.filters.category):tx('تسوّق العلامات','Shop brands'));
   prepareLiveCatalog('');
   const usingLive=Catalog.usingLive(''),source=usingLive?Catalog.liveSource(''):[];
-  if(Catalog.liveStatus==='loading'&&!Catalog.liveRecords.length){$('main').innerHTML='<div class="v2-page v2-catalog-page"><div class="v2-container">'+V2CategoryHeader()+liveCatalogStateMessage('loading')+'</div></div>';return;}
+  if(Catalog.liveStatus==='loading'&&!Catalog.liveRecords.length){$('main').innerHTML='<div class="v2-page v2-catalog-page"><div class="v2-container">'+V2CategoryHeader()+liveCatalogLoadingPreview()+'</div></div>';return;}
   if(Catalog.liveStatus==='unavailable'){ $('main').innerHTML='<div class="v2-page v2-catalog-page"><div class="v2-container">'+V2CategoryHeader()+(Catalog.liveRestartRequired?liveContextNotice():liveCatalogStateMessage('unavailable'))+'</div></div>';return; }
   V2CatalogPage(V2CategoryHeader(),filteredProducts(source),'');
 }
@@ -6354,8 +6375,8 @@ function updateStorageBanner(){
 }
 function updateCatalogStatus(){
   let banner=$('catalog-status');if(!banner){banner=document.createElement('div');banner.id='catalog-status';banner.className='storage-banner';banner.setAttribute('role','status');$('storage-banner').after(banner);}
-  const live=Catalog.liveStatus,visible=DEVELOPER_MODE?(live==='loading'||live==='unavailable'||live==='partial'||Catalog.status!=='ready'):['home','shop','search','new','brands','wishlist'].includes(currentRoute().name)&&['loading','unavailable','partial'].includes(live);banner.hidden=!visible;
-  banner.textContent=live==='loading'?tx('جارٍ تحميل المنتجات…','Loading products…'):live==='unavailable'?tx('تعذر تحميل الكتالوج الآن.','The catalog could not be loaded.'):live==='partial'?tx('عُرضت بعض المنتجات؛ يمكنك تحميل المزيد.','Some products are shown; you can load more.'):Catalog.status==='loading'?tx('جارٍ تهيئة الكتالوج…','Preparing the catalog…'):Catalog.status==='partial'?tx('بعض بيانات الكتالوج المحلي غير متاحة.','Some local catalog data is unavailable.'):tx('الكتالوج غير متاح.','Catalog unavailable.');banner.inert=!!ui.dialog;
+  const live=Catalog.liveStatus,visible=DEVELOPER_MODE&&(live==='loading'||live==='unavailable'||Catalog.status!=='ready');banner.hidden=!visible;
+  banner.textContent=live==='loading'?tx('جارٍ تحميل المنتجات…','Loading products…'):live==='unavailable'?tx('تعذر تحميل الكتالوج الآن.','The catalog could not be loaded.'):live==='partial'?tx('',''):Catalog.status==='loading'?tx('جارٍ تهيئة الكتالوج…','Preparing the catalog…'):Catalog.status==='partial'?tx('بعض بيانات الكتالوج المحلي غير متاحة.','Some local catalog data is unavailable.'):tx('الكتالوج غير متاح.','Catalog unavailable.');banner.inert=!!ui.dialog;
 }
 function pageTitle(label){document.title=label+' — AnoX';document.querySelector('meta[name="description"]')?.setAttribute('content',tx('AnoX — اختيارات من أمريكا مع تقدير واضح لتكاليف الإيصال.','AnoX — discover U.S. products with clear estimated delivery costs.'));}
 
@@ -6386,7 +6407,7 @@ function renderCompare(){
 
 function renderNew(){
   prepareLiveCatalog('');pageTitle(tx('اكتشف الكتالوج','Explore the catalog'));
-  const products=Catalog.liveSource('');$('main').innerHTML=pageShell(tx('اكتشف الكتالوج','Explore the catalog'),tx('اختيارات من المصدر المتصل. تحقّق من السعر والخيارات لدى المتجر قبل الطلب.','Listings from the connected source. Confirm price and options with the retailer before requesting a purchase.'),discoveryNavigation('new')+liveContextNotice()+(products.length?productGrid(products):liveCatalogStateMessage(Catalog.liveStatus==='loading'?'loading':Catalog.liveStatus==='unavailable'?'unavailable':'empty'))+liveLoadMoreMarkup(''));
+  const products=Catalog.liveSource('');$('main').innerHTML=pageShell(tx('اكتشف الكتالوج','Explore the catalog'),tx('اختيارات من المصدر المتصل. تحقّق من السعر والخيارات لدى المتجر قبل الطلب.','Listings from the connected source. Confirm price and options with the retailer before requesting a purchase.'),discoveryNavigation('new')+liveContextNotice()+(products.length?productGrid(products):Catalog.liveStatus==='loading'?liveCatalogLoadingPreview():liveCatalogStateMessage(Catalog.liveStatus==='unavailable'?'unavailable':'empty'))+liveLoadMoreMarkup(''));
 }
 
 
@@ -6397,7 +6418,7 @@ function renderHome() {
   const catalog=Catalog.usingLive('')?Catalog.liveSource(''):[];
   const products=catalog;
   const categories=['Shoes','Fashion','Beauty','Accessories','Sports','Lifestyle'].filter(key=>catalog.some(product=>product.category===key));
-  const catalogBlock=Catalog.liveStatus==='loading'&&!catalog.length?liveCatalogStateMessage('loading'):Catalog.liveStatus==='unavailable'?(Catalog.liveRestartRequired?liveContextNotice():liveCatalogStateMessage('unavailable')):products.length?'<section class="anox-home-selection" aria-labelledby="anox-selection-title"><div class="anox-home-section-head"><h2 id="anox-selection-title">'+esc(tx('اختيارات تستحق نظرة.','Worth a closer look.'))+'</h2>'+routeLink('shop?section='+liveSectionForRoute(),tx('كل المنتجات','View all products'),'v2-inline-link')+'</div><div class="anox-home-grid">'+products.map(product=>productCard(product)).join('')+'</div></section>':liveCatalogStateMessage('empty');
+  const catalogBlock=Catalog.liveStatus==='loading'&&!catalog.length?liveCatalogLoadingPreview():Catalog.liveStatus==='unavailable'?(Catalog.liveRestartRequired?liveContextNotice():liveCatalogStateMessage('unavailable')):products.length?'<section class="anox-home-selection" aria-labelledby="anox-selection-title"><div class="anox-home-section-head"><h2 id="anox-selection-title">'+esc(tx('اختيارات تستحق نظرة.','Worth a closer look.'))+'</h2>'+routeLink('shop?section='+liveSectionForRoute(),tx('كل المنتجات','View all products'),'v2-inline-link')+'</div><div class="anox-home-grid">'+products.map((product,index)=>productCard(product,index<4?'priority':'catalog')).join('')+'</div></section>':liveCatalogStateMessage('empty');
   $('main').innerHTML='<div class="v2-home anox-home">'+
     '<section class="anox-home-hero anox-home-shell" aria-labelledby="anox-home-title"><div class="anox-home-intro"><p class="anox-home-eyebrow">'+esc(tx('من أمريكا إلى وجهتك','DISCOVER U.S. PRODUCTS'))+'</p><h1 id="anox-home-title"><span>'+esc(tx('اختيارات أبعد.','Good finds.'))+'</span><span>'+esc(tx('تكلفة أوضح.','A clearer cost.'))+'</span></h1><p class="anox-home-description">'+esc(tx('اكتشف منتجات من أمريكا، وتواصل معنا لمراجعة تكاليف شرائها وإيصالها.','Discover U.S. products and contact us to review purchasing and fulfillment costs.'))+'</p>'+routeLink('shop',tx('استكشف المنتجات','Explore products'),'v2-primary-link')+'</div><figure class="anox-home-visual">'+(products.length?productCard(products[0],'editorial'):V2HeroPicture())+'</figure></section>'+
     '<div class="anox-home-shell">'+(categories.length?'<nav class="anox-home-categories" aria-label="'+esc(tx('تسوّق حسب الفئة','Shop by category'))+'"><span>'+esc(tx('تسوّق حسب الفئة','Shop by category'))+'</span><div>'+categories.map(key=>'<a class="anox-home-category" href="#shop?category='+encodeURIComponent(key)+'" data-nav>'+categoryIcon(key)+esc(v2CategoryLabel(key))+'</a>').join('')+'</div></nav>':'')+
@@ -6817,7 +6838,7 @@ function renderSearch(){
   const usingLive=Catalog.usingLive(query),source=usingLive?Catalog.liveSource(query):[];
   const retailer=cinematicRetailer();
   const heading='<header class="v2-category-heading"><nav class="v2-breadcrumb" aria-label="'+esc(tx('مسار التنقل','Breadcrumb'))+'">'+routeLink('home',tx('الرئيسية','Home'))+'<span aria-hidden="true">/</span><span>'+esc(tx('البحث','Search'))+'</span></nav>'+(retailer?cinematicCollectionTitle(retailer)+discoveryNavigation():'<div class="v2-category-title"><div><h1>'+esc(query?tx('نتائج «','Results for “')+query+(state.lang==='ar'?'»':'”'):tx('ابحث عن اختيارك القادم','Find your next discovery'))+'</h1></div></div>')+'<form class="v2-search-page-form" id="search-page-form"><label class="sr-only" for="search-page-input">'+esc(tx('منتج، علامة، فئة أو رابط','Product, brand, category or URL'))+'</label><input class="input" id="search-page-input" name="q" type="search" maxlength="2048" value="'+esc(query)+'" placeholder="'+esc(tx('ابحث عن منتج أو الصق رابطًا','Search products or paste a link'))+'"><button class="btn primary" type="submit">'+icon('search')+'<span>'+esc(tx('بحث','Search'))+'</span></button></form></header>';
-  if(Catalog.liveStatus==='loading'&&!Catalog.liveRecords.length){$('main').innerHTML='<div class="v2-page v2-catalog-page v2-search-page"><div class="v2-container">'+heading+liveCatalogStateMessage('loading',query)+'</div></div>';return;}
+  if(Catalog.liveStatus==='loading'&&!Catalog.liveRecords.length){$('main').innerHTML='<div class="v2-page v2-catalog-page v2-search-page"><div class="v2-container">'+heading+liveCatalogLoadingPreview()+'</div></div>';return;}
   if(Catalog.liveStatus==='unavailable'){ $('main').innerHTML='<div class="v2-page v2-catalog-page v2-search-page"><div class="v2-container">'+heading+(Catalog.liveRestartRequired?liveContextNotice():liveCatalogStateMessage('unavailable',query))+'</div></div>';return; }
   V2CatalogPage(heading,filteredProducts(source),query,'v2-search-page');
 }
@@ -6853,7 +6874,7 @@ function productCard(product,context='catalog') {
   const productAttributes='href="'+esc(!DEVELOPER_MODE&&product.id.startsWith('channel3-live__')?channel3Href(product.id.slice(15)):'#product/'+product.slug)+'" data-product="'+esc(product.id)+'"';
   const wishlistAction=context==='wishlist'?'<div class="v2-product-card-action"><button type="button" class="v2-card-option" data-options="'+esc(product.id)+'" data-move-wishlist="true" '+(!product.stock?'disabled':'')+'>'+esc(product.stock?tx('اختر الخيارات','Choose options'):tx('غير متوفر','Unavailable'))+'</button></div>':(!product.stock&&!live?'<p class="v2-product-availability">'+esc(tx('غير متوفر','Unavailable'))+'</p>':'');
   const action=live?liveProductLink(product):wishlistAction;
-  return '<article class="v2-product-card"><div class="v2-product-card-visual"><a class="v2-product-card-image" '+productAttributes+' aria-label="'+esc(tx('عرض المنتج: ','View product: ')+name)+'">'+productArt(product,product.colors[0],0,!live)+'</a><button type="button" class="v2-product-wishlist" data-wishlist="'+esc(product.id)+'" aria-label="'+esc(navLabel('wishlist')+' · '+name)+'" aria-pressed="'+liked+'">'+icon('heart')+'</button></div><div class="v2-product-card-info"><span class="v2-product-card-brand">'+esc(product.brand)+'</span><a class="v2-product-card-name" '+productAttributes+'>'+esc(name)+'</a>'+(context==='editorial'?'<p class="fine cinema-feature-note">'+esc(tx('افتح المنتج لمراجعة السعر والخيارات الحالية.','Open the product for its current price and options.'))+'</p>':V2Price(product)+liveProductMeta(product)+action)+'</div></article>';
+  return '<article class="v2-product-card"><div class="v2-product-card-visual"><a class="v2-product-card-image" '+productAttributes+' aria-label="'+esc(tx('عرض المنتج: ','View product: ')+name)+'">'+productArt(product,product.colors[0],0,!live,context==='priority'||context==='editorial')+'</a><button type="button" class="v2-product-wishlist" data-wishlist="'+esc(product.id)+'" aria-label="'+esc(navLabel('wishlist')+' · '+name)+'" aria-pressed="'+liked+'">'+icon('heart')+'</button></div><div class="v2-product-card-info"><span class="v2-product-card-brand">'+esc(product.brand)+'</span><a class="v2-product-card-name" '+productAttributes+'>'+esc(name)+'</a>'+(context==='editorial'?'<p class="fine cinema-feature-note">'+esc(tx('افتح المنتج لمراجعة السعر والخيارات الحالية.','Open the product for its current price and options.'))+'</p>':V2Price(product)+liveProductMeta(product)+action)+'</div></article>';
 }
 
 function V2CategoryTile({category,product,route,label}) {
@@ -7227,9 +7248,27 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 
     async function boot(){
   updateShell();
+  const route=currentRoute();
+  const shouldPreload=['home','shop','search','new','brands'].includes(route.name);
+  const query=route.name==='search'?normalizeLiveQuery(route.params.get('q')||''):'';
+  const section=query?'':liveSectionForRoute(route);
+  let bootPageReady=false;
+  if(shouldPreload){
+    const preload=Catalog.loadLivePage({query,section,limit:24});
+    void preload.then(()=>{
+      if(!bootPageReady)return;
+      const current=currentRoute();
+      const currentQuery=current.name==='search'?normalizeLiveQuery(current.params.get('q')||''):'';
+      if(['home','shop','search','new','brands'].includes(current.name)&&currentQuery===query&&Catalog.usingLive(query,section)&&(!query?liveSectionForRoute(current)===section:true)){
+        SearchService.rebuild();
+        renderRoute({focus:false,preserveDialog:true});
+      }
+    }).catch(()=>{});
+  }
   await Catalog.load();
   SearchService.rebuild();
   await Storage.load();
+  bootPageReady=true;
   renderRoute({focus:false});
   $('footer').hidden=false;
   if(DEVELOPER_MODE)registerCatalogTool();
