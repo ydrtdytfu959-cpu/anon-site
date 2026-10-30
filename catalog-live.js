@@ -556,31 +556,37 @@
     const sourceDiagnostics=FEATURED_SOURCES.map(([retailer])=>({retailer,status:'exhausted',received:0,accepted:0,rejected:0}));
     // First display reads at most six sources; subsequent mixed pages reuse
     // validated unexpired source pages without any additional provider calls.
-    for(let start=0;start<6;start+=3){
-      const results=await Promise.allSettled(FEATURED_SOURCES.slice(start,start+3).map(async([,query],offset)=>{
-        const i=start+offset;
-        if(cursors[i]==="")return null;
-        const page=await featuredSourcePage(query,cursors[i],{...normalized.filters,website_ids:[WEBSITE_IDS[i]]},signal);
-        if(offsets[i]>page.items.length)throw catalogError("catalog_cursor_invalid",400);
-        return page;
-      }));
-      const cursorError=results.find(res=>res.status==="rejected"&&
-        ["catalog_cursor_invalid","catalog_cursor_expired"].includes(res.reason?.code));
-      if(cursorError)throw cursorError.reason;
-      results.forEach((res,k)=>{
-        const i=start+k;
-        if(res.status==="rejected"){errors++;sourceDiagnostics[i]={...sourceDiagnostics[i],status:'unavailable',error:res.reason?.code||'catalog_provider_unavailable'};return;}
-        if(!res.value){next[i]="";nextOffsets[i]=0;return;}
-        const page=res.value;
-        invalidCount+=page.invalidCount;degraded=degraded||page.degraded;
-        sourceDiagnostics[i]={retailer:FEATURED_SOURCES[i][0],status:page.degraded?'presentation_only':page.items.length?'ready':page.invalidCount?'rejected':'empty',...page.diagnostics};
-        totals[i]=page.items.length;groups[i]=page.items.slice(offsets[i]);
-        sourceNext[i]=page.nextCursor??"";
-        const fetched=Date.parse(page.fetchedAt),expiry=Date.parse(page.expiresAt);
-        earliestFetched=earliestFetched===null?fetched:Math.min(earliestFetched,fetched);
-        earliestExpiry=Math.min(earliestExpiry,expiry);
-      });
-    }
+    // Keep at most three provider reads in flight, but start the next as soon
+    // as one finishes instead of waiting for a whole three-request wave.
+    // The existing shared rate limiter still caps this tab at four/UTC-second.
+    const results=Array(FEATURED_SOURCES.length);
+    let nextSource=0;
+    await Promise.all(Array.from({length:3},async()=>{
+      while(nextSource<FEATURED_SOURCES.length){
+        const i=nextSource++;
+        try {
+          if(cursors[i]===""){results[i]={status:"fulfilled",value:null};continue;}
+          const page=await featuredSourcePage(FEATURED_SOURCES[i][1],cursors[i],{...normalized.filters,website_ids:[WEBSITE_IDS[i]]},signal);
+          if(offsets[i]>page.items.length)throw catalogError("catalog_cursor_invalid",400);
+          results[i]={status:"fulfilled",value:page};
+        }catch(reason){results[i]={status:"rejected",reason};}
+      }
+    }));
+    const cursorError=results.find(res=>res.status==="rejected"&&
+      ["catalog_cursor_invalid","catalog_cursor_expired"].includes(res.reason?.code));
+    if(cursorError)throw cursorError.reason;
+    results.forEach((res,i)=>{
+      if(res.status==="rejected"){errors++;sourceDiagnostics[i]={...sourceDiagnostics[i],status:'unavailable',error:res.reason?.code||'catalog_provider_unavailable'};return;}
+      if(!res.value){next[i]="";nextOffsets[i]=0;return;}
+      const page=res.value;
+      invalidCount+=page.invalidCount;degraded=degraded||page.degraded;
+      sourceDiagnostics[i]={retailer:FEATURED_SOURCES[i][0],status:page.degraded?'presentation_only':page.items.length?'ready':page.invalidCount?'rejected':'empty',...page.diagnostics};
+      totals[i]=page.items.length;groups[i]=page.items.slice(offsets[i]);
+      sourceNext[i]=page.nextCursor??"";
+      const fetched=Date.parse(page.fetchedAt),expiry=Date.parse(page.expiresAt);
+      earliestFetched=earliestFetched===null?fetched:Math.min(earliestFetched,fetched);
+      earliestExpiry=Math.min(earliestExpiry,expiry);
+    });
     if(signal?.aborted){const aborted=new Error("catalog_aborted");aborted.name="AbortError";throw aborted;}
     // The existing CJ Nike merchant feed is a free-to-Channel3 source, and
     // is consulted only for sparse mixed pages or while its cursor is active.
