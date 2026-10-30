@@ -119,8 +119,8 @@ async function run(engine,view){
   await nav('signin');await page.locator('[data-anox-auth]').waitFor();await capture('signin');
   await nav('request');await page.locator('[data-inquiry-email]').waitFor();await capture('request');
   await nav('home');await settledHome();await capture('home-products','.anox-home-grid');await page.locator('button[data-theme]').filter({visible:true}).first().click();await page.waitForFunction(()=>document.documentElement.dataset.theme==='light');await capture('home-light');await capture('home-products-light','.anox-home-grid');
-  await page.locator('button[data-theme]').filter({visible:true}).first().click();await page.locator('[data-language="ar"]').filter({visible:true}).first().click();await page.waitForFunction(()=>document.documentElement.dir==='rtl');await settledHome();await capture('home-rtl');await dialog('[data-open="search"]','search-rtl');
-  await page.locator('[data-language="en"]').filter({visible:true}).first().click();
+  await page.locator('button[data-theme]').filter({visible:true}).first().click();await page.locator('.v2-utility .anox-language-menu summary').click();await page.locator('.v2-utility [data-language="ar"]').click();await page.waitForFunction(()=>document.documentElement.dir==='rtl');await settledHome();await capture('home-rtl');await dialog('[data-open="search"]','search-rtl');
+  await page.locator('.v2-utility .anox-language-menu summary').click();await page.locator('.v2-utility [data-language="en"]').click();
   if(!baseline){
    await nav('account');await page.waitForFunction(()=>document.querySelector('#main')?.textContent.includes('preview@example.test'));
    assert.ok(await page.evaluate(()=>window.AnoXIcons&&typeof AnoXIcons.render==='function'),'actual icon renderer is available');

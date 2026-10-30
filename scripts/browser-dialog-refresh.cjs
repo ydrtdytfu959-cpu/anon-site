@@ -25,7 +25,7 @@ async function run(browser,engine,kind,mobile,lang){
   });
   const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
   await page.goto('https://anox.app/#home');await started;
-  if(lang==='ar')await page.locator('[data-language="ar"]').click();
+  if(lang==='ar'){await page.locator('.v2-utility .anox-language-menu summary').click();await page.locator('.v2-utility [data-language="ar"]').click();}
   const opener=page.locator('[data-open="'+kind+'"]').filter({visible:true}).first();
   if(mobile)await opener.tap();else{await opener.focus();await page.keyboard.press('Enter');}
   const dialog=page.locator('#dialog');await dialog.waitFor({state:'visible'});
