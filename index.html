@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://zmumi2wruk.execute-api.us-east-2.amazonaws.com" crossorigin>
   <meta name="robots" content="index,follow">
   <meta name="description" content="AnoX — اكتشف المنتجات، وقارن التفاصيل وتكاليف إيصالها التقديرية.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-rliKRRMZ5LvgX4/Y7p8hCvjNM7nkM9jEbY82l5p/mVw=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — Discover U.S. products">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-ocW4ox0IDfKcu8Pdrcae9PtYEmA+LwtDEBqzLGetfvY=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — Discover U.S. products">
   <meta property="og:description" content="AnoX LLC — discover U.S. products and request information about purchasing and cross-border fulfillment.">
   <meta property="og:url" content="https://anox.app/">
   <title>AnoX — اختيارات أبعد. تكلفة أوضح.</title>
@@ -5180,7 +5180,10 @@ function liveCatalogStateMessage(kind,query=''){
     }
     function languageMenuMarkup(){
  const current=state.lang==='ar'?'AR':'EN',other=state.lang==='ar'?'en':'ar',label=other==='ar'?'AR':'EN';
- return '<details class="anox-language-menu"><summary aria-label="'+esc(tx('اختيار اللغة','Choose language'))+'"><span dir="ltr">'+current+'</span><span class="anox-language-caret" aria-hidden="true"></span></summary><div class="anox-language-options" role="group" aria-label="'+esc(tx('اللغات المتاحة','Available languages'))+'"><button type="button" data-language="'+other+'" lang="'+other+'" dir="ltr">'+label+'</button></div></details>';
+ // A catalog refresh may rebuild the header while a customer is choosing.
+ // Keep the disclosure open across that render, rather than losing the option.
+ const wasOpen=typeof document!=='undefined'&&!!document.querySelector('#site-header .anox-language-menu[open]');
+ return '<details class="anox-language-menu"'+(wasOpen?' open':'')+'><summary aria-label="'+esc(tx('اختيار اللغة','Choose language'))+'"><span dir="ltr">'+current+'</span><span class="anox-language-caret" aria-hidden="true"></span></summary><div class="anox-language-options" role="group" aria-label="'+esc(tx('اللغات المتاحة','Available languages'))+'"><button type="button" data-language="'+other+'" lang="'+other+'" dir="ltr">'+label+'</button></div></details>';
 }
 function renderAuthShell(){
       const password=$("auth-password"),reveal=$("main").querySelector('[data-auth-reveal]');
@@ -5546,6 +5549,7 @@ document.addEventListener("keydown",event=>{
 });
 function setLanguage(lang){
       if(!["ar","en"].includes(lang)||lang===state.lang)return;
+      document.querySelectorAll('.anox-language-menu[open]').forEach(menu=>menu.open=false);
       captureForms();
       const overlay=ui.dialog,searchValue=$("search-query")?.value||"";
       state.lang=lang;
