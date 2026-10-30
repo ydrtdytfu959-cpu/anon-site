@@ -72,7 +72,7 @@ async function run(engine,mobile=false){
    if(process.env.SCREENSHOT_DIR){fs.mkdirSync(process.env.SCREENSHOT_DIR,{recursive:true});await page.evaluate(()=>scrollTo({top:0,behavior:'instant'}));await page.screenshot({path:path.join(process.env.SCREENSHOT_DIR,engine+'-'+(mobile?'mobile':'desktop')+'-'+name+'.png'),fullPage:true});}
   };
   await page.goto('https://anox.app/#product/channel3/shoe_1');await ready();
-  if(await page.locator('[data-language="en"]').count())await page.locator('[data-language="en"]').click();
+  if(await page.evaluate(()=>document.documentElement.lang==='ar')){await page.locator('.v2-utility .anox-language-menu summary').click();await page.locator('.v2-utility [data-language="en"]').click();}
   await ready();assert.equal(calls.filter(c=>c.type==='detail').length,1);assert.equal(calls.filter(c=>c.type==='quote').length,0);
   assert.equal(await page.locator('.commerce-thumbs img').count(),12);assert.equal(await page.locator('.commerce-thumbs img[loading="lazy"]').count(),12);
   assert.match(await page.locator('.commerce-description').textContent(),/Detailed product information/);assert.equal(await page.locator('[data-commerce-add]').isEnabled(),true);

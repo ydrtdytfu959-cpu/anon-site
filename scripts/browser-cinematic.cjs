@@ -66,7 +66,7 @@ async function run(engine,view){
    record(name+' rendered layout and accessible control names');
   };
   const setTheme=async theme=>{if(await page.evaluate(()=>document.documentElement.dataset.theme)!==theme){await page.locator('button[data-theme]').filter({visible:true}).first().click();await page.waitForFunction(theme=>document.documentElement.dataset.theme===theme,theme);}};
-  const setLanguage=async lang=>{await page.locator('[data-language="'+lang+'"]').filter({visible:true}).first().click();await page.waitForFunction(lang=>document.documentElement.dir===(lang==='ar'?'rtl':'ltr'),lang);};
+  const setLanguage=async lang=>{const picker=page.locator('.v2-utility .anox-language-menu');await picker.locator('summary').click();await picker.locator('[data-language="'+lang+'"]').click();await page.waitForFunction(lang=>document.documentElement.dir===(lang==='ar'?'rtl':'ltr'),lang);};
   await page.goto('https://anox.app/#product/channel3/cinematic-jacket');await ready();await page.waitForFunction(()=>document.querySelector('.commerce-main-image')?.naturalWidth>0);await setTheme('dark');
   assert.equal(result.requests.filter(r=>r.path.startsWith('/catalog/channel3/products/')).length,1,'PDP render makes one detail request');
   if(scenes.includes('pdp')){

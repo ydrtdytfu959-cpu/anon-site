@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://zmumi2wruk.execute-api.us-east-2.amazonaws.com" crossorigin>
   <meta name="robots" content="index,follow">
   <meta name="description" content="AnoX — اكتشف المنتجات، وقارن التفاصيل وتكاليف إيصالها التقديرية.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-Stopud+cuKrex5CO1uotoahssYhGN0T0ULuozBQQrr0=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — Discover U.S. products">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-ocW4ox0IDfKcu8Pdrcae9PtYEmA+LwtDEBqzLGetfvY=' https://www.googletagmanager.com; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob: https://static.nike.com https://cdn.trychannel3.com; font-src 'none'; connect-src https://zmumi2wruk.execute-api.us-east-2.amazonaws.com https://cognito-idp.us-east-2.amazonaws.com https://www.google-analytics.com https://*.google-analytics.com; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">    <meta property="og:title" content="AnoX — Discover U.S. products">
   <meta property="og:description" content="AnoX LLC — discover U.S. products and request information about purchasing and cross-border fulfillment.">
   <meta property="og:url" content="https://anox.app/">
   <title>AnoX — اختيارات أبعد. تكلفة أوضح.</title>
@@ -1733,6 +1733,19 @@ html[data-theme="dark"] .v2-live-product-meta .is-available{color:#a3c5b4}
   .btn.primary,.anox-auth-primary,.v2-primary-link{background:ButtonFace;color:ButtonText;border:1px solid ButtonText}
 }
 /* ANOX_CINEMATIC_STYLES_END */
+/* Minimal keyboard-accessible dropdown for English and Arabic. */
+.anox-language-menu{position:relative;display:inline-flex;align-items:center;vertical-align:middle;font:inherit;color:inherit;z-index:65}
+.anox-language-menu>summary{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:32px;padding:0 9px;border-radius:9px;background:transparent;color:inherit;font:inherit;font-weight:650;cursor:pointer;list-style:none}
+.anox-language-menu>summary::-webkit-details-marker{display:none}
+.anox-language-menu>summary::marker{content:''}
+.anox-language-menu>summary:focus-visible,.anox-language-options>button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.anox-language-menu[open]>summary{background:rgba(148,163,184,.13)}
+.anox-language-caret{display:inline-block;width:6px;height:6px;border-inline-end:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:translateY(-2px) rotate(45deg)}
+.anox-language-menu[open] .anox-language-caret{transform:translateY(2px) rotate(225deg)}
+.anox-language-options{position:absolute;inset-inline-end:0;top:calc(100% + 5px);min-width:82px;padding:5px;border:1px solid var(--line);border-radius:11px;background:var(--paper);color:var(--ink);box-shadow:var(--shadow);z-index:70}
+.anox-language-options>button{display:block;width:100%;min-height:35px;padding:7px 12px;text-align:center;border:0;border-radius:7px;background:transparent;color:inherit;font:inherit;font-weight:650;cursor:pointer}
+.anox-language-options>button:hover{background:rgba(148,163,184,.16)}
+.anox-auth-tools .anox-language-menu,.v2-menu-tools .anox-language-menu{font-size:.875rem}
 
 /* Loading cards show layout without pretending that upstream listings exist. */
 .anox-catalog-loading{padding-block:20px 28px}
@@ -5165,12 +5178,19 @@ function liveCatalogStateMessage(kind,query=''){
       const first=$("main").querySelector('[aria-invalid="true"]');
       if(first)first.focus();
     }
-    function renderAuthShell(){
+    function languageMenuMarkup(){
+ const current=state.lang==='ar'?'AR':'EN',other=state.lang==='ar'?'en':'ar',label=other==='ar'?'AR':'EN';
+ // A catalog refresh may rebuild the header while a customer is choosing.
+ // Keep the disclosure open across that render, rather than losing the option.
+ const wasOpen=typeof document!=='undefined'&&!!document.querySelector('#site-header .anox-language-menu[open]');
+ return '<details class="anox-language-menu"'+(wasOpen?' open':'')+'><summary aria-label="'+esc(tx('اختيار اللغة','Choose language'))+'"><span dir="ltr">'+current+'</span><span class="anox-language-caret" aria-hidden="true"></span></summary><div class="anox-language-options" role="group" aria-label="'+esc(tx('اللغات المتاحة','Available languages'))+'"><button type="button" data-language="'+other+'" lang="'+other+'" dir="ltr">'+label+'</button></div></details>';
+}
+function renderAuthShell(){
       const password=$("auth-password"),reveal=$("main").querySelector('[data-auth-reveal]');
       if(password){password.value="";password.type="password";}
       if(reveal){reveal.setAttribute("aria-pressed","false");reveal.setAttribute("aria-label",tx("إظهار كلمة المرور","Show password"));reveal.textContent=tx("إظهار","Show");}
       $("site-header").classList.add("v2-site-header");
-      $("site-header").innerHTML='<div class="anox-auth-header"><a class="brand" href="#home" data-nav aria-label="'+esc(tx("الصفحة الرئيسية لـ AnoX","AnoX home"))+'">'+brand()+'</a><div class="anox-auth-tools"><button type="button" data-language="'+(state.lang==="ar"?"en":"ar")+'" aria-label="'+esc(tx("التبديل إلى الإنجليزية","Switch to Arabic"))+'">'+(state.lang==="ar"?"EN":"العربية")+'</button><button type="button" data-theme aria-label="'+esc(tx("تبديل المظهر","Toggle theme"))+'">'+icon(state.theme==="dark"?"sun":"moon")+'</button></div></div>';
+      $("site-header").innerHTML='<div class="anox-auth-header"><a class="brand" href="#home" data-nav aria-label="'+esc(tx("الصفحة الرئيسية لـ AnoX","AnoX home"))+'">'+brand()+'</a><div class="anox-auth-tools">'+languageMenuMarkup()+'<button type="button" data-theme aria-label="'+esc(tx("تبديل المظهر","Toggle theme"))+'">'+icon(state.theme==="dark"?"sun":"moon")+'</button></div></div>';
       updateStorageBanner();
     }
     function renderAuth(){if(!DEVELOPER_MODE)return renderProductionAuth();
@@ -5520,8 +5540,16 @@ function liveCatalogStateMessage(kind,query=''){
        17. Interaction controller
        ================================================================ */
 
-    function setLanguage(lang){
+    document.addEventListener("click",event=>{
+ for(const menu of document.querySelectorAll(".anox-language-menu[open]"))if(!menu.contains(event.target))menu.open=false;
+});
+document.addEventListener("keydown",event=>{
+ if(event.key!=="Escape")return;
+ for(const menu of document.querySelectorAll(".anox-language-menu[open]")){menu.open=false;menu.querySelector("summary")?.focus({preventScroll:true});}
+});
+function setLanguage(lang){
       if(!["ar","en"].includes(lang)||lang===state.lang)return;
+      document.querySelectorAll('.anox-language-menu[open]').forEach(menu=>menu.open=false);
       captureForms();
       const overlay=ui.dialog,searchValue=$("search-query")?.value||"";
       state.lang=lang;
@@ -6531,7 +6559,7 @@ function updateShell(){
   if(authRoute()){renderAuthShell();return;}
   $("site-header").classList.add("v2-site-header");
   const tool=(name,iconName,attributes,badge=0)=>'<button type="button" class="v2-header-action v2-action-'+esc(name)+'" '+attributes+' aria-label="'+esc(navLabel(name)+(badge?' · '+badge:''))+'"><span class="v2-action-icon">'+icon(iconName)+(badge?'<span class="v2-header-badge">'+badge+'</span>':'')+'</span><span class="v2-action-label">'+esc(navLabel(name))+'</span></button>';
-  $("site-header").innerHTML='<div class="v2-utility"><div class="container v2-utility-inner"><span>'+esc(tx("اكتشف منتجات من أمريكا","Discover U.S. products"))+'</span><div class="v2-utility-links">'+'<button type="button" data-language="'+(state.lang==="ar"?"en":"ar")+'" aria-label="'+esc(tx("التبديل إلى الإنجليزية","Switch to Arabic"))+'">'+(state.lang==="ar"?"EN":"العربية")+'</button><button type="button" class="v2-theme-button" data-theme aria-label="'+esc(tx("تبديل المظهر","Toggle theme"))+'">'+icon(state.theme==="dark"?"sun":"moon")+'</button></div></div></div><div class="container v2-header-main"><a class="brand v2-header-brand" href="#home" data-nav aria-label="'+esc(tx("الصفحة الرئيسية لـ AnoX","AnoX home"))+'">'+brand()+'</a><button type="button" class="v2-header-search" data-open="search" aria-haspopup="dialog" aria-label="'+esc(tx("ابحث عن منتجات أو مجموعات أو الصق رابط منتج","Search products, collections, or paste a product link"))+'">'+icon("search")+'<span>'+esc(tx("ابحث عن منتج أو الصق رابطًا…","Search products or paste a link…"))+'</span><kbd aria-hidden="true">/</kbd></button><div class="v2-header-actions">'+anoxConversationTrigger()+tool("account","user",'data-route="account"')+tool("cart","cart",'data-open="cart" aria-haspopup="dialog"',count)+'<button type="button" class="v2-header-action v2-menu-toggle" data-open="menu" aria-label="'+esc(tx("القائمة","Menu"))+'" aria-haspopup="dialog">'+icon("menu")+'</button></div></div><div class="v2-category-band"><nav class="container v2-category-nav" aria-label="'+esc(tx("فئات المنتجات","Product categories"))+'"><ul class="v2-category-list">'+'<li class="v2-category-simple">'+routeLink("new",tx("جديد","New"))+'</li>'+V2_PRIMARY_CATEGORIES.map(key=>v2MegaTrigger(key.toLowerCase(),v2CategoryLabel(key),key)).join("")+'<li class="v2-category-simple">'+routeLink("brands",tx("العلامات","Brands"))+'</li><li class="v2-category-simple">'+v2ShopLink(DEVELOPER_MODE?tx("اختيارات بسعر أقل","Deals"):tx("اكتشف","Discover"),DEVELOPER_MODE?{maxPrice:"50"}:{})+'</li><li class="v2-category-simple v2-request-link">'+routeLink("request",navLabel("request"))+'</li></ul></nav></div>'+V2MobileCategories();
+  $("site-header").innerHTML='<div class="v2-utility"><div class="container v2-utility-inner"><span>'+esc(tx("اكتشف منتجات من أمريكا","Discover U.S. products"))+'</span><div class="v2-utility-links">'+''+languageMenuMarkup()+'<button type="button" class="v2-theme-button" data-theme aria-label="'+esc(tx("تبديل المظهر","Toggle theme"))+'">'+icon(state.theme==="dark"?"sun":"moon")+'</button></div></div></div><div class="container v2-header-main"><a class="brand v2-header-brand" href="#home" data-nav aria-label="'+esc(tx("الصفحة الرئيسية لـ AnoX","AnoX home"))+'">'+brand()+'</a><button type="button" class="v2-header-search" data-open="search" aria-haspopup="dialog" aria-label="'+esc(tx("ابحث عن منتجات أو مجموعات أو الصق رابط منتج","Search products, collections, or paste a product link"))+'">'+icon("search")+'<span>'+esc(tx("ابحث عن منتج أو الصق رابطًا…","Search products or paste a link…"))+'</span><kbd aria-hidden="true">/</kbd></button><div class="v2-header-actions">'+anoxConversationTrigger()+tool("account","user",'data-route="account"')+tool("cart","cart",'data-open="cart" aria-haspopup="dialog"',count)+'<button type="button" class="v2-header-action v2-menu-toggle" data-open="menu" aria-label="'+esc(tx("القائمة","Menu"))+'" aria-haspopup="dialog">'+icon("menu")+'</button></div></div><div class="v2-category-band"><nav class="container v2-category-nav" aria-label="'+esc(tx("فئات المنتجات","Product categories"))+'"><ul class="v2-category-list">'+'<li class="v2-category-simple">'+routeLink("new",tx("جديد","New"))+'</li>'+V2_PRIMARY_CATEGORIES.map(key=>v2MegaTrigger(key.toLowerCase(),v2CategoryLabel(key),key)).join("")+'<li class="v2-category-simple">'+routeLink("brands",tx("العلامات","Brands"))+'</li><li class="v2-category-simple">'+v2ShopLink(DEVELOPER_MODE?tx("اختيارات بسعر أقل","Deals"):tx("اكتشف","Discover"),DEVELOPER_MODE?{maxPrice:"50"}:{})+'</li><li class="v2-category-simple v2-request-link">'+routeLink("request",navLabel("request"))+'</li></ul></nav></div>'+V2MobileCategories();
   $("mobile-nav").setAttribute("aria-label",tx("التنقل على الهاتف","Mobile navigation"));
   $("mobile-nav").innerHTML=[["home","home"],["shop","bag"],["account","user"],["cart","cart"]].map(([name,iconName])=>'<a href="#'+name+'" data-nav '+(route.name===name?'aria-current="page"':"")+'>'+icon(iconName)+'<span>'+esc(navLabel(name))+'</span>'+(name==="cart"&&count?'<span class="badge">'+count+'</span>':"")+'</a>').join("");
   v2BindNavigation();renderFooter();updateCompareBar();updateStorageBanner();
@@ -6539,7 +6567,7 @@ function updateShell(){
 }
 function menuMarkup(){
   const route=currentRoute();
-  return '<nav class="v2-mobile-menu" aria-label="'+esc(tx("قائمة الموقع","Site menu"))+'"><div class="v2-mobile-main-links">'+["new","brands"].map(name=>'<a href="#'+name+'" data-nav '+(route.name===name?'aria-current="page"':"")+'>'+esc(navLabel(name))+'</a>').join("")+'</div><h3 class="v2-mobile-menu-label">'+esc(tx("تسوّق حسب الفئة","Shop by category"))+'</h3>'+Object.keys(CATEGORIES).map(key=>'<details class="v2-mobile-category"><summary>'+categoryIcon(key)+esc(v2CategoryLabel(key))+icon("chevron","anox-chevron")+'</summary><div class="v2-mobile-category-links">'+v2NavigationLinks(key)+'</div></details>').join("")+'<div class="v2-mobile-main-links">'+v2ShopLink(DEVELOPER_MODE?tx("أقل من 50 دولارًا","Under $50"):tx("كل المنتجات","All products"),DEVELOPER_MODE?{maxPrice:"50"}:{})+["request","wishlist","account","help"].map(name=>'<a href="#'+name+'" data-nav '+(route.name===name?'aria-current="page"':"")+'>'+esc(navLabel(name))+'</a>').join("")+'</div></nav><div class="v2-menu-tools">'+button(state.lang==="ar"?"English":"العربية",'data-language="'+(state.lang==="ar"?"en":"ar")+'"',"btn secondary small")+button(tx("تبديل المظهر","Toggle theme"),"data-theme","btn secondary small")+'</div>';
+  return '<nav class="v2-mobile-menu" aria-label="'+esc(tx("قائمة الموقع","Site menu"))+'"><div class="v2-mobile-main-links">'+["new","brands"].map(name=>'<a href="#'+name+'" data-nav '+(route.name===name?'aria-current="page"':"")+'>'+esc(navLabel(name))+'</a>').join("")+'</div><h3 class="v2-mobile-menu-label">'+esc(tx("تسوّق حسب الفئة","Shop by category"))+'</h3>'+Object.keys(CATEGORIES).map(key=>'<details class="v2-mobile-category"><summary>'+categoryIcon(key)+esc(v2CategoryLabel(key))+icon("chevron","anox-chevron")+'</summary><div class="v2-mobile-category-links">'+v2NavigationLinks(key)+'</div></details>').join("")+'<div class="v2-mobile-main-links">'+v2ShopLink(DEVELOPER_MODE?tx("أقل من 50 دولارًا","Under $50"):tx("كل المنتجات","All products"),DEVELOPER_MODE?{maxPrice:"50"}:{})+["request","wishlist","account","help"].map(name=>'<a href="#'+name+'" data-nav '+(route.name===name?'aria-current="page"':"")+'>'+esc(navLabel(name))+'</a>').join("")+'</div></nav><div class="v2-menu-tools">'+languageMenuMarkup()+button(tx("تبديل المظهر","Toggle theme"),"data-theme","btn secondary small")+'</div>';
 }
 
 function v2CategoryLabel(key){return key==='Shoes'?tx('سنيكرز','Sneakers'):key==='Electronics'?tx('تقنية','Tech'):categoryLabel(key);}

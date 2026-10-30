@@ -42,3 +42,17 @@ test('quote fee badge leaves the fee trigger pending an owner decision in both l
   assert.match(result,/\$5\.00/);
  }
 });
+
+test('language picker has English default and Arabic option, switching back is possible',()=>{
+ const source=html(),start=source.indexOf('function languageMenuMarkup(){'),end=source.indexOf('function renderAuthShell(){',start);
+ assert.ok(start>0&&end>start);
+ const menu=new Function('state','esc','tx',source.slice(start,end)+';return languageMenuMarkup;');
+ const english=menu({lang:'en'},String,(_ar,en)=>en)();
+ assert.match(english,/<summary[^>]*><span dir="ltr">EN<\/span>/);
+ assert.match(english,/data-language="ar" lang="ar" dir="ltr">AR<\/button>/);
+ assert.match(english,/<details class="anox-language-menu">/);
+ const arabic=menu({lang:'ar'},String,(ar,_en)=>ar)();
+ assert.match(arabic,/<span dir="ltr">AR<\/span>/);
+ assert.match(arabic,/data-language="en" lang="en" dir="ltr">EN<\/button>/);
+ assert.equal((source.match(/\+languageMenuMarkup\(\)\+/g)||[]).length,3);
+});
