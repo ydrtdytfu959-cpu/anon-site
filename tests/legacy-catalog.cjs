@@ -199,7 +199,7 @@ test('duplicate provider IDs cannot cause duplicate cache batch keys or incorrec
  const r=await x.handler(http('/catalog/products',{offset:'2',limit:'3'})),data=JSON.parse(r.body);
  assert.equal(r.statusCode,200);assert.equal(data.rawCount,3);assert.equal(data.count,2);assert.equal(data.nextOffset,5);
  assert.deepEqual(data.products.map(p=>p.sourceIndex),[2,4]);
- assert.deepEqual(x.writes[0].RequestItems.products.map(p=>p.PutRequest.Item.productId.S),['nike-1','nike-2']);
+ assert.deepEqual(Array.from(x.writes[0].RequestItems.products,p=>p.PutRequest.Item.productId.S),['nike-1','nike-2']);
  const warm=load({rows:[row(1),row(1)]});assert.equal((await warm.handler({action:'warm'})).warmed,1);
 });
 test('malformed or future-dated cached product is treated as a miss and repaired from the verified source',async()=>{
