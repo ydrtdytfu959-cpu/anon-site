@@ -110,11 +110,13 @@ exports.handler = async function handler(event = {}) {
       const data = await search({limit, offset, keywords: query ? [query] : null,
         low: Number.isFinite(low) ? low : null, high: Number.isFinite(high) ? high : null});
       // Bound writes even if the provider sends more rows than requested.
-      const rows = (data.resultList || []).slice(0, limit), products = [], sourcePositions = [];
+      if (!Array.isArray(data.resultList)) throw Error('CJ response invalid');
+      const rows = data.resultList.slice(0, limit), products = [], sourcePositions = [], seen = new Set();
       for (const [index, product] of rows.entries()) {
         if (!product || typeof product !== 'object' || Array.isArray(product)) continue;
         const normalized = normalize(product);
-        if (!officialNikeProduct(normalized)) continue;
+        if (!officialNikeProduct(normalized) || seen.has(normalized.productId)) continue;
+        seen.add(normalized.productId);
         products.push(normalized);
         sourcePositions.push(offset + index);
       }
@@ -129,10 +131,15 @@ exports.handler = async function handler(event = {}) {
         products: products.map((product, index) => ({...product, sourceIndex: sourcePositions[index]}))});
     }
     if (method === 'GET' && path.startsWith('/catalog/products/')) {
-      const id = decodeURIComponent(event.pathParameters?.productId || path.slice(18));
+      let id;
+      try {id = decodeURIComponent(event.pathParameters?.productId || path.slice(18));}
+      catch {return reply(400, {error: 'invalid product id'});}
+      if (!id || Buffer.byteLength(id, 'utf8') > 2048) return reply(400, {error: 'invalid product id'});
       const cached = await ddb.send(new GetItemCommand({TableName: TABLE, Key: {productId: {S: id}}}));
-      if (cached.Item?.payload?.S && Date.now() - Number(cached.Item.syncedAt?.N || 0) < 21600000) {
-        const product = JSON.parse(cached.Item.payload.S);
+      const syncedAt = Number(cached.Item?.syncedAt?.N || 0), age = Date.now() - syncedAt;
+      if (cached.Item?.payload?.S && Number.isFinite(syncedAt) && age >= 0 && age < 21600000) {
+        let product;
+        try {product = JSON.parse(cached.Item.payload.S);} catch {}
         if (officialNikeProduct(product) && product.productId === id) return reply(200, {source: 'cache', product});
       }
       const data = await search({ids: [id], limit: 1});

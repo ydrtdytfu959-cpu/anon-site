@@ -193,3 +193,22 @@ test('replacement and rollback packages reproduce with verified original source'
     assert.deepEqual(names,['cj-handler.js','index.js']);
   } finally {fs.rmSync(temporary,{recursive:true,force:true});}
 });
+
+test('duplicate provider IDs cannot cause duplicate cache batch keys or incorrect pagination',async()=>{
+ const x=load({rows:[row(1),row(1),row(2)],totalCount:8});
+ const r=await x.handler(http('/catalog/products',{offset:'2',limit:'3'})),data=JSON.parse(r.body);
+ assert.equal(r.statusCode,200);assert.equal(data.rawCount,3);assert.equal(data.count,2);assert.equal(data.nextOffset,5);
+ assert.deepEqual(data.products.map(p=>p.sourceIndex),[2,4]);
+ assert.deepEqual(Array.from(x.writes[0].RequestItems.products,p=>p.PutRequest.Item.productId.S),['nike-1','nike-2']);
+ const warm=load({rows:[row(1),row(1)]});assert.equal((await warm.handler({action:'warm'})).warmed,1);
+});
+test('malformed or future-dated cached product is treated as a miss and repaired from the verified source',async()=>{
+ const valid={productId:'nike-1',advertiserId:'4942550',advertiserName:'NIKE',productUrl:'https://www.nike.com/t/product-1'};
+ for(const item of [{syncedAt:{N:String(Date.now())},payload:{S:'invalid cache JSON'}},{syncedAt:{N:String(Date.now()+60000)},payload:{S:JSON.stringify(valid)}}]){
+  const x=load({stored:item});const r=await x.handler(http('/catalog/products/nike-1'));
+  assert.equal(r.statusCode,200);assert.equal(JSON.parse(r.body).source,'CJ');assert.equal(x.requests.length,1);assert.equal(x.writes.length,1);
+ }
+});
+test('malformed URI encoding or oversized product identity fails without database or provider access',async()=>{
+ for(const id of ['%ZZ','a'.repeat(2049)]){const x=load();const r=await x.handler(http('/catalog/products/'+id));assert.equal(r.statusCode,400);assert.equal(x.requests.length,0);assert.equal(x.secrets.length,0);assert.equal(x.writes.length,0);}
+});

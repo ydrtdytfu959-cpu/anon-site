@@ -37,3 +37,7 @@ No deployment is authorized by this source change. When the owner separately app
 4. For rollback, restore the package saved immediately before deployment. If it matches the audited baseline and the exact saved ZIP is unavailable, the generated `rollback.zip` restores the verified source behavior, including the known old warm-404 limitation. Verify the restored hash and HTTP routes. Never reset or delete product/budget tables as a rollback step.
 
 Removing the legacy function's unused Channel3 environment reference/IAM grant is a separate reviewed infrastructure change. The candidate requires only its existing CJ secret permission and product table GetItem/BatchWriteItem permissions.
+
+## November 26 deployment reconciliation
+
+The live Lambda package hash on 2026-11-26 differs from the October 16 provenance capture. The CloudFormation inline source still matches the historical source hash. Do not treat the historical rollback ZIP as a copy of the current live package or overwrite the current function without recovering its exact source/artifact and reviewing the differences. The candidate now also rejects malformed list structures, deduplicates provider IDs before cache writes without changing raw cursor positions, and recovers corrupt or future-dated cached detail from the verified CJ source. These are candidate changes only; no current provider usage or deployed warmer success is asserted.
