@@ -1,13 +1,13 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),crypto=require('node:crypto');
-function setup({status='PAYMENT_PENDING',paymentStatus='unpaid',marker=false}={}){
+function setup({status='PAYMENT_PENDING',paymentStatus='unpaid',marker=false,secretUnavailable=false}={}){
  const calls=[],writes=[],key='isolated-webhook-signing-fixture';let secrets=0;
  const order={orderId:{S:'order-one'},stripeSessionId:{S:'session-one'},amountTotal:{N:'100'},currency:{S:'usd'},status:{S:status},paymentStatus:{S:paymentStatus}};
  class GetItemCommand{constructor(input){this.input=input;}}
  class PutItemCommand{constructor(input){this.input=input;}}
  class TransactWriteItemsCommand{constructor(input){this.input=input;}}
  class DynamoDBClient{async send(command){calls.push(command);if(command instanceof GetItemCommand)return {Item:command.input.TableName==='orders'?structuredClone(order):marker?{paymentId:{S:'existing'}}:undefined};writes.push(command);return {};}}
- class SecretsManagerClient{async send(){secrets++;return {SecretString:JSON.stringify({webhookSecret:key})};}}
+ class SecretsManagerClient{async send(){secrets++;if(secretUnavailable)throw Error('fixture unavailable');return {SecretString:JSON.stringify({webhookSecret:key})};}}
  const context={exports:{},Buffer,console:{log(){},warn(){},error(){}},process:{env:{ORDERS_TABLE:'orders',PAYMENTS_TABLE:'payments',STRIPE_SECRET_ID:'fixture'}},require:name=>name==='crypto'?crypto:name==='@aws-sdk/client-dynamodb'?{DynamoDBClient,GetItemCommand,PutItemCommand,TransactWriteItemsCommand}:{SecretsManagerClient,GetSecretValueCommand:class{}}};
  vm.runInNewContext(fs.readFileSync(require.resolve('../backend/legacy-webhook/index.js'),'utf8'),context);
  const event=(type='checkout.session.completed',patch={})=>{
@@ -48,4 +48,30 @@ test('reviewed legacy template update preserves all configuration and rejects so
  assert.equal(next.Resources.PaymentWebhookFunction.Properties.Code.ZipFile,'reviewed source');
  next.Resources.PaymentWebhookFunction.Properties.Code.ZipFile='previous source';assert.deepEqual(next,before);
  assert.throws(()=>prepare(before,{expectedSourceSha256:'0'.repeat(64)}));
+});
+
+test('malformed, duplicate-timestamp, stale and oversized webhook requests never retrieve a secret',async()=>{
+ for(const mutate of [
+  e=>e.headers['stripe-signature']+=',t=1234567890',
+  e=>e.headers['stripe-signature']='t=1234567890,v1='+'a'.repeat(64),
+  e=>e.headers['stripe-signature']='t='+Math.floor(Date.now()/1000)+',v1=zz',
+  e=>e.headers['stripe-signature']+='a'.repeat(4096),
+  e=>e.body='x'.repeat(256001),
+  e=>{e.isBase64Encoded=true;e.body='%%%';}
+ ]){
+  const f=setup(),e=f.event();mutate(e);
+  assert.equal((await f.handle(e)).statusCode,400);
+  assert.equal(f.secrets(),0);assert.equal(f.calls.length,0);
+ }
+});
+test('canonical base64 preserves signed webhook bytes and valid rotated signatures are accepted',async()=>{
+ const f=setup(),e=f.event();e.body=Buffer.from(e.body,'utf8').toString('base64');e.isBase64Encoded=true;
+ e.headers['stripe-signature']+=',v1='+'0'.repeat(64);
+ assert.equal((await f.handle(e)).statusCode,200);
+ assert.equal(f.writes[0].input.TransactItems.length,3);
+});
+test('transient secret retrieval failure is retryable and cannot write records',async()=>{
+ const f=setup({secretUnavailable:true});
+ const r=await f.handle(f.event());
+ assert.equal(r.statusCode,503);assert.equal(f.calls.length,0);assert.equal(f.writes.length,0);
 });
