@@ -3,9 +3,10 @@
 // Offline prerequisite assessment only: no AWS client, upload, deployment,
 // payment capability, or authority to override an independent release review.
 const fs=require('node:fs');
+const {budgetMonthStatus}=require('../backend/index.js');
 const OPERATIONAL_TOPIC='arn:aws:sns:us-east-2:427064007352:AnoX-Operational-Alerts';
 const REQUIRED_OPERATIONAL_ALARMS=Object.freeze(['AnoX-Channel3-Catalog-Errors','AnoX-Channel3-Catalog-Throttles','AnoX-Payment-Webhook-Errors','AnoX-API-Gateway-5xx','AnoX-Regional-Lambda-Concurrency-High']);
-const ROUTES=Object.freeze(['GET /commerce/capabilities','POST /commerce/quotes','POST /commerce/checkout-attempts','GET /commerce/orders','GET /commerce/orders/{orderId}','POST /commerce/orders/{orderId}/cancel','POST /commerce/orders/{orderId}/refund','GET /catalog/channel3/products/{id}']);
+const ROUTES=Object.freeze(['GET /commerce/capabilities','POST /commerce/quotes','POST /commerce/checkout-attempts','GET /commerce/orders','GET /commerce/orders/{orderId}','POST /commerce/orders/{orderId}/cancel','POST /commerce/orders/{orderId}/refund','GET /catalog/channel3/products/{id}','GET /catalog/search','POST /commerce/service-requests']);
 function assess(input,{now=Date.now(),reservedConcurrency=2,phase='frontend'}={}){
  const s=input&&typeof input==='object'&&!Array.isArray(input)?input:{};
  const gates=[],add=(code,severity,message)=>gates.push({code,severity,message});
@@ -60,6 +61,18 @@ function assess(input,{now=Date.now(),reservedConcurrency=2,phase='frontend'}={}
    n.Threshold===threshold&&n.NotificationState==='OK');
  if(!hasBudget('ACTUAL',80)||!hasBudget('FORECASTED',100))
    add('BUDGET_NOTIFICATIONS','P1','Verify actual 80% and forecasted 100% budget warnings; warnings do not cap spending.');
+ // Inspect only the allow-listed non-secret live Lambda environment settings.
+ // An AWS cost-budget warning does not attest to Channel3's monthly allocation.
+ if(phase==='frontend'){
+   const budget=record(s.catalogBudget)?s.catalogBudget:{};
+   let active=false;
+   try{active=budgetMonthStatus({budgetMonth:budget.BUDGET_MONTH,nextBudgetMonth:budget.NEXT_BUDGET_MONTH,now:()=>now}).allowed;}
+   catch{}
+   const caps={FREE_SEARCH_MONTHLY_CREDITS:500,SEARCH_DAILY_LIMIT:60,DETAIL_MONTHLY_LIMIT:200,DETAIL_DAILY_LIMIT:100,TOTAL_DAILY_LIMIT:150,UPSTREAM_PER_SECOND_LIMIT:5};
+   const withinCaps=Object.entries(caps).every(([key,max])=>typeof budget[key]==='string'&&/^[1-9][0-9]*$/.test(budget[key])&&Number(budget[key])<=max);
+   if(!active||!withinCaps||budget.PAID_USAGE_ENABLED!=='false'||budget.PAID_SEARCH_MONTHLY_CREDITS!=='0')
+     add('CATALOG_BUDGET','P0','Verify an explicitly approved current Channel3 month and nonzero bounded free allocation; paid usage must remain disabled.');
+ }
  const routes=Array.isArray(s.routes)?s.routes.filter(record):[],missing=[];
  const integrations=Array.isArray(s.integrations)?s.integrations.filter(record):[];
  const expected=s.expectedIntegrationUris;
