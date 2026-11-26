@@ -25,3 +25,19 @@ test('service-request writes receive bounded route throttles without broadening 
  const result=stageApiSettings(api,{StageName:'$default'});
  assert.deepEqual(result.stageUpdate.RouteSettings['POST /commerce/service-requests'],{ThrottlingRateLimit:2,ThrottlingBurstLimit:4});
 });
+
+test('catalog route throttles are reproduced on future deployments without weakening stricter existing limits', () => {
+ const api={ApiId:'zmumi2wruk',CorsConfiguration:{AllowOrigins:['https://anox.app'],AllowMethods:['GET','POST','PUT','OPTIONS'],AllowHeaders:['content-type','authorization'],AllowCredentials:false}};
+ const stage={StageName:'$default',RouteSettings:{'GET /catalog/search':{ThrottlingRateLimit:3,ThrottlingBurstLimit:100,DetailedMetricsEnabled:true},'POST /assistant':{ThrottlingRateLimit:2,ThrottlingBurstLimit:5}}};
+ const baseline=structuredClone(stage), result=stageApiSettings(api,stage);
+ const routes=result.stageUpdate.RouteSettings;
+ assert.deepEqual(routes['GET /catalog/search'],{ThrottlingRateLimit:3,ThrottlingBurstLimit:20,DetailedMetricsEnabled:true});
+ for(const key of ['GET /catalog/channel3/products/{id}','GET /catalog/products','GET /catalog/products/{productId}']) assert.deepEqual(routes[key],{ThrottlingRateLimit:10,ThrottlingBurstLimit:20});
+ assert.deepEqual(routes['POST /assistant'],stage.RouteSettings['POST /assistant']);
+ assert.deepEqual(result.stageRollback.RouteSettings,baseline.RouteSettings);
+ assert.deepEqual(stage,baseline);
+ for(const v of [-1,NaN,'5',Infinity]) {
+   const invalid=structuredClone(stage);invalid.RouteSettings['GET /catalog/search'].ThrottlingRateLimit=v;
+   assert.throws(()=>stageApiSettings(api,invalid));
+ }
+});

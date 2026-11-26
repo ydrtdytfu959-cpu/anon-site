@@ -18,3 +18,23 @@ test('following renewal promotes the previously approved month without resetting
  assert.deepEqual(plan.parameters.filter(p=>!p.UsePreviousValue),[{ParameterKey:'BudgetMonth',ParameterValue:'2026-11'},{ParameterKey:'NextBudgetMonth',ParameterValue:'2026-12'}]);
  assert.throws(()=>planRenewal({parameters,approval:{...approval,month:'2026-12'},now:()=>Date.parse('2026-11-20T00:00:00Z')}));
 });
+
+test('explicit expired-month recovery authorizes only the current month and preserves every other parameter',()=>{
+ const expired={...parameters,BudgetMonth:'2026-09',NextBudgetMonth:'2026-10'};
+ const time=()=>Date.parse('2026-11-26T12:00:00Z');
+ const recovery={...approval,month:'2026-11',recoverExpiredMonth:true,currentMonthCountersReconciled:true};
+ const plan=planRenewal({parameters:expired,approval:recovery,now:time});
+ assert.equal(plan.reviewOnly,true);
+ assert.equal(plan.approvedMonth,'2026-11');
+ assert.deepEqual(plan.parameters.filter(p=>!p.UsePreviousValue),[{ParameterKey:'BudgetMonth',ParameterValue:'2026-11'},{ParameterKey:'NextBudgetMonth',ParameterValue:''}]);
+ assert.equal(plan.parameters.length,Object.keys(expired).length);
+ assert.ok(!JSON.stringify(plan).includes('fixture-reference'));
+ for(const patch of [{recoverExpiredMonth:false},{currentMonthCountersReconciled:false},{providerAllocationVerified:false},{otherConsumersReconciled:false},{ownerApproved:false},{month:'2026-12'},{availableFreeSearchCredits:499},{availableDetailRequests:199}])
+  assert.throws(()=>planRenewal({parameters:expired,approval:{...recovery,...patch},now:time}));
+});
+test('expired-month recovery cannot initialize an unconfigured or future budget or overwrite a valid month',()=>{
+ const time=()=>Date.parse('2026-11-26T12:00:00Z');
+ const recovery={...approval,month:'2026-11',recoverExpiredMonth:true,currentMonthCountersReconciled:true};
+ for(const BudgetMonth of ['','2026-12','2026-11'])
+  assert.throws(()=>planRenewal({parameters:{...parameters,BudgetMonth,NextBudgetMonth:''},approval:recovery,now:time}));
+});
