@@ -2,10 +2,11 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {assess}=require('../scripts/release-preflight.cjs');
 const now=Date.parse('2026-10-12T18:00:00Z');
-const routeKeys=['GET /commerce/capabilities','POST /commerce/quotes','POST /commerce/checkout-attempts','GET /commerce/orders','GET /commerce/orders/{orderId}','POST /commerce/orders/{orderId}/cancel','POST /commerce/orders/{orderId}/refund','GET /catalog/channel3/products/{id}'];
+const routeKeys=['GET /commerce/capabilities','POST /commerce/quotes','POST /commerce/checkout-attempts','GET /commerce/orders','GET /commerce/orders/{orderId}','POST /commerce/orders/{orderId}/cancel','POST /commerce/orders/{orderId}/refund','GET /catalog/channel3/products/{id}','GET /catalog/search','POST /commerce/service-requests'];
 function baseFixture(){return{capturedAt:new Date(now).toISOString(),identity:{Account:'427064007352'},region:'us-east-2',api:{ApiId:'zmumi2wruk',CorsConfiguration:{AllowOrigins:['https://anox.app'],AllowCredentials:false,AllowHeaders:['authorization','content-type','Idempotency-Key'],AllowMethods:['GET','POST','PUT','OPTIONS']}},authorizers:[{AuthorizerId:'qcopg9',AuthorizerType:'JWT',IdentitySource:['$request.header.Authorization'],JwtConfiguration:{Issuer:'https://cognito-idp.us-east-2.amazonaws.com/us-east-2_gUci3YuMm',Audience:['63738r9gpr126qpgp1a5cubchi']}}],routes:routeKeys.map(RouteKey=>({RouteKey,AuthorizationType:RouteKey.includes('/capabilities')||RouteKey.includes('/catalog/')?'NONE':'JWT',AuthorizerId:'qcopg9'})),lambdaAccount:{AccountLimit:{UnreservedConcurrentExecutions:105}},commerceReservedConcurrency:5,templateBytes:{catalog:60000,commerce:67130},artifact:{privateBucketVerified:true,templateUrlPlanned:true},alarmDestinationVerified:true,sourceMatchesReviewedCommit:true};}
 function fixture(){
  const s=baseFixture();
+ s.catalogBudget={BUDGET_MONTH:'2026-10',NEXT_BUDGET_MONTH:'',FREE_SEARCH_MONTHLY_CREDITS:'500',SEARCH_DAILY_LIMIT:'60',DETAIL_MONTHLY_LIMIT:'200',DETAIL_DAILY_LIMIT:'100',TOTAL_DAILY_LIMIT:'150',UPSTREAM_PER_SECOND_LIMIT:'5',PAID_USAGE_ENABLED:'false',PAID_SEARCH_MONTHLY_CREDITS:'0'};
  s.api.CorsConfiguration.ExposeHeaders=['Idempotency-Replayed','Retry-After'];
  const topic='arn:aws:sns:us-east-2:427064007352:AnoX-Operational-Alerts';
  const names=['AnoX-Channel3-Catalog-Errors','AnoX-Channel3-Catalog-Throttles','AnoX-Payment-Webhook-Errors','AnoX-API-Gateway-5xx','AnoX-Regional-Lambda-Concurrency-High'];
@@ -105,4 +106,37 @@ test('frontend must expose precisely approved response headers; backend may stag
  }
  const s=fixture();delete s.api.CorsConfiguration.ExposeHeaders;
  assert.equal(assess(s,{...options,phase:'backend'}).gates.some(g=>g.code==='CORS_EXPOSE_HEADERS'),false);
+});
+
+
+test('frontend release requires search and authenticated service-request routes',()=>{
+ for(const key of ['GET /catalog/search','POST /commerce/service-requests']){
+  const missing=fixture();missing.routes=missing.routes.filter(r=>r.RouteKey!==key);
+  assert.ok(assess(missing,options).gates.some(g=>g.code==='MISSING_ROUTES'&&g.message.includes(key)));
+  const wrong=fixture();const route=wrong.routes.find(r=>r.RouteKey===key);
+  route.AuthorizationType=key.includes('/commerce/')?'NONE':'JWT';
+  assert.ok(assess(wrong,options).gates.some(g=>g.code==='ROUTE_AUTH'));
+  const target=fixture();target.routes.find(r=>r.RouteKey===key).Target='integrations/unknown';
+  assert.ok(assess(target,options).gates.some(g=>g.code==='ROUTE_INTEGRATION'));
+ }
+});
+test('expired, missing, malformed, or over-budget Channel3 allocation blocks frontend release',()=>{
+ for(const mutate of [
+  s=>delete s.catalogBudget,
+  s=>s.catalogBudget.BUDGET_MONTH='2026-09',
+  s=>s.catalogBudget.BUDGET_MONTH='2026-11',
+  s=>s.catalogBudget.NEXT_BUDGET_MONTH='2026-12',
+  s=>s.catalogBudget.FREE_SEARCH_MONTHLY_CREDITS='501',
+  s=>s.catalogBudget.DETAIL_MONTHLY_LIMIT='0',
+  s=>s.catalogBudget.SEARCH_DAILY_LIMIT='1e1',
+  s=>s.catalogBudget.PAID_USAGE_ENABLED='true',
+  s=>s.catalogBudget.PAID_SEARCH_MONTHLY_CREDITS='1'
+ ]){
+  const s=fixture();mutate(s);
+  assert.ok(assess(s,options).gates.some(g=>g.code==='CATALOG_BUDGET'));
+ }
+ const s=fixture();s.catalogBudget.BUDGET_MONTH='2026-09';s.catalogBudget.NEXT_BUDGET_MONTH='2026-10';
+ assert.equal(assess(s,options).ready,true);
+ const expired=fixture();expired.catalogBudget.BUDGET_MONTH='2026-09';
+ assert.equal(assess(expired,{...options,phase:'backend'}).gates.some(g=>g.code==='CATALOG_BUDGET'),false);
 });
