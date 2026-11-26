@@ -14,6 +14,17 @@ function stageApiSettings(api, stage) {
   const RouteSettings = structuredClone(stage.RouteSettings || {});
   const limits = { 'GET /commerce/capabilities': [10, 20], 'POST /commerce/quotes': [2, 4], 'POST /commerce/checkout-attempts': [2, 4], 'POST /commerce/service-requests': [2, 4], 'GET /commerce/orders': [5, 10], 'GET /commerce/orders/{orderId}': [5, 10], 'POST /commerce/orders/{orderId}/cancel': [2, 4], 'POST /commerce/orders/{orderId}/refund': [2, 4] };
   for (const [route, [rate, burst]] of Object.entries(limits)) RouteSettings[route] = { ...RouteSettings[route], ThrottlingRateLimit: rate, ThrottlingBurstLimit: burst };
+  // Public catalog traffic must retain its reviewed aggregate route ceilings.
+  // Preserve any existing stricter valid ceiling, and do not widen unrelated routes.
+  const catalogRoutes = ['GET /catalog/search', 'GET /catalog/channel3/products/{id}', 'GET /catalog/products', 'GET /catalog/products/{productId}'];
+  for (const route of catalogRoutes) {
+    const existing = RouteSettings[route] || {};
+    for (const key of ['ThrottlingRateLimit','ThrottlingBurstLimit']) {
+      const value=existing[key];
+      if(value!==undefined && (!Number.isFinite(value)||value<0||(key==='ThrottlingBurstLimit'&&!Number.isSafeInteger(value)))) throw Error('Invalid catalog route throttle; review stage configuration.');
+    }
+    RouteSettings[route] = {...existing, ThrottlingRateLimit: Math.min(existing.ThrottlingRateLimit ?? 10,10), ThrottlingBurstLimit: Math.min(existing.ThrottlingBurstLimit ?? 20,20)};
+  }
   return { apiUpdate: { ApiId: api.ApiId, CorsConfiguration }, stageUpdate: { ApiId: api.ApiId, StageName: stage.StageName, RouteSettings }, apiRollback: { ApiId: api.ApiId, CorsConfiguration: structuredClone(cors) }, stageRollback: { ApiId: api.ApiId, StageName: stage.StageName, RouteSettings: structuredClone(stage.RouteSettings || {}) } };
 }
 if (require.main === module) {
