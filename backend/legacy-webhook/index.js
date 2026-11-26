@@ -49,30 +49,33 @@ async function webhookSecret(){
   return cachedWebhookSecret;
 }
 
-function verifySignature(rawBody,signature,secret){
-  if(!signature)throw new Error("MISSING_STRIPE_SIGNATURE");
-  let timestamp=0;
-  const signatures=[];
+// Reject malformed or oversized input before retrieving a credential.
+const MAX_BODY_BYTES=256000;
+function parseRequest(event){
+  const signature=header(event,"stripe-signature");
+  if(!signature||signature.length>4096)throw Error("INVALID_STRIPE_SIGNATURE");
+  const timestamps=[],signatures=[];
   for(const part of signature.split(",")){
     const i=part.indexOf("=");
     if(i<0)continue;
-    const key=part.slice(0,i).trim();
-    const value=part.slice(i+1).trim();
-    if(key==="t")timestamp=Number(value);
-    if(key==="v1")signatures.push(value);
+    const key=part.slice(0,i).trim(),value=part.slice(i+1).trim();
+    if(key==="t")timestamps.push(value);
+    if(key==="v1"&&/^[a-f0-9]{64}$/i.test(value))signatures.push(value);
   }
-  if(!Number.isFinite(timestamp)||!timestamp||!signatures.length)throw new Error("INVALID_STRIPE_SIGNATURE");
-  const age=Math.abs(Math.floor(Date.now()/1000)-timestamp);
-  if(age>SIGNATURE_TOLERANCE_SECONDS)throw new Error("STALE_STRIPE_SIGNATURE");
-  const expected=crypto.createHmac("sha256",secret).update(timestamp+"."+rawBody,"utf8").digest("hex");
-  const expectedBuf=Buffer.from(expected,"hex");
-  const ok=signatures.some(sig=>{
-    try{
-      const candidate=Buffer.from(sig,"hex");
-      return candidate.length===expectedBuf.length&&crypto.timingSafeEqual(candidate,expectedBuf);
-    }catch{return false}
-  });
-  if(!ok)throw new Error("INVALID_STRIPE_SIGNATURE");
+  if(timestamps.length!==1||!/^\d{10,12}$/.test(timestamps[0])||!signatures.length)throw Error("INVALID_STRIPE_SIGNATURE");
+  if(Math.abs(Math.floor(Date.now()/1000)-Number(timestamps[0]))>SIGNATURE_TOLERANCE_SECONDS)throw Error("STALE_STRIPE_SIGNATURE");
+  if(typeof event?.body!=="string"||event.body.length>Math.ceil(MAX_BODY_BYTES/3)*4)throw Error("INVALID_BODY");
+  let raw;
+  if(event.isBase64Encoded===true){
+    raw=Buffer.from(event.body,"base64");
+    if(raw.toString("base64")!==event.body)throw Error("INVALID_BODY");
+  }else raw=Buffer.from(event.body,"utf8");
+  if(!raw.length||raw.length>MAX_BODY_BYTES)throw Error("INVALID_BODY");
+  return {raw,timestamp:timestamps[0],signatures};
+}
+function verifySignature({raw,timestamp,signatures},secret){
+  const expected=crypto.createHmac("sha256",secret).update(timestamp+".","utf8").update(raw).digest();
+  if(!signatures.some(sig=>crypto.timingSafeEqual(Buffer.from(sig,"hex"),expected)))throw Error("INVALID_STRIPE_SIGNATURE");
 }
 
 function sval(item,key){return item?.[key]?.S||""}
@@ -219,18 +222,18 @@ function orderUpdate(session,event,orderId,next,ts,observed){
 }
 
 exports.handler=async event=>{
-  let rawBody="";
-  let parsed=null;
+  let request,parsed,secret;
+  try{request=parseRequest(event);}
+  catch{console.warn("stripe_webhook_invalid_request");return response(400,{ok:false,error:"INVALID_WEBHOOK"});}
+  try{secret=await webhookSecret();}
+  catch{console.error("stripe_webhook_secret_unavailable");return response(503,{ok:false,error:"SERVICE_UNAVAILABLE"});}
   try{
-    rawBody=event?.isBase64Encoded
-      ? Buffer.from(event.body||"","base64").toString("utf8")
-      : String(event?.body||"");
-    const signature=header(event,"stripe-signature");
-    if(!signature)throw new Error("MISSING_STRIPE_SIGNATURE");
-    verifySignature(rawBody,signature,await webhookSecret());
-    parsed=JSON.parse(rawBody);
-  }catch(e){
-    console.warn("stripe_webhook_rejected",{reason:e.message});
+    verifySignature(request,secret);
+    const decoded=request.raw.toString("utf8");
+    if(!Buffer.from(decoded,"utf8").equals(request.raw))throw Error("INVALID_UTF8");
+    parsed=JSON.parse(decoded);
+  }catch{
+    console.warn("stripe_webhook_rejected");
     return response(400,{ok:false,error:"INVALID_WEBHOOK"});
   }
 
